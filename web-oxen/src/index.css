@@ -1,0 +1,889 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* OXEN — dark cosmic travel aesthetic. All colors HSL. */
+
+@layer base {
+  :root,
+  .dark {
+    --background: 225 47% 6%;
+    --foreground: 40 30% 92%;
+
+    --card: 225 38% 9%;
+    --card-foreground: 40 30% 92%;
+
+    --popover: 225 42% 8%;
+    --popover-foreground: 40 30% 92%;
+
+    --primary: 38 92% 56%;
+    --primary-foreground: 225 50% 8%;
+
+    --secondary: 225 28% 16%;
+    --secondary-foreground: 40 30% 92%;
+
+    --muted: 225 24% 14%;
+    --muted-foreground: 220 14% 60%;
+
+    --accent: 35 95% 62%;
+    --accent-foreground: 225 50% 8%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 40 30% 96%;
+
+    --border: 225 25% 16%;
+    --input: 225 25% 18%;
+    --ring: 38 92% 56%;
+
+    --radius: 1rem;
+
+    --gold: 40 92% 58%;
+    --gold-soft: 38 80% 70%;
+    --deep: 230 55% 4%;
+
+    --sidebar-background: 225 40% 7%;
+    --sidebar-foreground: 40 30% 92%;
+    --sidebar-primary: 38 92% 56%;
+    --sidebar-primary-foreground: 225 50% 8%;
+    --sidebar-accent: 225 28% 16%;
+    --sidebar-accent-foreground: 40 30% 92%;
+    --sidebar-border: 225 25% 16%;
+    --sidebar-ring: 38 92% 56%;
+
+    --glass-bg: hsl(225 38% 11% / 0.6);
+    --glass-strong-bg: hsl(225 40% 10% / 0.85);
+    --glass-border: hsl(40 40% 80% / 0.08);
+    --glass-border-strong: hsl(40 40% 80% / 0.1);
+    --body-bg-image: radial-gradient(ellipse 80% 60% at 50% -10%, hsl(225 60% 14% / 0.9), transparent 70%), radial-gradient(ellipse 60% 50% at 90% 10%, hsl(38 70% 30% / 0.18), transparent 60%);
+    --white-overlay-04: hsl(40 40% 80% / 0.04);
+    --white-overlay-06: hsl(40 40% 80% / 0.06);
+    --white-overlay-08: hsl(40 40% 80% / 0.08);
+    --white-overlay-10: hsl(40 40% 80% / 0.1);
+    --white-overlay-12: hsl(40 40% 80% / 0.12);
+    --text-on-card: hsl(40 30% 92%);
+  }
+
+  .light {
+    --background: 40 30% 98%;
+    --foreground: 225 30% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 225 30% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 30% 12%;
+
+    --primary: 38 92% 52%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 225 20% 92%;
+    --secondary-foreground: 225 30% 15%;
+
+    --muted: 225 16% 90%;
+    --muted-foreground: 225 10% 42%;
+
+    --accent: 35 95% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 225 16% 86%;
+    --input: 225 16% 88%;
+    --ring: 38 92% 52%;
+
+    --gold: 38 90% 50%;
+    --gold-soft: 38 80% 60%;
+    --deep: 225 20% 88%;
+
+    --sidebar-background: 0 0% 99%;
+    --sidebar-foreground: 225 30% 12%;
+    --sidebar-primary: 38 92% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 225 16% 90%;
+    --sidebar-accent-foreground: 225 30% 15%;
+    --sidebar-border: 225 16% 86%;
+    --sidebar-ring: 38 92% 52%;
+
+    --glass-bg: hsl(0 0% 100% / 0.72);
+    --glass-strong-bg: hsl(0 0% 100% / 0.88);
+    --glass-border: hsl(225 20% 80% / 0.12);
+    --glass-border-strong: hsl(225 20% 80% / 0.18);
+    --body-bg-image: radial-gradient(ellipse 80% 60% at 50% -10%, hsl(38 60% 90% / 0.6), transparent 70%), radial-gradient(ellipse 60% 50% at 90% 10%, hsl(38 80% 85% / 0.3), transparent 60%);
+    --white-overlay-04: hsl(225 20% 50% / 0.05);
+    --white-overlay-06: hsl(225 20% 50% / 0.07);
+    --white-overlay-08: hsl(225 20% 50% / 0.09);
+    --white-overlay-10: hsl(225 20% 50% / 0.11);
+    --white-overlay-12: hsl(225 20% 50% / 0.14);
+    --text-on-card: hsl(225 30% 15%);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background-image: var(--body-bg-image);
+    background-attachment: fixed;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: "Sora", "Inter", sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+  }
+
+  .glass-strong {
+    background: var(--glass-strong-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border-strong);
+  }
+
+  .gold-gradient {
+    background: linear-gradient(135deg, hsl(45 95% 68%), hsl(35 92% 52%));
+  }
+
+  .text-gold-gradient {
+    background: linear-gradient(135deg, hsl(46 96% 72%), hsl(34 92% 56%));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 0 1px hsl(40 80% 60% / 0.2), 0 8px 40px -8px hsl(38 90% 50% / 0.45);
+  }
+
+  .ring-spacing {
+    letter-spacing: 0.18em;
+  }
+
+  .glass-auth {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@keyframes float-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ── Auth / Registration page ── */
+
+@keyframes auth-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes auth-float-delayed {
+  0%, 100% { transform: translateY(0px); }
+  40% { transform: translateY(-6px); }
+  70% { transform: translateY(3px); }
+}
+
+@keyframes auth-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+}
+
+@keyframes auth-slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes auth-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes auth-glow-border {
+  0%, 100% { border-color: rgba(59, 130, 246, 0.3); }
+  50% { border-color: rgba(59, 130, 246, 0.7); }
+}
+
+@keyframes auth-shimmer-sweep {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+
+.auth-input-glow:focus-within {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 0 20px rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.auth-card {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.auth-btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35), 0 0 0 1px rgba(59, 130, 246, 0.2);
+  transition: all 0.25s ease;
+}
+
+.auth-btn-primary:hover {
+  box-shadow: 0 6px 24px rgba(37, 99, 235, 0.5), 0 0 0 1px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.auth-btn-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.auth-btn-provider {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+}
+
+.auth-btn-provider:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.auth-btn-provider:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.auth-divider {
+  color: rgba(148, 163, 184, 0.5);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Sidebar ── */
+
+.sidebar-glass {
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    4px 0 40px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+.sidebar-item {
+  position: relative;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sidebar-item:active {
+  transform: scale(0.97);
+  transition: transform 0.12s ease;
+}
+
+@keyframes sidebar-item-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── Profile page ── */
+
+@keyframes profile-avatar-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(251, 191, 36, 0); }
+}
+
+@keyframes profile-story-bounce {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.12); }
+  60% { transform: scale(0.95); }
+}
+
+@keyframes profile-card-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes profile-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.avatar-ring {
+  box-shadow: 0 0 0 2px hsl(38 92% 56% / 0.3), 0 8px 32px hsl(38 90% 50% / 0.25);
+}
+
+/* Settings panel custom scrollbar */
+.settings-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.settings-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.settings-scroll::-webkit-scrollbar-thumb {
+  background: hsl(255 25% 20% / 0.6);
+  border-radius: 4px;
+}
+
+/* ── Story & Post animations ── */
+
+@keyframes story-ring-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0);
+  }
+}
+
+@keyframes story-bubble-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes post-hover-lift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-4px); }
+}
+
+@keyframes upload-progress-ripple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+@keyframes modal-spring-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translateY(32px);
+  }
+  60% {
+    transform: scale(1.02) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes story-progress-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.story-bubble-ring {
+  box-shadow: 0 0 0 2px hsl(38 92% 56% / 0.25), 0 4px 20px hsl(38 90% 50% / 0.18);
+}
+
+.story-bubble-ring:hover {
+  box-shadow: 0 0 0 3px hsl(38 92% 56% / 0.5), 0 6px 28px hsl(38 90% 50% / 0.3);
+}
+
+/* Post grid media overlay */
+.post-media-overlay {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 60%);
+}
+
+/* Destination modal hero — subtle animated grain for texture */
+.destination-hero {
+  background-image:
+    radial-gradient(circle at 30% 50%, rgba(255, 255, 255, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.03) 0%, transparent 40%);
+}
+
+/* ── Feed post cards & travel cards ── */
+
+.feed-card {
+  background: hsl(225 38% 11% / 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsl(40 40% 80% / 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feed-card:hover {
+  border-color: hsl(38 92% 56% / 0.25);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    0 0 20px hsl(38 90% 50% / 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.travel-card {
+  background: hsl(225 38% 11% / 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsl(40 40% 80% / 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.travel-card:hover {
+  border-color: hsl(38 92% 56% / 0.3);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.45),
+    0 0 24px hsl(38 90% 50% / 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+
+@keyframes feed-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes travel-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Search overlay & explore page ── */
+
+@keyframes search-bar-focus {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 0 24px rgba(59, 130, 246, 0.08); }
+}
+
+@keyframes explore-card-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes nav-tab-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* iOS-style spring entrance for bottom nav */
+@keyframes nav-spring-in {
+  0% { opacity: 0; transform: translateY(60px); }
+  60% { transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Glassmorphism glow for active nav tab */
+.glow-gold-active {
+  box-shadow: 0 0 0 1px hsl(40 80% 60% / 0.2), 0 4px 20px hsl(38 90% 50% / 0.3);
+}
+
+/* Smooth horizontal scroll snap for feeds */
+.scroll-snap-x {
+  scroll-snap-type: x mandatory;
+}
+.scroll-snap-x > * {
+  scroll-snap-align: start;
+}
+
+/* ── Theme transition ── */
+
+@keyframes theme-fade {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+html.dark, html.light {
+  animation: theme-fade 0.3s ease;
+}
+
+/* ── Chat interface ── */
+
+.chat-bubble-sent {
+  background: linear-gradient(135deg, hsl(38 92% 52%), hsl(35 90% 48%));
+  color: white;
+  border-radius: 20px 20px 4px 20px;
+}
+
+.chat-bubble-received {
+  background: var(--white-overlay-06);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px 20px 20px 4px;
+}
+
+@keyframes chat-msg-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes chat-typing {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+
+.chat-input-area {
+  background: var(--glass-strong-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--glass-border);
+}
+
+/* ── Report modal ── */
+
+.report-reason-card {
+  background: var(--white-overlay-04);
+  border: 1px solid var(--glass-border);
+  transition: all 0.2s ease;
+}
+
+.report-reason-card:hover {
+  background: var(--white-overlay-06);
+  border-color: hsl(0 72% 55% / 0.3);
+}
+
+.report-reason-card.selected {
+  background: hsl(0 72% 55% / 0.1);
+  border-color: hsl(0 72% 55% / 0.5);
+}
+
+/* ── Admin dashboard ── */
+
+.admin-stat-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+}
+
+.risk-badge-critical {
+  background: hsl(0 80% 50% / 0.15);
+  color: hsl(0 80% 60%);
+  border: 1px solid hsl(0 80% 50% / 0.3);
+}
+
+.risk-badge-high {
+  background: hsl(20 80% 50% / 0.15);
+  color: hsl(20 80% 55%);
+  border: 1px solid hsl(20 80% 50% / 0.3);
+}
+
+.risk-badge-medium {
+  background: hsl(45 80% 50% / 0.15);
+  color: hsl(45 80% 50%);
+  border: 1px solid hsl(45 80% 50% / 0.3);
+}
+
+.risk-badge-low {
+  background: hsl(150 60% 45% / 0.15);
+  color: hsl(150 60% 45%);
+  border: 1px solid hsl(150 60% 45% / 0.3);
+}
+
+.status-badge-pending {
+  background: hsl(45 80% 50% / 0.12);
+  color: hsl(45 80% 45%);
+}
+
+.status-badge-reviewing {
+  background: hsl(220 80% 55% / 0.12);
+  color: hsl(220 80% 60%);
+}
+
+.status-badge-resolved {
+  background: hsl(150 60% 45% / 0.12);
+  color: hsl(150 60% 40%);
+}
+
+/* ── Edit profile inputs ── */
+
+.profile-input-field {
+  background: var(--white-overlay-04);
+  border: 1px solid var(--glass-border);
+  transition: all 0.2s ease;
+}
+
+.profile-input-field:focus-within {
+  border-color: hsl(38 92% 56% / 0.5);
+  box-shadow: 0 0 0 3px hsl(38 92% 56% / 0.1);
+}
+
+/* ── Light mode adjustments for existing hardcoded colors ── */
+
+.light .starfield { opacity: 0.15 !important; }
+.light .feed-card {
+  background: hsl(0 0% 100% / 0.8);
+  border-color: hsl(225 20% 80% / 0.2);
+  box-shadow: 0 4px 24px hsl(225 20% 70% / 0.15);
+}
+.light .travel-card {
+  background: hsl(0 0% 100% / 0.8);
+  border-color: hsl(225 20% 80% / 0.2);
+  box-shadow: 0 4px 24px hsl(225 20% 70% / 0.15);
+}
+.light .glass-auth {
+  background: hsl(0 0% 100% / 0.85);
+  border-color: hsl(225 20% 80% / 0.15);
+}
+.light .auth-card {
+  background: hsl(0 0% 100% / 0.85);
+  border-color: hsl(225 20% 80% / 0.15);
+  box-shadow: 0 4px 24px hsl(225 20% 70% / 0.12);
+}
+.light .sidebar-glass {
+  background: hsl(0 0% 100% / 0.92);
+  border-color: hsl(225 20% 80% / 0.15);
+  box-shadow: 4px 0 24px hsl(225 20% 70% / 0.12);
+}
+.light .post-media-overlay {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.5) 0%, transparent 60%);
+}
+
+/* ── Offline indicator pulse animation ── */
+
+@keyframes offline-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.offline-banner {
+  animation: offline-pulse 2.5s ease-in-out infinite;
+}
+
+/* ── Light mode adjustments for offline banner ── */
+.light .offline-banner {
+  border-color: hsl(38 92% 56% / 0.3);
+  background: hsl(38 92% 56% / 0.12);
+}
+.light .offline-banner span {
+  color: hsl(38 80% 40%);
+}
+
+/* ── Light mode for settings panel glass ── */
+.light .glass-settings-panel {
+  background: hsl(0 0% 100% / 0.96) !important;
+  border-left-color: hsl(225 20% 80% / 0.15) !important;
+}
+
+/* ── Floating info panel (DestinationModal) ── */
+
+.floating-info-panel {
+  animation: panel-glow 4s ease-in-out infinite;
+}
+
+@keyframes panel-glow {
+  0%, 100% { box-shadow: 0 -8px 40px rgba(0,0,0,0.5), 0 0 0 0 rgba(80,140,255,0); }
+  50% { box-shadow: 0 -8px 40px rgba(0,0,0,0.5), 0 0 30px 0 rgba(80,140,255,0.06); }
+}
+
+.light .floating-info-panel {
+  background: linear-gradient(to bottom, hsl(0 0% 100% / 0.92), hsl(225 20% 97% / 0.92)) !important;
+  border-color: hsl(225 20% 80% / 0.15) !important;
+}
+
+/* ── Comments sheet ── */
+
+.comments-sheet {
+  animation: sheet-glow 4s ease-in-out infinite;
+}
+
+@keyframes sheet-glow {
+  0%, 100% { box-shadow: 0 -8px 40px rgba(0,0,0,0.6), 0 0 0 0 rgba(80,140,255,0); }
+  50% { box-shadow: 0 -8px 40px rgba(0,0,0,0.6), 0 0 30px 0 rgba(80,140,255,0.06); }
+}
+
+.light .comments-sheet {
+  background: linear-gradient(to bottom, hsl(0 0% 100% / 0.94), hsl(225 20% 97% / 0.94)) !important;
+  border-color: hsl(225 20% 80% / 0.15) !important;
+}
+
+/* ── Report button subtle glow on hover ── */
+
+.report-reason-card {
+  background: hsl(0 0% 100% / 0.03);
+  border: 1px solid hsl(0 0% 100% / 0.06);
+  transition: all 0.2s ease;
+}
+.report-reason-card:hover {
+  background: hsl(0 0% 100% / 0.06);
+  border-color: hsl(0 0% 100% / 0.1);
+}
+.report-reason-card.selected {
+  background: hsl(0 84% 60% / 0.12);
+  border-color: hsl(0 84% 60% / 0.3);
+}
+
+/* ── Mobile responsiveness fixes ── */
+
+/* Prevent horizontal overflow on small screens */
+@media (max-width: 640px) {
+  html, body {
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Feed cards: slightly narrower on small screens */
+  .feed-card {
+    width: 240px !important;
+  }
+
+  /* Travel cards: slightly narrower on small screens */
+  .travel-card {
+    width: 260px !important;
+  }
+
+  /* Chat emoji grid: 6 columns on very small screens */
+  .chat-input-area .grid-cols-8 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .chat-input-area .grid-cols-10 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* Ensure touch targets are at least 44x44px on mobile */
+@media (max-width: 640px) {
+  button {
+    min-height: 36px;
+    min-width: 36px;
+  }
+
+  /* Allow smaller icon buttons inside nav and toolbars */
+  nav button,
+  .comments-sheet button {
+    min-height: auto;
+    min-width: auto;
+  }
+}
+
+/* Video player: ensure it fills container properly */
+.video-container {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Prevent text selection on interactive elements (mobile) */
+@media (max-width: 640px) {
+  button,
+  .feed-card,
+  .travel-card {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Safe area insets for iOS notches */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Smooth scrolling for feed containers */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Light mode adjustments for video player */
+.light .video-container {
+  background: hsl(225 20% 90%);
+}
