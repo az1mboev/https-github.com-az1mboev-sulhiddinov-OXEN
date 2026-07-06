@@ -12,6 +12,7 @@ import { ChatProvider } from "./contexts/ChatContext";
 import { CommentsProvider } from "./contexts/CommentsContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { OfflineProvider } from "./contexts/OfflineContext";
+import { PreferencesProvider } from "./contexts/PreferencesContext";
 import { ReportProvider } from "./contexts/ReportContext";
 import { SidebarProvider } from "./contexts/SidebarContext";
 import { SupportProvider } from "./contexts/SupportContext";
@@ -43,6 +44,23 @@ const Services = lazy(() => import("./pages/Services"));
 const Support = lazy(() => import("./pages/Support"));
 const Travel = lazy(() => import("./pages/Travel"));
 const Trips = lazy(() => import("./pages/Trips"));
+
+// Settings sub-pages (code-split)
+const SettingsAbout = lazy(() => import("./pages/settings/About"));
+const SettingsActiveDevices = lazy(() => import("./pages/settings/ActiveDevices"));
+const SettingsBiometrics = lazy(() => import("./pages/settings/Biometrics"));
+const SettingsBlockedUsers = lazy(() => import("./pages/settings/BlockedUsers"));
+const SettingsChangePassword = lazy(() => import("./pages/settings/ChangePassword"));
+const SettingsClearCache = lazy(() => import("./pages/settings/ClearCache"));
+const SettingsConnection = lazy(() => import("./pages/settings/ConnectionStatus"));
+const SettingsCurrency = lazy(() => import("./pages/settings/CurrencySettings"));
+const SettingsDistanceUnit = lazy(() => import("./pages/settings/DistanceUnitSettings"));
+const SettingsDownloadData = lazy(() => import("./pages/settings/DownloadMyData"));
+const SettingsExportHistory = lazy(() => import("./pages/settings/ExportTravelHistory"));
+const SettingsLanguage = lazy(() => import("./pages/settings/LanguageSettings"));
+const SettingsLoginActivity = lazy(() => import("./pages/settings/LoginActivity"));
+const SettingsTimeZone = lazy(() => import("./pages/settings/TimeZoneSettings"));
+const SettingsTwoFactor = lazy(() => import("./pages/settings/TwoFactorAuth"));
 
 /* ------------------------------------------------------------------ */
 /*  QueryClient — production-grade defaults: longer stale time, retry  */
@@ -91,16 +109,17 @@ const App = () => (
               <ReportProvider>
                 <CommentsProvider>
                   <OfflineProvider>
-                    <SupportProvider>
-                      <SidebarProvider>
-                        <TooltipProvider>
-                        <Toaster />
-                        <Sonner />
-                        <BrowserRouter
-                          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-                        >
-                          <Suspense fallback={<RouteFallback />}>
-                            <Routes>
+                    <PreferencesProvider>
+                      <SupportProvider>
+                        <SidebarProvider>
+                          <TooltipProvider>
+                          <Toaster />
+                          <Sonner />
+                          <BrowserRouter
+                            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+                          >
+                            <Suspense fallback={<RouteFallback />}>
+                              <Routes>
                               <Route path="/auth" element={<Auth />} />
                               <Route element={<Layout />}>
                                 <Route path="/" element={<Index />} />
@@ -133,15 +152,33 @@ const App = () => (
                                 <Route path="/support" element={<Support />} />
                                 <Route path="/messages" element={<Messages />} />
                                 <Route path="/admin" element={<Admin />} />
+
+                                {/* Settings sub-pages */}
+                                <Route path="/settings/change-password" element={<SettingsChangePassword />} />
+                                <Route path="/settings/two-factor" element={<SettingsTwoFactor />} />
+                                <Route path="/settings/active-devices" element={<SettingsActiveDevices />} />
+                                <Route path="/settings/login-activity" element={<SettingsLoginActivity />} />
+                                <Route path="/settings/biometrics" element={<SettingsBiometrics />} />
+                                <Route path="/settings/currency" element={<SettingsCurrency />} />
+                                <Route path="/settings/timezone" element={<SettingsTimeZone />} />
+                                <Route path="/settings/distance-unit" element={<SettingsDistanceUnit />} />
+                                <Route path="/settings/language" element={<SettingsLanguage />} />
+                                <Route path="/settings/connection" element={<SettingsConnection />} />
+                                <Route path="/settings/clear-cache" element={<SettingsClearCache />} />
+                                <Route path="/settings/download-data" element={<SettingsDownloadData />} />
+                                <Route path="/settings/export-history" element={<SettingsExportHistory />} />
+                                <Route path="/settings/blocked-users" element={<SettingsBlockedUsers />} />
+                                <Route path="/settings/about" element={<SettingsAbout />} />
                               </Route>
                               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                           </Suspense>
                         </BrowserRouter>
-                      </TooltipProvider>
-                    </SidebarProvider>
-                    </SupportProvider>
+                          </TooltipProvider>
+                        </SidebarProvider>
+                      </SupportProvider>
+                    </PreferencesProvider>
                   </OfflineProvider>
                 </CommentsProvider>
               </ReportProvider>

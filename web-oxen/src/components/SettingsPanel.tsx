@@ -11,10 +11,11 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage, LANGUAGES, type Language } from "@/contexts/LanguageContext";
+import { useLanguage, type Language } from "@/contexts/LanguageContext";
 import { useTheme, type Theme } from "@/contexts/ThemeContext";
 import { useChat } from "@/contexts/ChatContext";
 import { useOffline } from "@/contexts/OfflineContext";
+import { usePreferences, CURRENCIES } from "@/contexts/PreferencesContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -143,10 +144,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   type Theme = "dark" | "light";
   const { totalUnread } = useChat();
   const { isOffline, forceOffline, setForceOffline, pendingSync, isOnline, sync, lastSyncedAt } = useOffline();
-
-  const [distanceUnit, setDistanceUnit] = useState<"km" | "mi">("km");
-  const [currency, setCurrency] = useState<string>("USD");
-  const [timezone, setTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const { currency, currencyMeta, distanceUnit, setDistanceUnit, timezone } = usePreferences();
 
   // Privacy toggles
   const [privateAccount, setPrivateAccount] = useState(false);
@@ -228,8 +226,8 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             {/* Header */}
             <div className="relative z-10 flex items-center justify-between px-5 pt-5 pb-3">
               <div>
-                <h2 className="font-display text-lg font-bold">Profile Settings</h2>
-                <p className="text-xs text-muted-foreground">Customize your OXEN experience</p>
+                <h2 className="font-display text-lg font-bold">{t("settings.title", "Profile Settings")}</h2>
+                <p className="text-xs text-muted-foreground">{t("settings.subtitle", "Customize your OXEN experience")}</p>
               </div>
               <button
                 onClick={onClose}
@@ -242,75 +240,53 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             {/* Scrollable content */}
             <div className="relative z-10 flex-1 overflow-y-auto no-scrollbar pb-8">
               {/* ── ACCOUNT ── */}
-              <SectionHeader>Account</SectionHeader>
+              <SectionHeader>{t("settings.account", "Account")}</SectionHeader>
               <div className="mx-2 rounded-2xl bg-white/[0.03] border border-white/[0.04] overflow-hidden divide-y divide-white/[0.04]">
-                <SettingsRow icon={UserPen} label="Edit Profile" onClick={() => { onClose(); navigate("/profile/edit"); }} />
-                <SettingsRow icon={MessageSquare} label="Messages" value={totalUnread > 0 ? `${totalUnread} unread` : "All caught up"} onClick={() => { onClose(); navigate("/messages"); }} />
-                <SettingsRow icon={Shield} label="Admin Dashboard" onClick={() => { onClose(); navigate("/admin"); }} />
-                <SettingsRow icon={AtSign} label="Username" value={`@${user.name.toLowerCase().replace(/\s+/g, "_")}`} />
-                <SettingsRow icon={Mail} label="Email Address" value={user.email} />
+                <SettingsRow icon={UserPen} label={t("settings.editProfile", "Edit Profile")} onClick={() => { onClose(); navigate("/profile/edit"); }} />
+                <SettingsRow icon={MessageSquare} label={t("settings.messages", "Messages")} value={totalUnread > 0 ? `${totalUnread} ${t("settings.unread", "unread")}` : t("settings.caughtUp", "All caught up")} onClick={() => { onClose(); navigate("/messages"); }} />
+                <SettingsRow icon={Shield} label={t("settings.admin", "Admin Dashboard")} onClick={() => { onClose(); navigate("/admin"); }} />
+                <SettingsRow icon={AtSign} label={t("settings.username", "Username")} value={`@${user.name.toLowerCase().replace(/\s+/g, "_")}`} />
+                <SettingsRow icon={Mail} label={t("settings.email", "Email Address")} value={user.email} />
               </div>
 
               {/* ── PRIVACY ── */}
-              <SectionHeader>Privacy</SectionHeader>
+              <SectionHeader>{t("settings.privacy", "Privacy")}</SectionHeader>
               <div className="mx-2 rounded-2xl bg-white/[0.03] border border-white/[0.04] overflow-hidden divide-y divide-white/[0.04]">
-                <ToggleRow icon={Lock} label="Private Account" value={privateAccount} onChange={setPrivateAccount} />
-                <ToggleRow icon={Mail} label="Show Email" value={showEmail} onChange={setShowEmail} />
-                <ToggleRow icon={Activity} label="Show Followers" value={showFollowers} onChange={setShowFollowers} />
-                <SettingsRow icon={MessageCircle} label="Allow Messages" />
-                <SettingsRow icon={ShieldCheck} label="Blocked Users" />
-                <SettingsRow icon={ShieldCheck} label="Hidden Users" />
+                <ToggleRow icon={Lock} label={t("settings.privateAccount", "Private Account")} value={privateAccount} onChange={setPrivateAccount} />
+                <ToggleRow icon={Mail} label={t("settings.showEmail", "Show Email")} value={showEmail} onChange={setShowEmail} />
+                <ToggleRow icon={Activity} label={t("settings.showFollowers", "Show Followers")} value={showFollowers} onChange={setShowFollowers} />
+                <SettingsRow icon={MessageCircle} label={t("settings.allowMessages", "Allow Messages")} />
+                <SettingsRow icon={ShieldCheck} label={t("settings.blockedUsers", "Blocked Users")} onClick={() => { onClose(); navigate("/settings/blocked-users"); }} />
               </div>
 
               {/* ── SECURITY ── */}
-              <SectionHeader>Security</SectionHeader>
+              <SectionHeader>{t("settings.security", "Security")}</SectionHeader>
               <div className="mx-2 rounded-2xl bg-white/[0.03] border border-white/[0.04] overflow-hidden divide-y divide-white/[0.04]">
-                <SettingsRow icon={Lock} label="Change Password" />
-                <SettingsRow icon={ShieldCheck} label="Two-Factor Authentication" />
-                <SettingsRow icon={MonitorSmartphone} label="Active Devices" />
-                <SettingsRow icon={Activity} label="Login Activity" />
-                <SettingsRow icon={Fingerprint} label="Face ID / Touch ID" />
+                <SettingsRow icon={Lock} label={t("settings.changePassword", "Change Password")} onClick={() => { onClose(); navigate("/settings/change-password"); }} />
+                <SettingsRow icon={ShieldCheck} label={t("settings.twoFactor", "Two-Factor Authentication")} onClick={() => { onClose(); navigate("/settings/two-factor"); }} />
+                <SettingsRow icon={MonitorSmartphone} label={t("settings.activeDevices", "Active Devices")} onClick={() => { onClose(); navigate("/settings/active-devices"); }} />
+                <SettingsRow icon={Activity} label={t("settings.loginActivity", "Login Activity")} onClick={() => { onClose(); navigate("/settings/login-activity"); }} />
+                <SettingsRow icon={Fingerprint} label={t("settings.biometrics", "Face ID / Touch ID")} onClick={() => { onClose(); navigate("/settings/biometrics"); }} />
               </div>
 
               {/* ── NOTIFICATIONS ── */}
-              <SectionHeader>Notifications</SectionHeader>
+              <SectionHeader>{t("settings.notifications", "Notifications")}</SectionHeader>
               <div className="mx-2 rounded-2xl bg-white/[0.03] border border-white/[0.04] overflow-hidden divide-y divide-white/[0.04]">
-                <ToggleRow icon={pushNotif ? BellRing : Bell} label="Push Notifications" value={pushNotif} onChange={setPushNotif} />
-                <ToggleRow icon={Mail} label="Email Notifications" value={emailNotif} onChange={setEmailNotif} />
-                <ToggleRow icon={Globe2} label="Travel Alerts" value={travelAlerts} onChange={setTravelAlerts} />
-                <ToggleRow icon={Bell} label="AI Recommendations" value={aiRecs} onChange={setAiRecs} />
+                <ToggleRow icon={pushNotif ? BellRing : Bell} label={t("settings.pushNotif", "Push Notifications")} value={pushNotif} onChange={setPushNotif} />
+                <ToggleRow icon={Mail} label={t("settings.emailNotif", "Email Notifications")} value={emailNotif} onChange={setEmailNotif} />
+                <ToggleRow icon={Globe2} label={t("settings.travelAlerts", "Travel Alerts")} value={travelAlerts} onChange={setTravelAlerts} />
+                <ToggleRow icon={Bell} label={t("settings.aiRecs", "AI Recommendations")} value={aiRecs} onChange={setAiRecs} />
               </div>
 
               {/* ── LANGUAGE ── */}
-              <SectionHeader>{t("profile.language", "Language")} · {LANGUAGES.length} languages</SectionHeader>
-              <div className="mx-2 rounded-2xl bg-white/[0.03] border border-white/[0.04] overflow-hidden divide-y divide-white/[0.04] max-h-[320px] overflow-y-auto no-scrollbar">
-                {LANGUAGES.map((lang) => (
-                  <button
-                    key={lang.code}
-                    onClick={() => {
-                      setLanguage(lang.code as Language);
-                      toast({ title: `${lang.native} selected`, description: `Language changed to ${lang.label}` });
-                    }}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.04] active:scale-[0.98]"
-                  >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] text-lg">
-                      {lang.flag}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <span className="block text-sm font-medium">{lang.native}</span>
-                      <span className="block text-[11px] text-muted-foreground">{lang.label}</span>
-                    </div>
-                    {language === lang.code && <Check className="h-4 w-4 text-primary" />}
-                  </button>
-                ))}
-              </div>
+              <SettingsRow icon={Languages} label={t("profile.language", "Language")} value={language.toUpperCase()} onClick={() => { onClose(); navigate("/settings/language"); }} />
 
               {/* ── APPEARANCE ── */}
-              <SectionHeader>Appearance</SectionHeader>
+              <SectionHeader>{t("settings.appearance", "Appearance")}</SectionHeader>
               <div className="mx-2 rounded-2xl bg-white/[0.03] border border-white/[0.04] overflow-hidden divide-y divide-white/[0.04]">
                 {([
-                  { value: "dark" as Theme, label: "Dark Mode", icon: Moon },
-                  { value: "light" as Theme, label: "Light Mode", icon: Sun },
+                  { value: "dark" as Theme, label: t("settings.darkMode", "Dark Mode"), icon: Moon },
+                  { value: "light" as Theme, label: t("settings.lightMode", "Light Mode"), icon: Sun },
                 ]).map((opt) => (
                   <button
                     key={opt.value}
@@ -330,11 +306,11 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </div>
 
               {/* ── OFFLINE MODE ── */}
-              <SectionHeader>Offline Mode</SectionHeader>
+              <SectionHeader>{t("settings.offline", "Offline Mode")}</SectionHeader>
               <div className="mx-2 rounded-2xl bg-white/[0.03] border border-white/[0.04] overflow-hidden divide-y divide-white/[0.04]">
                 <ToggleRow
                   icon={forceOffline ? WifiOff : Wifi}
-                  label="Force Offline Mode"
+                  label={t("settings.forceOffline", "Force Offline Mode")}
                   value={forceOffline}
                   onChange={(v) => {
                     setForceOffline(v);
@@ -343,13 +319,14 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 />
                 <SettingsRow
                   icon={isOnline && !forceOffline ? Wifi : WifiOff}
-                  label="Connection Status"
-                  value={isOffline ? "Offline" : "Online"}
+                  label={t("settings.connectionStatus", "Connection Status")}
+                  value={isOffline ? t("settings.offlineStatus", "Offline") : t("settings.online", "Online")}
+                  onClick={() => { onClose(); navigate("/settings/connection"); }}
                 />
                 {pendingSync && (
                   <SettingsRow
                     icon={RefreshCw}
-                    label="Pending Sync"
+                    label={t("settings.pendingSync", "Pending Sync")}
                     value="Changes waiting to sync"
                     onClick={() => { sync(); toast({ title: "Syncing..." }); }}
                   />
@@ -357,39 +334,36 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 {lastSyncedAt && (
                   <SettingsRow
                     icon={Clock}
-                    label="Last Synced"
+                    label={t("settings.lastSynced", "Last Synced")}
                     value={new Date(lastSyncedAt).toLocaleString()}
                   />
                 )}
               </div>
 
               {/* ── TRAVEL SETTINGS ── */}
-              <SectionHeader>Travel Settings</SectionHeader>
+              <SectionHeader>{t("settings.travel", "Travel Settings")}</SectionHeader>
               <div className="mx-2 rounded-2xl bg-white/[0.03] border border-white/[0.04] overflow-hidden divide-y divide-white/[0.04]">
-                <SettingsRow icon={Ruler} label="Distance Unit" value={distanceUnit === "km" ? "Kilometers" : "Miles"} onClick={() => {
-                  setDistanceUnit(prev => prev === "km" ? "mi" : "km");
-                  toast({ title: distanceUnit === "km" ? "Switched to Miles" : "Switched to Kilometers" });
-                }} trailing={<span className="text-xs text-muted-foreground">{distanceUnit === "km" ? "km" : "mi"}</span>} />
-                <SettingsRow icon={DollarSign} label="Currency" value={currency} />
-                <SettingsRow icon={Clock} label="Time Zone" value={timezone} />
+                <SettingsRow icon={Ruler} label={t("settings.distanceUnit", "Distance Unit")} value={distanceUnit === "km" ? t("settings.kilometers", "Kilometers") : t("settings.miles", "Miles")} onClick={() => { onClose(); navigate("/settings/distance-unit"); }} trailing={<span className="text-xs text-muted-foreground">{distanceUnit === "km" ? "km" : "mi"}</span>} />
+                <SettingsRow icon={DollarSign} label={t("settings.currency", "Currency")} value={`${currencyMeta.symbol} ${currency}`} onClick={() => { onClose(); navigate("/settings/currency"); }} />
+                <SettingsRow icon={Clock} label={t("settings.timezone", "Time Zone")} value={timezone} onClick={() => { onClose(); navigate("/settings/timezone"); }} />
               </div>
 
               {/* ── DATA ── */}
-              <SectionHeader>Data</SectionHeader>
+              <SectionHeader>{t("settings.data", "Data")}</SectionHeader>
               <div className="mx-2 rounded-2xl bg-white/[0.03] border border-white/[0.04] overflow-hidden divide-y divide-white/[0.04]">
-                <SettingsRow icon={Trash2} label="Clear Cache" destructive />
-                <SettingsRow icon={Download} label="Download My Data" />
-                <SettingsRow icon={FileUp} label="Export Travel History" />
+                <SettingsRow icon={Trash2} label={t("settings.clearCache", "Clear Cache")} destructive onClick={() => { onClose(); navigate("/settings/clear-cache"); }} />
+                <SettingsRow icon={Download} label={t("settings.downloadData", "Download My Data")} onClick={() => { onClose(); navigate("/settings/download-data"); }} />
+                <SettingsRow icon={FileUp} label={t("settings.exportHistory", "Export Travel History")} onClick={() => { onClose(); navigate("/settings/export-history"); }} />
               </div>
 
               {/* ── SUPPORT ── */}
-              <SectionHeader>Support</SectionHeader>
+              <SectionHeader>{t("settings.support", "Support")}</SectionHeader>
               <div className="mx-2 rounded-2xl bg-white/[0.03] border border-white/[0.04] overflow-hidden divide-y divide-white/[0.04]">
-                <SettingsRow icon={HelpCircle} label="Help Center" />
-                <SettingsRow icon={MessageCircle} label="Contact Support" />
-                <SettingsRow icon={AlertTriangle} label="Report Problem" />
-                <SettingsRow icon={MessageCircle} label="Send Feedback" />
-                <SettingsRow icon={Info} label="About OXEN" />
+                <SettingsRow icon={HelpCircle} label={t("settings.helpCenter", "Help Center")} onClick={() => { onClose(); navigate("/support"); }} />
+                <SettingsRow icon={MessageCircle} label={t("settings.contactSupport", "Contact Support")} onClick={() => { onClose(); navigate("/support"); }} />
+                <SettingsRow icon={AlertTriangle} label={t("settings.reportProblem", "Report Problem")} onClick={() => { onClose(); navigate("/support"); }} />
+                <SettingsRow icon={MessageCircle} label={t("settings.sendFeedback", "Send Feedback")} onClick={() => { onClose(); navigate("/support"); }} />
+                <SettingsRow icon={Info} label={t("settings.about", "About OXEN")} onClick={() => { onClose(); navigate("/settings/about"); }} />
               </div>
 
               {/* ── LOG OUT — hidden for guest users ── */}
@@ -400,13 +374,13 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     className="flex w-full items-center justify-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 py-3.5 text-sm font-bold text-destructive transition-all hover:bg-destructive/20 active:scale-[0.98]"
                   >
                     <LogOut className="h-4 w-4" />
-                    Log Out
+                    {t("settings.logOut", "Log Out")}
                   </button>
                 </div>
               )}
 
               <p className="mt-5 text-center text-[11px] text-muted-foreground">
-                OXEN v1.0.0 — Built for explorers
+                {t("settings.version", "OXEN v1.0.0 — Built for explorers")}
               </p>
             </div>
           </motion.div>
