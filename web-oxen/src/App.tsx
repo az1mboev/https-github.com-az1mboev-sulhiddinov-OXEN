@@ -18,6 +18,7 @@ import { TravelProvider } from "./contexts/TravelContext";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import City from "./pages/City";
+import ConsultingDashboard from "./pages/ConsultingDashboard";
 import Country from "./pages/Country";
 import Dashboard from "./pages/Dashboard";
 import EditProfile from "./pages/EditProfile";
@@ -27,6 +28,9 @@ import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import Planner from "./pages/Planner";
 import Profile from "./pages/Profile";
+import ServiceDetails from "./pages/ServiceDetails";
+import ServiceEditor from "./pages/ServiceEditor";
+import Services from "./pages/Services";
 import Travel from "./pages/Travel";
 import Trips from "./pages/Trips";
 
@@ -58,6 +62,11 @@ const App = () => (
                           <Route path="/trips" element={<Trips />} />
                           <Route path="/planner" element={<Planner />} />
                           <Route path="/dashboard" element={<Dashboard />} />
+                          <Route path="/services" element={<Services />} />
+                          <Route path="/services/:serviceId" element={<ServiceDetails />} />
+                          <Route path="/dashboard/consulting" element={<ConsultingDashboard />} />
+                          <Route path="/dashboard/services/new" element={<ServiceEditor />} />
+                          <Route path="/dashboard/services/edit/:serviceId" element={<ServiceEditor />} />
                           <Route path="/profile" element={<Profile />} />
                           <Route path="/profile/edit" element={<EditProfile />} />
                           <Route path="/messages" element={<Messages />} />

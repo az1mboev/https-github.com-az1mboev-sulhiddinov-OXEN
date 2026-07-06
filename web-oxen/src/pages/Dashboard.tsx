@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Globe2, Heart, MapPinCheck, Sparkles, Trash2, Calendar, ArrowRight, Compass } from "lucide-react";
+import { Globe2, Heart, MapPinCheck, Sparkles, Trash2, Calendar, ArrowRight, Compass, BriefcaseBusiness } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -105,6 +105,23 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+      </Section>
+
+      {/* Travel Services */}
+      <Section title="Travel Services" icon={BriefcaseBusiness} >
+        <button
+          onClick={() => navigate("/services")}
+          className="glass group flex w-full items-center gap-4 rounded-2xl p-4 text-left transition hover:border-primary/40"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+            <BriefcaseBusiness className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="font-display font-bold">Browse Travel Services</div>
+            <div className="truncate text-xs text-muted-foreground">Visa support, trip planning, honeymoon packages & more</div>
+          </div>
+          <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" />
+        </button>
       </Section>
 
       {/* Recommendations */}

@@ -10,6 +10,7 @@ import {
   LogOut,
   ChevronRight,
   X,
+  BriefcaseBusiness,
 } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -124,8 +125,10 @@ export default function Sidebar() {
 
   const menuItems: MenuItem[] = [
     { id: "explore", label: "Explore", icon: Compass, to: "/" },
+    { id: "services", label: "Travel Services", icon: BriefcaseBusiness, to: "/services" },
     { id: "premium", label: "Premium Membership", icon: Crown, to: "/profile" },
     { id: "trips", label: "My Trips", icon: Briefcase, to: "/dashboard" },
+    { id: "consulting", label: "Consulting Dashboard", icon: BriefcaseBusiness, to: "/dashboard/consulting" },
     { id: "statistics", label: "Statistics", icon: BarChart3, to: "/dashboard" },
     { id: "favorites", label: "Favorites", icon: Heart, to: "/dashboard" },
     { id: "settings", label: "Settings", icon: Settings, to: "/profile" },

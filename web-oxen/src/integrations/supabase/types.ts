@@ -18,6 +18,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      consulting_companies: {
+        Row: {
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_verified: boolean
+          logo_url: string | null
+          name: string
+          owner_id: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_verified?: boolean
+          logo_url?: string | null
+          name: string
+          owner_id: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_verified?: boolean
+          logo_url?: string | null
+          name?: string
+          owner_id?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consulting_companies_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -44,6 +94,190 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      service_documents: {
+        Row: {
+          created_at: string
+          file_size: number
+          file_type: string
+          file_url: string
+          filename: string
+          id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_size?: number
+          file_type?: string
+          file_url: string
+          filename: string
+          id?: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          file_size?: number
+          file_type?: string
+          file_url?: string
+          filename?: string
+          id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_documents_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_reviews: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          rating: number
+          service_id: string
+          updated_at: string
+          user_avatar: string | null
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          comment?: string
+          created_at?: string
+          id?: string
+          rating: number
+          service_id: string
+          updated_at?: string
+          user_avatar?: string | null
+          user_id: string
+          user_name?: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          service_id?: string
+          updated_at?: string
+          user_avatar?: string | null
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_reviews_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          additional_content: Json
+          benefits: Json
+          category: string
+          consulting_id: string
+          cover_image: string | null
+          created_at: string
+          currency: string
+          delivery_time: string | null
+          description: string
+          duration: string | null
+          faq: Json
+          gallery: Json
+          id: string
+          is_active: boolean
+          long_description: Json
+          price: number
+          process: Json
+          rating: number
+          requirements: Json
+          review_count: number
+          seo_description: string | null
+          seo_keywords: string | null
+          seo_title: string | null
+          title: string
+          updated_at: string
+          videos: Json
+        }
+        Insert: {
+          additional_content?: Json
+          benefits?: Json
+          category?: string
+          consulting_id: string
+          cover_image?: string | null
+          created_at?: string
+          currency?: string
+          delivery_time?: string | null
+          description?: string
+          duration?: string | null
+          faq?: Json
+          gallery?: Json
+          id?: string
+          is_active?: boolean
+          long_description?: Json
+          price?: number
+          process?: Json
+          rating?: number
+          requirements?: Json
+          review_count?: number
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          title: string
+          updated_at?: string
+          videos?: Json
+        }
+        Update: {
+          additional_content?: Json
+          benefits?: Json
+          category?: string
+          consulting_id?: string
+          cover_image?: string | null
+          created_at?: string
+          currency?: string
+          delivery_time?: string | null
+          description?: string
+          duration?: string | null
+          faq?: Json
+          gallery?: Json
+          id?: string
+          is_active?: boolean
+          long_description?: Json
+          price?: number
+          process?: Json
+          rating?: number
+          requirements?: Json
+          review_count?: number
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          title?: string
+          updated_at?: string
+          videos?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_consulting_id_fkey"
+            columns: ["consulting_id"]
+            isOneToOne: false
+            referencedRelation: "consulting_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
