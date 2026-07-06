@@ -31,7 +31,7 @@ export default function Layout() {
   const { isOffline, pendingSync } = useOffline();
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen safe-x">
       <Starfield count={isGlobe ? 110 : 60} />
 
       {/* Offline indicator banner */}
@@ -62,7 +62,8 @@ export default function Layout() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.15, duration: 0.35, ease: "easeOut" }}
           onClick={open}
-          className="fixed left-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-xl bg-card/50 backdrop-blur-xl border border-white/10 text-muted-foreground shadow-lg transition-all hover:bg-card/70 hover:text-foreground hover:border-white/20 active:scale-95"
+          className="fixed left-4 z-30 flex h-10 w-10 items-center justify-center rounded-xl bg-card/50 backdrop-blur-xl border border-white/10 text-muted-foreground shadow-lg transition-all hover:bg-card/70 hover:text-foreground hover:border-white/20 active:scale-95"
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 16px)" }}
           aria-label="Open navigation menu"
         >
           <Menu className="h-5 w-5" strokeWidth={2} />
@@ -94,7 +95,10 @@ export default function Layout() {
       </main>
 
       {/* Floating iOS-style bottom tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4">
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+      >
         <motion.div
           initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
