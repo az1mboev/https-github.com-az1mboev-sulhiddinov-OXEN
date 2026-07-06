@@ -1,18 +1,23 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, Search, X, ArrowRight, Compass, Plane, Sparkle } from "lucide-react";
+import { Heart, MessageCircle, Play, Sparkles, Search, Share2, Bookmark, X, Flag } from "lucide-react";
 import { Suspense, lazy, useCallback, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
+import CommentsSheet from "@/components/CommentsSheet";
 import DestinationModal from "@/components/DestinationModal";
-import GlobeHint from "@/components/GlobeHint";
-import PostCard, { pickFeaturedPosts } from "@/components/PostCard";
+import ReportModal from "@/components/ReportModal";
 import TravelOptionsPanel from "@/components/TravelOptionsPanel";
-import { APP_NAME, ICONS } from "@/lib/brand";
+import VideoPlayer from "@/components/VideoPlayer";
+import { useComments } from "@/contexts/CommentsContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useTravel } from "@/contexts/TravelContext";
+import { FEED_POSTS, type FeedPost } from "@/data/feedData";
 import { COUNTRIES, type Country } from "@/data/countries";
-import { springGentle, staggerContainer, fadeUpChild, willChangeTransform } from "@/lib/motion";
+
+const OXEN_LOGO = "https://r2-pub.rork.com/projects/jllemngulgwm5pb7uoc46/assets/b64891ed-f7c0-43c7-9079-36d87076a4c7.png";
 
 const Globe = lazy(() => import("@/components/Globe"));
 
@@ -21,6 +26,216 @@ const Globe = lazy(() => import("@/components/Globe"));
 /* ------------------------------------------------------------------ */
 
 type ModalStep = "closed" | "destination" | "options";
+
+/* ── Feed post card ────────────────────────────────────────────────── */
+
+function FeedPostCard({ post, index }: { post: FeedPost; index: number }) {
+  const navigate = useNavigate();
+  const { getCommentCount } = useComments();
+  const [liked, setLiked] = useState<boolean>(post.liked ?? false);
+  const [likeCount, setLikeCount] = useState<number>(post.likes);
+  const [saved, setSaved] = useState<boolean>(post.saved ?? false);
+  const [showComments, setShowComments] = useState<boolean>(false);
+  const [showReport, setShowReport] = useState<boolean>(false);
+  const [showVideo, setShowVideo] = useState<boolean>(false);
+
+  const commentCount = getCommentCount(post.id);
+
+  const toggleLike = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLiked((prev) => {
+      setLikeCount((c) => (prev ? c - 1 : c + 1));
+      return !prev;
+    });
+  }, []);
+
+  const toggleSave = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSaved((prev) => {
+      if (!prev) toast.success("Saved to favorites");
+      return !prev;
+    });
+  }, []);
+
+  const handleShare = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (navigator.share) {
+      navigator.share({ title: `${post.city}, ${post.country}`, text: post.caption }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(`Check out ${post.city}, ${post.country} on OXEN Travel!`);
+      toast.success("Link copied to clipboard");
+    }
+  }, [post.city, post.country, post.caption]);
+
+  const handleReport = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowReport(true);
+  }, []);
+
+  const handleExplore = useCallback(() => {
+    const country = COUNTRIES.find((c) => c.name === post.country);
+    if (country) navigate(`/country/${country.id}`);
+  }, [post.country, navigate]);
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, x: 48, scale: 0.95 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      transition={{
+        delay: index * 0.07,
+        type: "spring" as const,
+        stiffness: 280,
+        damping: 26,
+        mass: 0.85,
+      }}
+      whileTap={{ scale: 0.97 }}
+      onClick={handleExplore}
+      className="feed-card group relative w-[260px] shrink-0 cursor-pointer overflow-hidden rounded-3xl"
+    >
+      {/* Cover */}
+      <div className="relative h-[340px] w-full overflow-hidden">
+        <img
+          src={post.coverUrl}
+          alt={`${post.city}, ${post.country}`}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+        {/* Video indicator / play button */}
+        {post.isVideo && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowVideo(true); }}
+            className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 backdrop-blur-md transition group-hover:scale-110 group-hover:bg-white/30 active:scale-90"
+          >
+            <Play className="h-6 w-6 fill-white text-white ml-0.5" strokeWidth={0} />
+          </button>
+        )}
+
+        {/* Top-right action buttons */}
+        <div className="absolute right-0 top-0 flex flex-col gap-2 p-3">
+          <button
+            onClick={handleShare}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-white/70 backdrop-blur-md transition hover:bg-black/60 hover:text-white active:scale-90"
+            aria-label="Share"
+          >
+            <Share2 className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+          <button
+            onClick={toggleSave}
+            className={`flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-md transition active:scale-90 ${
+              saved ? "bg-amber-500/30 text-amber-400" : "bg-black/40 text-white/70 hover:bg-black/60 hover:text-white"
+            }`}
+            aria-label="Save"
+          >
+            <Bookmark className={`h-3.5 w-3.5 ${saved ? "fill-amber-400" : ""}`} strokeWidth={2} />
+          </button>
+          <button
+            onClick={handleReport}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-white/70 backdrop-blur-md transition hover:bg-red-500/30 hover:text-red-400 active:scale-90"
+            aria-label="Report"
+          >
+            <Flag className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+        </div>
+
+        {/* User row */}
+        <div className="absolute left-0 right-0 top-0 flex items-center gap-2.5 p-4">
+          <img
+            src={post.avatarUrl}
+            alt={post.username}
+            className="h-9 w-9 rounded-full border-2 border-white/30 object-cover"
+            loading="lazy"
+          />
+          <div className="flex-1 min-w-0">
+            <p className="truncate text-sm font-bold text-white">{post.username}</p>
+            <p className="truncate text-xs text-white/60">{post.flag} {post.city}, {post.country}</p>
+          </div>
+        </div>
+
+        {/* Bottom caption + stats */}
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <p className="mb-3 line-clamp-2 text-sm text-white/85">{post.caption}</p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={toggleLike}
+              className="flex items-center gap-1.5 transition active:scale-90"
+            >
+              <Heart
+                className={liked ? "h-4 w-4 fill-red-500 text-red-500" : "h-4 w-4 text-white/80"}
+                strokeWidth={2}
+              />
+              <span className="text-xs font-semibold text-white/80">
+                {likeCount >= 1000 ? `${(likeCount / 1000).toFixed(1)}K` : likeCount}
+              </span>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
+              className="flex items-center gap-1.5 transition active:scale-90"
+            >
+              <MessageCircle className="h-4 w-4 text-white/80" strokeWidth={2} />
+              <span className="text-xs font-semibold text-white/80">
+                {commentCount >= 1000 ? `${(commentCount / 1000).toFixed(1)}K` : commentCount}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Comments sheet */}
+      <CommentsSheet
+        postId={post.id}
+        isOpen={showComments}
+        onClose={() => setShowComments(false)}
+      />
+
+      {/* Report modal */}
+      <ReportModal
+        isOpen={showReport}
+        onClose={() => setShowReport(false)}
+        reportedUserId={post.userId}
+        reportedUserName={post.username}
+        reportedPostId={post.id}
+      />
+
+      {/* Video player modal */}
+      {showVideo && post.videoUrl && createPortal(
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/90 backdrop-blur-md"
+            onClick={() => setShowVideo(false)}
+          >
+            <button
+              onClick={() => setShowVideo(false)}
+              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 active:scale-90"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring" as const, stiffness: 300, damping: 26 }}
+              className="w-full max-w-2xl px-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <VideoPlayer
+                src={post.videoUrl}
+                poster={post.coverUrl}
+                autoPlay
+                className="aspect-video w-full"
+              />
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>,
+        document.body,
+      )}
+    </motion.article>
+  );
+}
 
 /* ── Search overlay ────────────────────────────────────────────────── */
 
@@ -35,7 +250,6 @@ function SearchOverlay({
   onSelect: (country: Country) => void;
   onClose: () => void;
 }) {
-  const { t } = useLanguage();
   const results = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
@@ -64,13 +278,14 @@ function SearchOverlay({
         className="mx-auto mt-20 w-full max-w-md px-5"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Search bar */}
         <div className="glass-strong flex items-center gap-3 rounded-2xl px-4 py-3.5 shadow-2xl">
           <Search className="h-5 w-5 shrink-0 text-white/40" strokeWidth={2} />
           <input
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("home.searchPlaceholder", "Search by country, city, or attraction…")}
+            placeholder="Search by country, city, or attraction..."
             className="flex-1 bg-transparent text-sm text-white placeholder:text-white/35 focus:outline-none"
           />
           <button
@@ -82,6 +297,7 @@ function SearchOverlay({
           </button>
         </div>
 
+        {/* Results */}
         {results.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -113,48 +329,11 @@ function SearchOverlay({
 
         {query.trim() && results.length === 0 && (
           <div className="glass-strong mt-3 rounded-2xl px-4 py-8 text-center shadow-2xl">
-            <p className="text-sm text-white/40">
-              {t("home.noResults", "No destinations found for")} "{query}"
-            </p>
+            <p className="text-sm text-white/40">No destinations found for "{query}"</p>
           </div>
         )}
       </motion.div>
     </motion.div>
-  );
-}
-
-/* ── Quick explore action tile ─────────────────────────────────────── */
-
-function QuickAction({
-  icon: Icon,
-  label,
-  description,
-  to,
-  delay,
-}: {
-  icon: typeof Compass;
-  label: string;
-  description: string;
-  to: string;
-  delay: number;
-}) {
-  const navigate = useNavigate();
-  return (
-    <motion.button
-      variants={fadeUpChild}
-      whileTap={{ scale: 0.97 }}
-      onClick={() => navigate(to)}
-      className="glass group flex flex-col items-start gap-2 rounded-2xl p-4 text-left transition hover:border-primary/30"
-    >
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition group-hover:bg-primary/20 group-hover:scale-110">
-        <Icon className="h-5 w-5" strokeWidth={2.2} />
-      </span>
-      <div>
-        <p className="font-display text-sm font-bold text-foreground">{label}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-      </div>
-      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 transition group-hover:translate-x-1 group-hover:text-primary" />
-    </motion.button>
   );
 }
 
@@ -174,12 +353,6 @@ export default function Index() {
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [zoomTarget, setZoomTarget] = useState<{ lat: number; lng: number } | null>(null);
-  const [globeActive, setGlobeActive] = useState<boolean>(false);
-
-  const featuredPosts = useMemo(() => pickFeaturedPosts(6), []);
-  const heroPost = featuredPosts[0];
-  const sidePosts = featuredPosts.slice(1, 3);
-  const mediumPosts = featuredPosts.slice(3, 6);
 
   const handleCountrySelect = useCallback((country: Country) => {
     setSelectedCountry(country);
@@ -205,18 +378,17 @@ export default function Index() {
 
   return (
     <div className="relative">
-      {/* ── Hero globe section ──────────────────────────────────── */}
+      {/* ── Hero globe ─────────────────────────────── */}
       <section className="relative flex min-h-[88vh] flex-col items-center justify-center overflow-hidden">
         <motion.div
           className="absolute inset-0 z-0"
           animate={{ x: sidebarOpen ? "28%" : "0%" }}
           transition={{ type: "spring", stiffness: 240, damping: 27, mass: 1 }}
-          style={willChangeTransform}
         >
           <Suspense
             fallback={
               <div className="flex h-full items-center justify-center text-muted-foreground">
-                {t("common.loading", "Loading…")}
+                Loading globe…
               </div>
             }
           >
@@ -226,8 +398,6 @@ export default function Index() {
               zoomTarget={zoomTarget}
               visitedIds={visitedSet}
               wishlistIds={wishlistSet}
-              isActive={globeActive}
-              onActivate={() => setGlobeActive(true)}
             />
           </Suspense>
         </motion.div>
@@ -237,25 +407,25 @@ export default function Index() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-5"
-          style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)" }}
+          className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-5 pt-6"
         >
           <div className="flex items-center gap-2">
             <img
-              src={ICONS.source}
-              alt={APP_NAME}
+              src={OXEN_LOGO}
+              alt="OXEN"
               className="h-9 w-9 rounded-xl object-contain shadow-lg"
             />
-            <span className="font-display text-xl font-extrabold tracking-wide">{APP_NAME}</span>
+            <span className="font-display text-xl font-extrabold tracking-wide">OXEN</span>
           </div>
 
+          {/* Search button */}
           <button
             onClick={() => setSearchOpen(true)}
             className="pointer-events-auto flex items-center gap-2 rounded-full bg-white/[0.06] px-4 py-2 backdrop-blur-xl border border-white/10 text-sm text-white/60 transition hover:bg-white/12 hover:text-white active:scale-95"
-            aria-label={t("home.search", "Search destinations")}
+            aria-label="Search destinations"
           >
             <Search className="h-4 w-4" strokeWidth={2} />
-            <span className="hidden sm:inline">{t("home.search", "Search destinations")}</span>
+            <span className="hidden sm:inline">Search destinations</span>
           </button>
         </motion.div>
 
@@ -264,7 +434,7 @@ export default function Index() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.7 }}
-          className="pointer-events-none absolute bottom-[8%] left-0 right-0 z-20 px-6 text-center"
+          className="pointer-events-none absolute bottom-[6%] left-0 right-0 z-20 px-6 text-center"
         >
           <h1 className="font-display text-4xl font-extrabold leading-tight text-balance sm:text-5xl">
             {t("hero.title.line1", "See the world")}
@@ -282,136 +452,33 @@ export default function Index() {
             {t("hero.cta", "Plan a trip with AI")}
           </button>
         </motion.div>
-
-        {/* Tap-to-interact hint */}
-        <GlobeHint visible={!globeActive} />
       </section>
 
-      {/* ── Travel Posts showcase ───────────────────────────────── */}
-      <section className="relative z-10 px-5 pt-8 pb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={springGentle}
-          className="mb-5 flex items-center justify-between"
-        >
+      {/* ── Travel posts around the world ──────────── */}
+      <section className="relative z-10 pt-8 pb-10">
+        <div className="mb-4 flex items-center justify-between px-5">
           <div>
-            <h2 className="font-display text-xl font-extrabold text-foreground">
-              {t("home.postsTitle", "Travel Posts Around the World")}
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t("home.postsSubtitle", "Community stories from across the globe")}
-            </p>
+            <h2 className="font-display text-lg font-bold">Travel Posts Around the World</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">Community stories from across the globe</p>
           </div>
           <button
             onClick={() => navigate("/travel")}
-            className="flex items-center gap-1 text-xs font-semibold text-primary transition hover:opacity-80"
+            className="text-xs font-semibold text-primary transition hover:opacity-80"
           >
-            {t("common.viewAll", "View all")}
-            <ArrowRight className="h-3 w-3" />
+            View all →
           </button>
-        </motion.div>
+        </div>
 
-        {/* Premium showcase: hero + side column, then medium row */}
-        {heroPost && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {/* Large featured — 2/3 width on sm+ */}
-            <div className="sm:col-span-2">
-              <PostCard post={heroPost} size="hero" index={0} />
-            </div>
-            {/* Stacked side column — 1/3 width */}
-            <div className="flex flex-col gap-4">
-              {sidePosts.map((post, i) => (
-                <PostCard key={post.id} post={post} size="side" index={i + 1} />
-              ))}
-            </div>
+        <div className="-mx-0 overflow-x-auto no-scrollbar">
+          <div className="flex gap-4 px-5">
+            {FEED_POSTS.map((post, i) => (
+              <FeedPostCard key={post.id} post={post} index={i} />
+            ))}
           </div>
-        )}
-
-        {/* Medium row — 3 cards */}
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {mediumPosts.map((post, i) => (
-            <PostCard key={post.id} post={post} size="medium" index={i} />
-          ))}
         </div>
       </section>
 
-      {/* ── Quick explore actions ───────────────────────────────── */}
-      <section className="relative z-10 px-5 pt-4 pb-8">
-        <motion.h2
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={springGentle}
-          className="mb-4 font-display text-lg font-bold text-foreground"
-        >
-          {t("home.quickExplore", "Quick explore")}
-        </motion.h2>
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-40px" }}
-          className="grid grid-cols-2 gap-3 sm:grid-cols-4"
-        >
-          <QuickAction
-            icon={Compass}
-            label={t("nav.explore", "Explore")}
-            description={t("explore.trendingDesc", "See what's hot right now")}
-            to="/explore"
-            delay={0}
-          />
-          <QuickAction
-            icon={Sparkle}
-            label={t("explore.aiPlanner", "AI Planner")}
-            description={t("explore.aiPlannerDesc", "Plan a trip with AI")}
-            to="/planner"
-            delay={0.05}
-          />
-          <QuickAction
-            icon={Plane}
-            label={t("nav.travel", "Travel")}
-            description={t("home.travelDesc", "Browse all destinations")}
-            to="/travel"
-            delay={0.1}
-          />
-          <QuickAction
-            icon={Sparkles}
-            label={t("nav.trips", "My Trips")}
-            description={t("home.tripsDesc", "View saved itineraries")}
-            to="/trips"
-            delay={0.15}
-          />
-        </motion.div>
-      </section>
-
-      {/* ── Sign-in CTA footer ──────────────────────────────────── */}
-      <section className="relative z-10 px-5 pt-4 pb-32">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={springGentle}
-          className="glass-strong rounded-3xl p-6 text-center sm:p-8"
-        >
-          <h3 className="font-display text-lg font-bold text-foreground">
-            {t("home.signinCtaTitle", "Save your journeys")}
-          </h3>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            {t("home.signinCtaDesc", "Sign in to bookmark countries, plan trips, and share your travel stories.")}
-          </p>
-          <button
-            onClick={() => navigate("/auth")}
-            className="mt-4 flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-lg transition hover:scale-105 active:scale-95"
-          >
-            {t("home.signin", "Sign in")}
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </motion.div>
-      </section>
-
-      {/* ── Search overlay ──────────────────────────────────────── */}
+      {/* ── Search overlay ─────────────────────────── */}
       <AnimatePresence>
         {searchOpen && (
           <SearchOverlay
@@ -423,7 +490,7 @@ export default function Index() {
         )}
       </AnimatePresence>
 
-      {/* ── Modals ──────────────────────────────────────────────── */}
+      {/* ── Modals ──────────────────────────────────── */}
       <AnimatePresence>
         {selectedCountry && modalStep === "destination" && (
           <DestinationModal

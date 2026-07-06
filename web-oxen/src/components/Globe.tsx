@@ -1,16 +1,9 @@
-import { Html, OrbitControls, useTexture } from "@react-three/drei";
+import { OrbitControls, useTexture, Html } from "@react-three/drei";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import * as THREE from "three";
 
 import { COUNTRIES, type Country } from "@/data/countries";
-
-/* ------------------------------------------------------------------ */
-/*  Countries worthy of a visible label — skip tiny island nations      */
-/*  to avoid clutter. Uses border polygon size as a density proxy.       */
-/* ------------------------------------------------------------------ */
-
-const LABEL_COUNTRIES = COUNTRIES.filter((c) => (c.border?.length ?? 0) > 15).slice(0, 40);
 
 const RADIUS = 2;
 const BORDER_OFFSET = 0.015;
@@ -766,67 +759,6 @@ function ZoomController({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Country labels — glass pills with flag + name on the globe surface  */
-/*  Fade out on the far side, scale with zoom, hide at far distances.    */
-/* ------------------------------------------------------------------ */
-
-function CountryLabels({ onCountrySelect }: { onCountrySelect: (c: Country) => void }) {
-  const { camera } = useThree();
-  const groupRef = useRef<THREE.Group>(null);
-  const labelData = useMemo(
-    () =>
-      LABEL_COUNTRIES.map((country) => ({
-        country,
-        pos: latLngToVec3(country.lat, country.lng, RADIUS + 0.04),
-        dir: latLngToVec3(country.lat, country.lng, 1).normalize(),
-      })),
-    [],
-  );
-
-  useFrame(() => {
-    if (!groupRef.current) return;
-    const camDir = camera.position.clone().normalize();
-    const dist = camera.position.length();
-    const showAtAll = dist < 6;
-    groupRef.current.visible = showAtAll;
-    if (!showAtAll) return;
-
-    groupRef.current.children.forEach((child, i) => {
-      const data = labelData[i];
-      if (!data) return;
-      const dot = data.dir.dot(camDir);
-      const visible = dot > 0.15;
-      child.visible = visible;
-    });
-  });
-
-  return (
-    <group ref={groupRef}>
-      {labelData.map(({ country, pos }) => (
-        <Html
-          key={country.id}
-          position={pos}
-          center
-          distanceFactor={6}
-          occlude={false}
-          zIndexRange={[10, 0]}
-          style={{ pointerEvents: "auto" }}
-        >
-          <button
-            onClick={() => onCountrySelect(country)}
-            className="flex items-center gap-1 whitespace-nowrap rounded-full bg-black/60 px-2 py-0.5 backdrop-blur-sm transition hover:bg-black/80 active:scale-95"
-            style={{ border: "1px solid rgba(255,255,255,0.1)" }}
-          >
-            <span className="text-[10px] leading-none">{country.flag}</span>
-            <span className="text-[9px] font-semibold text-white/90">{country.name}</span>
-          </button>
-        </Html>
-      ))}
-    </group>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  Scene                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -840,7 +772,6 @@ function Scene({
   controlsRef,
   visitedIds,
   wishlistIds,
-  isActive,
 }: {
   onCountrySelect: (c: Country) => void;
   onCountryDoubleClick: (c: Country) => void;
@@ -851,7 +782,6 @@ function Scene({
   controlsRef: React.RefObject<any>;
   visitedIds: Set<string>;
   wishlistIds: Set<string>;
-  isActive: boolean;
 }) {
   return (
     <>
@@ -869,7 +799,6 @@ function Scene({
         onMarkerClick={onCountrySelect}
       />
       <CapitalMarkers />
-      {isActive && <CountryLabels onCountrySelect={onCountrySelect} />}
       <Starfield />
       <RotationController controlsRef={controlsRef} />
       <ZoomController zoomTarget={zoomTarget} controlsRef={controlsRef} />
@@ -887,18 +816,12 @@ export default function Globe({
   zoomTarget,
   visitedIds,
   wishlistIds,
-  isActive = true,
-  onActivate,
 }: {
   onCountrySelect: (c: Country) => void;
   selectedCountry: Country | null;
   zoomTarget?: { lat: number; lng: number } | null;
   visitedIds?: Set<string>;
   wishlistIds?: Set<string>;
-  /** When false, the globe is inert (no rotate/zoom/auto-rotate) until tapped. */
-  isActive?: boolean;
-  /** Called once when the user first interacts with the inert globe. */
-  onActivate?: () => void;
 }) {
   const controlsRef = useRef<any>(null);
   const hoveredCountryRef = useRef<Country | null>(null);
@@ -917,16 +840,8 @@ export default function Globe({
     setHoveredCountry(c);
   }, []);
 
-  // One-time pointerdown activates the globe
-  const handlePointerDown = useCallback(() => {
-    if (!isActive && onActivate) onActivate();
-  }, [isActive, onActivate]);
-
   return (
-    <div
-      className="relative h-full w-full"
-      onPointerDown={handlePointerDown}
-    >
+    <div className="relative h-full w-full">
       <Canvas
         camera={{ position: [0, 0.5, 5.4], fov: 40, near: 0.01, far: 200 }}
         dpr={[1, 2]}
@@ -943,18 +858,17 @@ export default function Globe({
             controlsRef={controlsRef}
             visitedIds={visitedIds ?? EMPTY_SET}
             wishlistIds={wishlistIds ?? EMPTY_SET}
-            isActive={isActive}
           />
           <OrbitControls
             ref={controlsRef}
             enablePan={false}
-            enableZoom={isActive}
-            enableRotate={isActive}
+            enableZoom
+            enableRotate
             minDistance={MIN_DISTANCE}
             maxDistance={MAX_DISTANCE}
             rotateSpeed={0.4}
             zoomSpeed={1.1}
-            autoRotate={isActive}
+            autoRotate
             autoRotateSpeed={BASE_ROTATION_SPEED}
             enableDamping
             dampingFactor={0.08}
