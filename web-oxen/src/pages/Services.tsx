@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchServices, fetchCategories } from "@/lib/services";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { useSEO } from "@/hooks/use-seo";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 
 const springIn = {
@@ -22,11 +23,12 @@ const springIn = {
  */
 export default function ServicesPage() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
 
   useSEO({
-    title: "Travel Services | OXEN",
+    title: "Travel Services | SAFARIO",
     description: "Discover premium travel consulting services — visa support, luxury trip planning, honeymoon packages, and more.",
     keywords: "travel services, travel consulting, visa services, luxury travel, honeymoon packages",
   });
@@ -62,15 +64,15 @@ export default function ServicesPage() {
           onClick={() => navigate("/")}
           className="flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Home
+          <ArrowLeft className="h-4 w-4" /> {t("common.home", "Home")}
         </button>
 
         <div className="mt-4 flex items-center gap-2">
           <Briefcase className="h-6 w-6 text-primary" />
-          <h1 className="font-display text-3xl font-extrabold">Travel Services</h1>
+          <h1 className="font-display text-3xl font-extrabold">{t("nav.services", "Travel Services")}</h1>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Premium consulting services from trusted travel experts worldwide.
+          {t("services.subtitle", "Premium consulting services from trusted travel experts worldwide.")}
         </p>
       </motion.div>
 
@@ -87,7 +89,7 @@ export default function ServicesPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search services..."
+            placeholder={t("services.searchPlaceholder", "Search services...")}
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
           />
           <SlidersHorizontal className="h-4 w-4 text-muted-foreground/60" />
@@ -128,7 +130,7 @@ export default function ServicesPage() {
         ) : filtered.length === 0 ? (
           <div className="glass flex flex-col items-center gap-3 rounded-2xl p-10 text-center">
             <p className="text-sm text-muted-foreground">
-              {search ? "No services match your search." : "No services available yet."}
+              {search ? t("services.noMatch", "No services match your search.") : t("services.noneAvailable", "No services available yet.")}
             </p>
           </div>
         ) : (

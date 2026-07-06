@@ -16,9 +16,10 @@ import { useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 
-const OXEN_LOGO =
+const SAFARIO_LOGO =
   "https://r2-pub.rork.com/projects/jllemngulgwm5pb7uoc46/assets/b64891ed-f7c0-43c7-9079-36d87076a4c7.png";
 
 interface MenuItem {
@@ -66,6 +67,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { isOpen, close } = useSidebar();
+  const { t } = useLanguage();
   const dragControls = useDragControls();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -124,16 +126,16 @@ export default function Sidebar() {
     : "OX";
 
   const menuItems: MenuItem[] = [
-    { id: "explore", label: "Explore", icon: Compass, to: "/" },
-    { id: "services", label: "Travel Services", icon: BriefcaseBusiness, to: "/services" },
-    { id: "premium", label: "Premium Membership", icon: Crown, to: "/profile" },
-    { id: "trips", label: "My Trips", icon: Briefcase, to: "/dashboard" },
-    { id: "consulting", label: "Consulting Dashboard", icon: BriefcaseBusiness, to: "/dashboard/consulting" },
-    { id: "statistics", label: "Statistics", icon: BarChart3, to: "/dashboard" },
-    { id: "favorites", label: "Favorites", icon: Heart, to: "/dashboard" },
-    { id: "settings", label: "Settings", icon: Settings, to: "/profile" },
-    { id: "help", label: "Help & Support", icon: HelpCircle, to: "/support" },
-    { id: "logout", label: "Logout", icon: LogOut, danger: true, action: handleSignOut },
+    { id: "explore", label: t("nav.explore", "Explore"), icon: Compass, to: "/" },
+    { id: "services", label: t("nav.services", "Travel Services"), icon: BriefcaseBusiness, to: "/services" },
+    { id: "premium", label: t("nav.premium", "Premium Membership"), icon: Crown, to: "/profile" },
+    { id: "trips", label: t("nav.trips", "My Trips"), icon: Briefcase, to: "/dashboard" },
+    { id: "consulting", label: t("nav.consulting", "Consulting Dashboard"), icon: BriefcaseBusiness, to: "/dashboard/consulting" },
+    { id: "statistics", label: t("nav.statistics", "Statistics"), icon: BarChart3, to: "/dashboard" },
+    { id: "favorites", label: t("nav.favorites", "Favorites"), icon: Heart, to: "/dashboard" },
+    { id: "settings", label: t("nav.settings", "Settings"), icon: Settings, to: "/profile" },
+    { id: "help", label: t("nav.help", "Help & Support"), icon: HelpCircle, to: "/support" },
+    { id: "logout", label: t("settings.logOut", "Logout"), icon: LogOut, danger: true, action: handleSignOut },
   ];
 
   return (
@@ -167,11 +169,11 @@ export default function Sidebar() {
           <div className="flex-shrink-0 px-5 pt-10 pb-6">
             <div className="flex items-center gap-3">
               <img
-                src={OXEN_LOGO}
-                alt="OXEN"
+                src={SAFARIO_LOGO}
+                alt="SAFARIO"
                 className="h-10 w-10 rounded-xl object-contain shadow-lg"
               />
-              <span className="text-lg font-extrabold tracking-widest">OXEN</span>
+              <span className="text-lg font-extrabold tracking-widest">SAFARIO</span>
             </div>
 
             <motion.div
@@ -184,8 +186,8 @@ export default function Sidebar() {
                 {initials}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-foreground">{user?.name ?? "Guest Explorer"}</p>
-                <p className="truncate text-xs text-muted-foreground">{user?.email ?? "explorer@oxen.travel"}</p>
+                <p className="truncate text-sm font-bold text-foreground">{user?.name ?? t("auth.guest", "Guest Explorer")}</p>
+                <p className="truncate text-xs text-muted-foreground">{user?.email ?? "explorer@safario.travel"}</p>
               </div>
             </motion.div>
           </div>
@@ -243,7 +245,7 @@ export default function Sidebar() {
           {/* Footer */}
           <div className="flex-shrink-0 px-5 pb-7 pt-3">
             <p className="text-center text-[11px] text-muted-foreground/50">
-              OXEN · Explore the world
+              SAFARIO · {t("nav.tagline", "Explore the world")}
             </p>
           </div>
         </motion.aside>

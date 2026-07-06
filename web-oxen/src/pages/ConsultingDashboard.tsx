@@ -45,7 +45,7 @@ export default function ConsultingDashboard() {
   const [creating, setCreating] = useState(false);
 
   useSEO({
-    title: "Consulting Dashboard | OXEN",
+    title: "Consulting Dashboard | SAFARIO",
     description: "Manage your travel consulting services.",
   });
 

@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* OXEN — dark cosmic travel aesthetic. All colors HSL. */
+/* SAFARIO — dark cosmic travel aesthetic. All colors HSL. */
 
 @layer base {
   :root,
@@ -889,7 +889,7 @@ html.dark, html.light {
 }
 
 /* ================================================================== */
-/*  OXEN — Global Optimization Layer                                  */
+/*  SAFARIO — Global Optimization Layer                                  */
 /*  Safe areas · standalone PWA · responsive · performance · skeletons */
 /* ================================================================== */
 

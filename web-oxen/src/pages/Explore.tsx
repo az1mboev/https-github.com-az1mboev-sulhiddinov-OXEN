@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 import { DESTINATIONS } from "@/data/feedData";
 import { COUNTRIES } from "@/data/countries";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const springIn = {
   type: "spring" as const,
@@ -102,6 +103,7 @@ function QuickAction({
 
 export default function Explore() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const trending = DESTINATIONS.filter((d) => d.category === "trending").slice(0, 6);
   const popular = DESTINATIONS.filter((d) => d.category === "popular-cities").slice(0, 4);
 
@@ -116,15 +118,15 @@ export default function Explore() {
       >
         <div className="flex items-center gap-2 mb-2">
           <Compass className="h-5 w-5 text-primary" strokeWidth={2.2} />
-          <span className="text-xs font-bold uppercase tracking-widest text-primary">Explore</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-primary">{t("nav.explore", "Explore")}</span>
         </div>
         <h1 className="font-display text-3xl font-extrabold leading-tight">
-          Discover your next
+          {t("explore.heading", "Discover your next")}
           <br />
-          <span className="text-gold-gradient">great adventure</span>
+          <span className="text-gold-gradient">{t("explore.headingAccent", "great adventure")}</span>
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          From trending destinations to hidden gems — start your journey here.
+          {t("explore.subtitle", "From trending destinations to hidden gems — start your journey here.")}
         </p>
       </motion.div>
 
@@ -132,29 +134,29 @@ export default function Explore() {
       <div className="mb-8 grid grid-cols-2 gap-3">
         <QuickAction
           icon={Globe2}
-          label="3D Globe"
-          description="Explore the world interactively"
+          label={t("explore.3dGlobe", "3D Globe")}
+          description={t("explore.3dGlobeDesc", "Explore the world interactively")}
           to="/"
           delay={0.1}
         />
         <QuickAction
           icon={Sparkles}
-          label="AI Planner"
-          description="Plan a trip with AI"
+          label={t("explore.aiPlanner", "AI Planner")}
+          description={t("explore.aiPlannerDesc", "Plan a trip with AI")}
           to="/planner"
           delay={0.15}
         />
         <QuickAction
           icon={TrendingUp}
-          label="Trending"
-          description="See what's hot right now"
+          label={t("explore.trending", "Trending")}
+          description={t("explore.trendingDesc", "See what's hot right now")}
           to="/travel"
           delay={0.2}
         />
         <QuickAction
           icon={Map}
-          label="My Trips"
-          description="View saved itineraries"
+          label={t("nav.trips", "My Trips")}
+          description={t("explore.myTripsDesc", "View saved itineraries")}
           to="/trips"
           delay={0.25}
         />
@@ -165,13 +167,13 @@ export default function Explore() {
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" strokeWidth={2.2} />
-            <h2 className="font-display text-lg font-bold">Trending Now</h2>
+            <h2 className="font-display text-lg font-bold">{t("explore.trendingNow", "Trending Now")}</h2>
           </div>
           <button
             onClick={() => navigate("/travel")}
             className="text-xs font-semibold text-primary transition hover:opacity-80"
           >
-            View all →
+            {t("common.viewAll", "View all")} →
           </button>
         </div>
         <div className="-mx-5 overflow-x-auto no-scrollbar">
@@ -186,12 +188,12 @@ export default function Explore() {
       {/* Popular cities */}
       <section className="mb-8">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold">Popular Cities</h2>
+          <h2 className="font-display text-lg font-bold">{t("explore.popularCities", "Popular Cities")}</h2>
           <button
             onClick={() => navigate("/travel")}
             className="text-xs font-semibold text-primary transition hover:opacity-80"
           >
-            View all →
+            {t("common.viewAll", "View all")} →
           </button>
         </div>
         <div className="-mx-5 overflow-x-auto no-scrollbar">

@@ -4,28 +4,30 @@ import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useTravel } from "@/contexts/TravelContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { COUNTRIES, getCountry } from "@/data/countries";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { wishlist, visited, itineraries, removeItinerary } = useTravel();
 
   const recommendations = COUNTRIES.filter((c) => !wishlist.includes(c.id) && !visited.includes(c.id)).slice(0, 3);
 
   const stats = [
-    { icon: MapPinCheck, label: "Visited", value: visited.length },
-    { icon: Heart, label: "Wishlist", value: wishlist.length },
-    { icon: Sparkles, label: "Trips planned", value: itineraries.length },
+    { icon: MapPinCheck, label: t("dashboard.visited", "Visited"), value: visited.length },
+    { icon: Heart, label: t("dashboard.wishlist", "Wishlist"), value: wishlist.length },
+    { icon: Sparkles, label: t("dashboard.tripsPlanned", "Trips planned"), value: itineraries.length },
   ];
 
   return (
     <div className="relative px-5 pt-7">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="font-display text-3xl font-extrabold">
-          Hi{user ? `, ${user.name.split(" ")[0]}` : ""} 👋
+          {t("dashboard.greeting", "Hi")}{user ? `, ${user.name.split(" ")[0]}` : ""} 👋
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your journey so far, all in one place.</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.subtitle", "Your journey so far, all in one place.")}</p>
       </motion.div>
 
       {/* Stats */}
@@ -49,9 +51,9 @@ export default function Dashboard() {
       </div>
 
       {/* Wishlist */}
-      <Section title="Your wishlist" icon={Heart}>
+      <Section title={t("dashboard.yourWishlist", "Your wishlist")} icon={Heart}>
         {wishlist.length === 0 ? (
-          <Empty text="No saved destinations yet. Spin the globe to start dreaming." cta="Explore globe" onClick={() => navigate("/")} />
+          <Empty text={t("dashboard.wishlistEmpty", "No saved destinations yet. Spin the globe to start dreaming.")} cta={t("dashboard.exploreGlobe", "Explore globe")} onClick={() => navigate("/")} />
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {wishlist.map((id) => {
@@ -73,9 +75,9 @@ export default function Dashboard() {
       </Section>
 
       {/* Saved itineraries */}
-      <Section title="Saved itineraries" icon={Calendar}>
+      <Section title={t("dashboard.savedItineraries", "Saved itineraries")} icon={Calendar}>
         {itineraries.length === 0 ? (
-          <Empty text="No itineraries yet. Let AI plan your next adventure." cta="Open planner" onClick={() => navigate("/planner")} />
+          <Empty text={t("dashboard.itinerariesEmpty", "No itineraries yet. Let AI plan your next adventure.")} cta={t("dashboard.openPlanner", "Open planner")} onClick={() => navigate("/planner")} />
         ) : (
           <div className="space-y-3">
             {itineraries.map((it) => (
@@ -86,7 +88,7 @@ export default function Dashboard() {
                     <div className="mt-0.5 truncate text-xs text-muted-foreground">{it.prompt}</div>
                     <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">
-                        {it.days.length} days
+                        {it.days.length} {t("dashboard.days", "days")}
                       </span>
                       <span className="rounded-full bg-muted px-2 py-0.5">
                         {new Date(it.createdAt).toLocaleDateString()}
@@ -108,7 +110,7 @@ export default function Dashboard() {
       </Section>
 
       {/* Travel Services */}
-      <Section title="Travel Services" icon={BriefcaseBusiness} >
+      <Section title={t("nav.services", "Travel Services")} icon={BriefcaseBusiness} >
         <button
           onClick={() => navigate("/services")}
           className="glass group flex w-full items-center gap-4 rounded-2xl p-4 text-left transition hover:border-primary/40"
@@ -117,8 +119,8 @@ export default function Dashboard() {
             <BriefcaseBusiness className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <div className="font-display font-bold">Browse Travel Services</div>
-            <div className="truncate text-xs text-muted-foreground">Visa support, trip planning, honeymoon packages & more</div>
+            <div className="font-display font-bold">{t("dashboard.browseServices", "Browse Travel Services")}</div>
+            <div className="truncate text-xs text-muted-foreground">{t("dashboard.browseServicesDesc", "Visa support, trip planning, honeymoon packages & more")}</div>
           </div>
           <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" />
         </button>
@@ -126,7 +128,7 @@ export default function Dashboard() {
 
       {/* Recommendations */}
       {recommendations.length > 0 && (
-        <Section title="Recommended for you" icon={Compass}>
+        <Section title={t("dashboard.recommended", "Recommended for you")} icon={Compass}>
           <div className="space-y-3">
             {recommendations.map((c) => (
               <button

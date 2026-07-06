@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import VideoPlayer from "@/components/VideoPlayer";
 import { CATEGORIES, DESTINATIONS, getDestinationsByCategory, type TrendingDestination, type DestinationCategory } from "@/data/feedData";
 import { COUNTRIES } from "@/data/countries";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 
 /* ── Animation presets ────────────────────────────────────────────── */
@@ -42,6 +43,7 @@ function DestinationSection({
   onWatchVideo: (dest: TrendingDestination) => void;
 }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const items = getDestinationsByCategory(category.key);
 
   if (items.length === 0) return null;
@@ -52,7 +54,7 @@ function DestinationSection({
       <div className="mb-4 flex items-center gap-2.5 px-5">
         <span className="text-xl">{category.emoji}</span>
         <h2 className="font-display text-lg font-bold">{category.label}</h2>
-        <span className="ml-auto text-xs text-muted-foreground">{items.length} places</span>
+        <span className="ml-auto text-xs text-muted-foreground">{items.length} {t("travel.places", "places")}</span>
       </div>
 
       {/* Horizontal scroll cards */}
@@ -97,6 +99,7 @@ function DestinationCard({
   onNavigate: (countryName: string) => void;
   onWatchVideo: (dest: TrendingDestination) => void;
 }) {
+  const { t } = useLanguage();
   return (
     <motion.article
       custom={index}
@@ -161,7 +164,7 @@ function DestinationCard({
               )}
             >
               <Play className="h-4 w-4 fill-white" strokeWidth={0} />
-              {dest.videoUrl ? "Watch Video" : "No Video"}
+              {dest.videoUrl ? t("travel.watchVideo", "Watch Video") : t("travel.noVideo", "No Video")}
             </button>
             <button
               onClick={() => onToggleSave(dest.id)}
@@ -186,6 +189,7 @@ function DestinationCard({
 
 export default function Travel() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState<string>("");
   const [videoDest, setVideoDest] = useState<TrendingDestination | null>(null);
@@ -230,15 +234,15 @@ export default function Travel() {
       >
         <div className="flex items-center gap-2 mb-2">
           <Flame className="h-5 w-5 text-primary" strokeWidth={2.2} />
-          <span className="text-xs font-bold uppercase tracking-widest text-primary">Discover</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-primary">{t("travel.discover", "Discover")}</span>
         </div>
         <h1 className="font-display text-3xl font-extrabold leading-tight">
-          Explore the world's
+          {t("travel.heading", "Explore the world's")}
           <br />
-          <span className="text-gold-gradient">most amazing places</span>
+          <span className="text-gold-gradient">{t("travel.headingAccent", "most amazing places")}</span>
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Trending destinations, hidden gems, and bucket-list spots curated by millions of travelers.
+          {t("travel.subtitle", "Trending destinations, hidden gems, and bucket-list spots curated by millions of travelers.")}
         </p>
       </motion.div>
 
@@ -253,7 +257,7 @@ export default function Travel() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search destinations..."
+          placeholder={t("travel.searchPlaceholder", "Search destinations...")}
           className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
         />
         {query && (
@@ -261,7 +265,7 @@ export default function Travel() {
             onClick={() => setQuery("")}
             className="text-xs text-muted-foreground hover:text-foreground"
           >
-            Clear
+            {t("common.clear", "Clear")}
           </button>
         )}
       </motion.div>
@@ -280,12 +284,12 @@ export default function Travel() {
       ) : (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Trophy className="h-12 w-12 text-muted-foreground/30" strokeWidth={1.5} />
-          <p className="mt-4 text-sm text-muted-foreground">No destinations found for "{query}"</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("travel.noResults", "No destinations found for")} "{query}"</p>
           <button
             onClick={() => setQuery("")}
             className="mt-4 rounded-full bg-white/5 px-5 py-2 text-sm font-medium text-foreground transition hover:bg-white/10"
           >
-            Clear search
+            {t("travel.clearSearch", "Clear search")}
           </button>
         </div>
       )}

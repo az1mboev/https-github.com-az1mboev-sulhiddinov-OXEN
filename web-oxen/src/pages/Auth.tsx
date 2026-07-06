@@ -3,11 +3,13 @@ import { Globe, Mail, ArrowLeft, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import TravelIllustration from "@/components/TravelIllustration";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const OXEN_LOGO =
+const SAFARIO_LOGO =
   "https://r2-pub.rork.com/projects/jllemngulgwm5pb7uoc46/assets/b64891ed-f7c0-43c7-9079-36d87076a4c7.png";
 
 export default function Auth() {
+  const { t } = useLanguage();
   return (
     <div className="relative flex min-h-screen flex-col md:flex-row">
       {/* ── Background ── */}
@@ -21,7 +23,7 @@ export default function Auth() {
         className="absolute left-6 top-6 z-30 flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
       >
         <ArrowLeft className="h-4 w-4" />
-        <span className="hidden sm:inline">Back to Globe</span>
+        <span className="hidden sm:inline">{t("auth.backToGlobe", "Back to Globe")}</span>
       </Link>
 
       {/* ── Left Panel: Coming Soon ── */}
@@ -41,19 +43,18 @@ export default function Auth() {
               className="mb-6 flex items-center gap-3"
             >
               <img
-                src={OXEN_LOGO}
-                alt="OXEN"
+                src={SAFARIO_LOGO}
+                alt="SAFARIO"
                 className="h-10 w-10 rounded-xl object-contain shadow-lg shadow-blue-500/20"
               />
-              <span className="font-display text-lg font-bold tracking-wider text-white">OXEN</span>
+              <span className="font-display text-lg font-bold tracking-wider text-white">SAFARIO</span>
             </motion.div>
 
             <h1 className="font-display text-3xl font-bold tracking-tight text-white lg:text-4xl">
-              Authentication Coming Soon
+              {t("auth.comingSoon", "Authentication Coming Soon")}
             </h1>
             <p className="mt-2 text-slate-400">
-              We&apos;re configuring Supabase to enable Google, Apple, and email sign-in.
-              While you wait, explore the world freely as a guest.
+              {t("auth.comingSoonDesc", "We're configuring Supabase to enable Google, Apple, and email sign-in. While you wait, explore the world freely as a guest.")}
             </p>
           </div>
 
@@ -71,9 +72,9 @@ export default function Auth() {
                   <span className="absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full bg-amber-400/60" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-amber-300">Configuration in Progress</p>
+                  <p className="text-sm font-semibold text-amber-300">{t("auth.configInProgress", "Configuration in Progress")}</p>
                   <p className="mt-0.5 text-xs text-slate-400">
-                    Supabase setup is being finalized. Check back soon for full account access.
+                    {t("auth.configInProgressDesc", "Supabase setup is being finalized. Check back soon for full account access.")}
                   </p>
                 </div>
               </div>
@@ -83,20 +84,20 @@ export default function Auth() {
                 {[
                   {
                     icon: Mail,
-                    title: "Email & Password",
-                    desc: "Classic sign-in with secure password storage",
+                    title: t("auth.emailPassword", "Email & Password"),
+                    desc: t("auth.emailPasswordDesc", "Classic sign-in with secure password storage"),
                     provider: "email",
                   },
                   {
                     icon: GoogleMark,
-                    title: "Google Sign-In",
-                    desc: "One-tap authentication with your Google account",
+                    title: t("auth.googleSignIn", "Google Sign-In"),
+                    desc: t("auth.googleSignInDesc", "One-tap authentication with your Google account"),
                     provider: "google",
                   },
                   {
                     icon: AppleMark,
-                    title: "Apple Sign-In",
-                    desc: "Private, secure sign-in with Face ID / Touch ID",
+                    title: t("auth.appleSignIn", "Apple Sign-In"),
+                    desc: t("auth.appleSignInDesc", "Private, secure sign-in with Face ID / Touch ID"),
                     provider: "apple",
                   },
                 ].map((item, i) => (
@@ -115,7 +116,7 @@ export default function Auth() {
                       <p className="text-xs text-slate-500">{item.desc}</p>
                     </div>
                     <span className="ml-auto shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-400">
-                      Soon
+                      {t("auth.soon", "Soon")}
                     </span>
                   </motion.div>
                 ))}
@@ -133,10 +134,10 @@ export default function Auth() {
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:from-blue-500 hover:to-blue-600 hover:shadow-blue-500/30 active:scale-[0.98]"
                 >
                   <Globe className="h-4 w-4" />
-                  Continue as Guest Explorer
+                  {t("auth.continueAsGuest", "Continue as Guest Explorer")}
                 </Link>
                 <p className="mt-3 text-center text-xs text-slate-500">
-                  No account needed — explore 200+ countries, plan trips with AI, and discover the world.
+                  {t("auth.guestDesc", "No account needed — explore 200+ countries, plan trips with AI, and discover the world.")}
                 </p>
               </motion.div>
             </div>
@@ -150,7 +151,7 @@ export default function Auth() {
             className="mt-6 text-center text-xs text-slate-600"
           >
             <Sparkles className="inline h-3 w-3 text-amber-500" />{" "}
-            Full authentication with Google, Apple, and email will be available after Supabase setup is complete.
+            {t("auth.fullAuthNote", "Full authentication with Google, Apple, and email will be available after Supabase setup is complete.")}
           </motion.p>
         </motion.div>
       </div>
@@ -169,18 +170,18 @@ export default function Auth() {
             className="glass-auth mb-6 rounded-2xl px-6 py-4 shadow-2xl"
           >
             <p className="text-center font-display text-xl font-bold text-white lg:text-2xl">
-              Travel the world
+              {t("auth.travelTheWorld", "Travel the world")}
             </p>
-            <p className="text-center text-sm text-blue-300">with OXEN</p>
+            <p className="text-center text-sm text-blue-300">{t("auth.withSafario", "with SAFARIO")}</p>
           </motion.div>
 
           {/* Feature cards */}
           <div className="flex flex-wrap justify-center gap-3">
             {[
-              { icon: "\uD83C\uDF0D", label: "200+ Countries" },
-              { icon: "\u2708\uFE0F", label: "AI Planner" },
-              { icon: "\uD83D\uDCCD", label: "Local Guides" },
-              { icon: "\uD83D\uDDFA\uFE0F", label: "Offline Maps" },
+              { icon: "🌍", label: t("auth.featureCountries", "200+ Countries") },
+              { icon: "✈️", label: t("auth.featureAIPlanner", "AI Planner") },
+              { icon: "📍", label: t("auth.featureLocalGuides", "Local Guides") },
+              { icon: "🗺️", label: t("auth.featureOfflineMaps", "Offline Maps") },
             ].map((item, i) => (
               <motion.div
                 key={item.label}
@@ -202,7 +203,7 @@ export default function Auth() {
             transition={{ delay: 1, duration: 0.6 }}
             className="mt-8 max-w-xs text-center text-sm leading-relaxed text-slate-400"
           >
-            Discover destinations, plan with AI, and explore every corner of the world — all in one place.
+            {t("auth.bottomTagline", "Discover destinations, plan with AI, and explore every corner of the world — all in one place.")}
           </motion.p>
         </div>
       </div>

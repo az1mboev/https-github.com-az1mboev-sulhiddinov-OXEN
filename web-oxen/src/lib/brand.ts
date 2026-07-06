@@ -1,5 +1,5 @@
 /**
- * OXEN — Centralized Icon & Branding Configuration
+ * SAFARIO — Centralized Icon & Branding Configuration
  * ------------------------------------------------
  * Single source of truth for every icon/brand asset across the app.
  * Changing the icon here automatically updates: PWA manifest, Safari
@@ -27,9 +27,9 @@ export interface IconSet {
   social: string;
 }
 
-export const APP_NAME = "OXEN" as const;
+export const APP_NAME = "SAFARIO" as const;
 export const APP_TAGLINE =
-  "OXEN — explore the world from space. Discover countries, plan trips with AI, and map your journey." as const;
+  "SAFARIO — explore the world from space. Discover countries, plan trips with AI, and map your journey." as const;
 
 /** Centralized icon paths — derived from the single source icon. */
 export const ICONS: IconSet = {
@@ -114,7 +114,7 @@ export function injectBrandMeta(): void {
 }
 
 /**
- * Register the OXEN service worker for offline support, caching,
+ * Register the SAFARIO service worker for offline support, caching,
  * background sync, and auto-updates. Safe to call in any environment;
  * silently no-ops outside production / unsupported browsers.
  */
@@ -129,15 +129,15 @@ export async function registerServiceWorker(): Promise<void> {
       installing.addEventListener("statechange", () => {
         if (installing.state === "installed" && navigator.serviceWorker.controller) {
           // New version ready — notify the app to prompt reload
-          window.dispatchEvent(new CustomEvent("oxen:update-available"));
+          window.dispatchEvent(new CustomEvent("safario:update-available"));
         }
       });
     });
     // Listen for controller changes to auto-activate updates
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       // The new SW has taken control — reload once to use fresh assets
-      if (!window.__OXEN_RELOADED__) {
-        window.__OXEN_RELOADED__ = true;
+      if (!window.__SAFARIO_RELOADED__) {
+        window.__SAFARIO_RELOADED__ = true;
         window.location.reload();
       }
     });
@@ -148,6 +148,6 @@ export async function registerServiceWorker(): Promise<void> {
 
 declare global {
   interface Window {
-    __OXEN_RELOADED__?: boolean;
+    __SAFARIO_RELOADED__?: boolean;
   }
 }

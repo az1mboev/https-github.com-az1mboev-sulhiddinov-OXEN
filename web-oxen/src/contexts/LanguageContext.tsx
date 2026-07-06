@@ -40,7 +40,7 @@ export const LANGUAGES: LanguageMeta[] = [
   { code: "az", label: "Azerbaijani", native: "Azərbaycanca", flag: "🇦🇿" },
 ];
 
-const STORAGE_KEY = "oxen.language";
+const STORAGE_KEY = "safario.language";
 
 interface LanguageContextValue {
   language: Language;
@@ -139,7 +139,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "Something went wrong", "common.save": "Save", "common.cancel": "Cancel",
 
     /* Settings — section headers */
-    "settings.title": "Profile Settings", "settings.subtitle": "Customize your OXEN experience",
+    "settings.title": "Profile Settings", "settings.subtitle": "Customize your SAFARIO experience",
     "settings.account": "Account", "settings.privacy": "Privacy", "settings.security": "Security",
     "settings.notifications": "Notifications", "settings.appearance": "Appearance",
     "settings.offline": "Offline Mode", "settings.travel": "Travel Settings",
@@ -183,10 +183,88 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     /* Settings — support */
     "settings.helpCenter": "Help Center", "settings.contactSupport": "Contact Support",
     "settings.reportProblem": "Report Problem", "settings.sendFeedback": "Send Feedback",
-    "settings.about": "About OXEN",
+    "settings.about": "About SAFARIO",
 
     /* Settings — misc */
-    "settings.logOut": "Log Out", "settings.version": "OXEN v1.0.0 — Built for explorers",
+    "settings.logOut": "Log Out", "settings.version": "SAFARIO v1.0.0 — Built for explorers",
+
+    /* Nav — sidebar extra */
+    "nav.services": "Travel Services", "nav.premium": "Premium Membership",
+    "nav.consulting": "Consulting Dashboard", "nav.statistics": "Statistics",
+    "nav.favorites": "Favorites", "nav.settings": "Settings", "nav.help": "Help & Support",
+    "nav.tagline": "Explore the world",
+
+    /* Explore page */
+    "explore.heading": "Discover your next", "explore.headingAccent": "great adventure",
+    "explore.subtitle": "From trending destinations to hidden gems — start your journey here.",
+    "explore.3dGlobe": "3D Globe", "explore.3dGlobeDesc": "Explore the world interactively",
+    "explore.aiPlanner": "AI Planner", "explore.aiPlannerDesc": "Plan a trip with AI",
+    "explore.trending": "Trending", "explore.trendingDesc": "See what's hot right now",
+    "explore.trendingNow": "Trending Now", "explore.popularCities": "Popular Cities",
+
+    /* Travel page */
+    "travel.discover": "Discover", "travel.heading": "Explore the world's",
+    "travel.headingAccent": "most amazing places",
+    "travel.subtitle": "Trending destinations, hidden gems, and bucket-list spots curated by millions of travelers.",
+    "travel.searchPlaceholder": "Search destinations...", "travel.places": "places",
+    "travel.watchVideo": "Watch Video", "travel.noVideo": "No Video",
+    "travel.noResults": "No destinations found for", "travel.clearSearch": "Clear search",
+
+    /* Dashboard page */
+    "dashboard.greeting": "Hi", "dashboard.subtitle": "Your journey so far, all in one place.",
+    "dashboard.yourWishlist": "Your wishlist", "dashboard.wishlistEmpty": "No saved destinations yet. Spin the globe to start dreaming.",
+    "dashboard.exploreGlobe": "Explore globe", "dashboard.savedItineraries": "Saved itineraries",
+    "dashboard.itinerariesEmpty": "No itineraries yet. Let AI plan your next adventure.",
+    "dashboard.openPlanner": "Open planner", "dashboard.days": "days",
+    "dashboard.browseServices": "Browse Travel Services", "dashboard.browseServicesDesc": "Visa support, trip planning, honeymoon packages & more",
+    "dashboard.recommended": "Recommended for you", "dashboard.tripsPlanned": "Trips planned",
+
+    /* Trips page */
+    "trips.heading": "Your saved", "trips.headingAccent": "adventures",
+    "trips.saved": "saved", "trips.itinerary": "itinerary", "trips.itineraries": "itineraries",
+    "trips.empty": "Plan your first trip and it'll appear here.", "trips.planNew": "Plan a New Trip",
+    "trips.more": "more", "trips.estimatedBudget": "Estimated Budget",
+    "trips.noTrips": "No trips yet", "trips.noTripsDesc": "Use the AI planner to create your first itinerary. It'll be saved here automatically.",
+    "trips.startPlanning": "Start Planning",
+
+    /* Profile page */
+    "profile.editProfile": "Edit Profile", "profile.messages": "Messages",
+    "profile.posts": "Posts", "profile.followers": "Followers", "profile.following": "Following",
+    "profile.createPost": "Create New Travel Post",
+    "profile.wantToVisit": "Want to Visit", "profile.visited": "Visited", "profile.favorites": "Favorites",
+    "profile.saved": "Saved", "profile.travelMap": "Travel Map", "profile.stories": "Stories",
+    "profile.noPosts": "No travel posts yet", "profile.noPostsDesc": "Use the button above to share your first adventure",
+    "profile.addStory": "Add Story", "profile.story": "Story",
+    "profile.noSaved": "No saved destinations yet", "profile.noSavedDesc": "Explore the globe and save your favorites",
+    "profile.exploreGlobe": "Explore globe", "profile.countriesVisited": "countries visited",
+    "profile.noArchive": "No story archive yet", "profile.noArchiveDesc": "Your stories will appear here after you create them",
+
+    /* Planner page — extra */
+    "planner.heading": "Describe your", "planner.headingAccent": "dream trip.",
+    "planner.error": "The planner stumbled", "planner.retry": "Please try again.",
+    "planner.saved": "Itinerary saved", "planner.savedDesc": "Find it on your dashboard.",
+    "planner.savedBtn": "Saved", "planner.bestTime": "Best time", "planner.dayByDay": "Day by day",
+    "planner.morning": "Morning", "planner.afternoon": "Afternoon", "planner.evening": "Evening",
+    "planner.budget": "Budget breakdown", "planner.tips": "Insider tips",
+
+    /* Auth page */
+    "auth.backToGlobe": "Back to Globe", "auth.comingSoon": "Authentication Coming Soon",
+    "auth.comingSoonDesc": "We're configuring Supabase to enable Google, Apple, and email sign-in. While you wait, explore the world freely as a guest.",
+    "auth.configInProgress": "Configuration in Progress", "auth.configInProgressDesc": "Supabase setup is being finalized. Check back soon for full account access.",
+    "auth.emailPassword": "Email & Password", "auth.emailPasswordDesc": "Classic sign-in with secure password storage",
+    "auth.googleSignIn": "Google Sign-In", "auth.googleSignInDesc": "One-tap authentication with your Google account",
+    "auth.appleSignIn": "Apple Sign-In", "auth.appleSignInDesc": "Private, secure sign-in with Face ID / Touch ID",
+    "auth.soon": "Soon", "auth.continueAsGuest": "Continue as Guest Explorer",
+    "auth.guestDesc": "No account needed — explore 200+ countries, plan trips with AI, and discover the world.",
+    "auth.fullAuthNote": "Full authentication with Google, Apple, and email will be available after Supabase setup is complete.",
+    "auth.travelTheWorld": "Travel the world", "auth.withSafario": "with SAFARIO",
+    "auth.featureCountries": "200+ Countries", "auth.featureAIPlanner": "AI Planner",
+    "auth.featureLocalGuides": "Local Guides", "auth.featureOfflineMaps": "Offline Maps",
+    "auth.bottomTagline": "Discover destinations, plan with AI, and explore every corner of the world — all in one place.",
+    "auth.guest": "Guest Explorer",
+
+    /* Common — extra */
+    "common.viewAll": "View all", "common.clear": "Clear", "common.remove": "Remove",
   },
   uz: {
     "nav.globe": "Globus", "nav.explore": "Kashf qilish", "nav.travel": "Sayohat",
@@ -206,7 +284,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.back": "Orqaga", "common.loading": "Yuklanmoqda...",
     "common.error": "Xatolik yuz berdi", "common.save": "Saqlash", "common.cancel": "Bekor qilish",
 
-    "settings.title": "Profil Sozlamalari", "settings.subtitle": "OXEN tajribangizni sozlang",
+    "settings.title": "Profil Sozlamalari", "settings.subtitle": "SAFARIO tajribangizni sozlang",
     "settings.account": "Hisob", "settings.privacy": "Maxfiylik", "settings.security": "Xavfsizlik",
     "settings.notifications": "Bildirishnomalar", "settings.appearance": "Ko'rinish",
     "settings.offline": "Offlayn Rejim", "settings.travel": "Sayohat Sozlamalari",
@@ -232,8 +310,86 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "settings.exportHistory": "Sayohat Tarixini Eksport",
     "settings.helpCenter": "Yordam Markazi", "settings.contactSupport": "Yordam Bilan Bog'lanish",
     "settings.reportProblem": "Muammoni Xabar Berish", "settings.sendFeedback": "Fikr Yuborish",
-    "settings.about": "OXEN Haqida", "settings.logOut": "Chiqish",
-    "settings.version": "OXEN v1.0.0 — Tadqiqotchilar uchun",
+    "settings.about": "SAFARIO Haqida", "settings.logOut": "Chiqish",
+    "settings.version": "SAFARIO v1.0.0 — Tadqiqotchilar uchun",
+
+    /* Nav — sidebar */
+    "nav.services": "Sayohat Xizmatlari", "nav.premium": "Premium A'zolik",
+    "nav.consulting": "Konsalting Paneli", "nav.statistics": "Statistika",
+    "nav.favorites": "Sevimlilar", "nav.settings": "Sozlamalar", "nav.help": "Yordam va Qo'llab-quvvatlash",
+    "nav.tagline": "Dunyoni o'rganing",
+
+    /* Explore */
+    "explore.heading": "Keyingi", "explore.headingAccent": "katta sarguzashtni kashf eting",
+    "explore.subtitle": "Mashhur yo'nalishlardan yashirin marvaridlargacha — sayohatingizni shu yerdan boshlang.",
+    "explore.3dGlobe": "3D Globus", "explore.3dGlobeDesc": "Dunyoni interaktiv o'rganing",
+    "explore.aiPlanner": "AI Rejalashtiruvchi", "explore.aiPlannerDesc": "AI bilan sayohat rejalashtiring",
+    "explore.trending": "Mashhur", "explore.trendingDesc": "Hozir nima mashhur",
+    "explore.trendingNow": "Hozir Mashhur", "explore.popularCities": "Mashhur Shaharlar",
+
+    /* Travel */
+    "travel.discover": "Kashf eting", "travel.heading": "Dunyoning eng ajoyib",
+    "travel.headingAccent": "joylarini o'rganing",
+    "travel.subtitle": "Mashhur yo'nalishlar, yashirin marvaridlar va orzu manzillar millionlab sayohatchilar tomonidan tanlangan.",
+    "travel.searchPlaceholder": "Yo'nalishlarni qidiring...", "travel.places": "joy",
+    "travel.watchVideo": " Videoni Ko'rish", "travel.noVideo": "Video Yo'q",
+    "travel.noResults": "Bunday yo'nalishlar topilmadi", "travel.clearSearch": "Qidiruvni tozalash",
+
+    /* Dashboard */
+    "dashboard.greeting": "Salom", "dashboard.subtitle": "Sayohatingiz hozirgacha, bitta joyda.",
+    "dashboard.yourWishlist": "Sizning istaklaringiz", "dashboard.wishlistEmpty": "Hozircha saqlangan yo'nalishlar yo'q. Orzu qilish uchun globusni aylantiring.",
+    "dashboard.exploreGlobe": "Globusni o'rganing", "dashboard.savedItineraries": "Saqlangan marshrutlar",
+    "dashboard.itinerariesEmpty": "Hozircha marshrutlar yo'q. AI keyingi sayohatingizni rejalashtirsin.",
+    "dashboard.openPlanner": "Rejalashtiruvchini ochish", "dashboard.days": "kun",
+    "dashboard.browseServices": "Sayohat Xizmatlarini Ko'rish", "dashboard.browseServicesDesc": "Viza qo'llab-quvvatlash, sayohat rejalashtirish, bal oy sayohati paketlari va boshqalar",
+    "dashboard.recommended": "Siz uchun tavsiyalar", "dashboard.tripsPlanned": "Rejalashtirilgan sayohatlar",
+
+    /* Trips */
+    "trips.heading": "Saqlangan", "trips.headingAccent": "sarguzashtlaringiz",
+    "trips.saved": "saqlangan", "trips.itinerary": "marshrut", "trips.itineraries": "marshrutlar",
+    "trips.empty": "Birinchi sayohatingizni rejalashtiring va u shu yerda paydo bo'ladi.", "trips.planNew": "Yangi Sayohat Rejalashtirish",
+    "trips.more": "boshqa", "trips.estimatedBudget": "Taxminiy Byudjet",
+    "trips.noTrips": "Hozircha sayohatlar yo'q", "trips.noTripsDesc": "AI rejalashtiruvchi yordamida birinchi marshrutingizni yarating. U avtomatik ravishda shu yerda saqlanadi.",
+    "trips.startPlanning": "Rejalashtirishni Boshlash",
+
+    /* Profile */
+    "profile.editProfile": "Profilni Tahrirlash", "profile.messages": "Xabarlar",
+    "profile.posts": "Postlar", "profile.followers": "Obunachilar", "profile.following": "Obuna bo'lganlar",
+    "profile.createPost": "Yangi Sayohat Posti Yaratish",
+    "profile.wantToVisit": "Tashrif Buyurmoqchi", "profile.visited": "Tashrif Buyurilgan", "profile.favorites": "Sevimlilar",
+    "profile.saved": "Saqlangan", "profile.travelMap": "Sayohat Xaritasi", "profile.stories": "Hikoyalar",
+    "profile.noPosts": "Hozircha sayohat postlari yo'q", "profile.noPostsDesc": "Birinchi sarguzashtingizni ulashish uchun tepadagi tugmadan foydalaning",
+    "profile.addStory": "Hikoya Qo'shish", "profile.story": "Hikoya",
+    "profile.noSaved": "Hozircha saqlangan yo'nalishlar yo'q", "profile.noSavedDesc": "Globusni o'rganing va sevimlilaringizni saqlang",
+    "profile.exploreGlobe": "Globusni o'rganing", "profile.countriesVisited": "mamlakat o'rganilgan",
+    "profile.noArchive": "Hozircha hikoya arxivi yo'q", "profile.noArchiveDesc": "Hikoyalaringiz yaratilganidan keyin shu yerda paydo bo'ladi",
+
+    /* Planner */
+    "planner.heading": "Orzudagi", "planner.headingAccent": "sayohatingizni tasvirlang.",
+    "planner.error": "Rejalashtiruvchi xatolik yuz berdi", "planner.retry": "Iltimos, qaytadan urinib ko'ring.",
+    "planner.saved": "Marshrut saqlandi", "planner.savedDesc": "Panelingizdan toping.",
+    "planner.savedBtn": "Saqlandi", "planner.bestTime": "Eng yaxshi vaqt", "planner.dayByDay": "Kun bo'yicha",
+    "planner.morning": "Ertalab", "planner.afternoon": "Tushdan keyin", "planner.evening": "Kechqurun",
+    "planner.budget": "Byudjet tahlili", "planner.tips": "Maslahatlar",
+
+    /* Auth */
+    "auth.backToGlobe": "Globusga Qaytish", "auth.comingSoon": "Avtentifikatsiya Tez Orada",
+    "auth.comingSoonDesc": "Google, Apple va email orqali kirishni yoqish uchun Supabase sozlanmoqda. Shu paytgoda mehmon sifatida dunyoni erkin o'rganing.",
+    "auth.configInProgress": "Sozlash Davom Etmoqda", "auth.configInProgressDesc": "Supabase sozlanmoqda. To'liq hisob ruyhatidan o'tish uchun tez orada qaytadan tekshiring.",
+    "auth.emailPassword": "Email va Parol", "auth.emailPasswordDesc": "Xavfsiz parol saqlash bilan klassik kirish",
+    "auth.googleSignIn": "Google orqali Kirish", "auth.googleSignInDesc": "Google hisobingiz bilan bir marta bosish orqali kirish",
+    "auth.appleSignIn": "Apple orqali Kirish", "auth.appleSignInDesc": "Face ID / Touch ID bilan maxfiy, xavfsiz kirish",
+    "auth.soon": "Tez Orada", "auth.continueAsGuest": "Mehmon Tadqiqotchi sifatida Davom Etish",
+    "auth.guestDesc": "Hisob kerak emas — 200+ mamlakatni o'rganing, AI bilan sayohat rejalashtiring va dunyoni kashf eting.",
+    "auth.fullAuthNote": "Google, Apple va email orqali to'liq avtentifikatsiya Supabase sozlanishi tugagandan keyin mavjud bo'ladi.",
+    "auth.travelTheWorld": "Dunyoni sayohat qiling", "auth.withSafario": "SAFARIO bilan",
+    "auth.featureCountries": "200+ Mamlakat", "auth.featureAIPlanner": "AI Rejalashtiruvchi",
+    "auth.featureLocalGuides": "Mahalliy Yo'riqnomalar", "auth.featureOfflineMaps": "Offlayn Xaritalar",
+    "auth.bottomTagline": "Yo'nalishlarni kashf eting, AI bilan rejalashtiring va dunyoning har bir burchagini o'rganing — barchasi bitta joyda.",
+    "auth.guest": "Mehmon Tadqiqotchi",
+
+    /* Common */
+    "common.viewAll": "Barchasini ko'rish", "common.clear": "Tozalash", "common.remove": "Olib tashlash",
   },
   tr: {
     "nav.globe": "Küre", "nav.explore": "Keşfet", "nav.travel": "Seyahat",
@@ -253,7 +409,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.back": "Geri", "common.loading": "Yükleniyor...",
     "common.error": "Bir hata oluştu", "common.save": "Kaydet", "common.cancel": "İptal",
 
-    "settings.title": "Profil Ayarları", "settings.subtitle": "OXEN deneyiminizi özelleştirin",
+    "settings.title": "Profil Ayarları", "settings.subtitle": "SAFARIO deneyiminizi özelleştirin",
     "settings.account": "Hesap", "settings.privacy": "Gizlilik", "settings.security": "Güvenlik",
     "settings.notifications": "Bildirimler", "settings.appearance": "Görünüm",
     "settings.offline": "Çevrimdışı Mod", "settings.travel": "Seyahat Ayarları",
@@ -279,8 +435,14 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "settings.exportHistory": "Seyahat Geçmişini Dışa Aktar",
     "settings.helpCenter": "Yardım Merkezi", "settings.contactSupport": "Destekle İletişim",
     "settings.reportProblem": "Sorun Bildir", "settings.sendFeedback": "Geri Bildirim Gönder",
-    "settings.about": "OXEN Hakkında", "settings.logOut": "Çıkış Yap",
-    "settings.version": "OXEN v1.0.0 — Kaşifler için",
+    "settings.about": "SAFARIO Hakkında", "settings.logOut": "Çıkış Yap",
+    "settings.version": "SAFARIO v1.0.0 — Kaşifler için",
+
+    "nav.services": "Seyahat Hizmetleri", "nav.premium": "Premium Üyelik",
+    "nav.consulting": "Danışmanlık Paneli", "nav.statistics": "İstatistikler",
+    "nav.favorites": "Favoriler", "nav.settings": "Ayarlar", "nav.help": "Yardım ve Destek",
+    "nav.tagline": "Dünyayı keşfedin",
+    "common.viewAll": "Tümünü gör", "common.clear": "Temizle", "common.remove": "Kaldır",
   },
   ru: {
     "nav.globe": "Глобус", "nav.explore": "Исследовать", "nav.travel": "Путешествия",
@@ -300,7 +462,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.back": "Назад", "common.loading": "Загрузка...",
     "common.error": "Что-то пошло не так", "common.save": "Сохранить", "common.cancel": "Отмена",
 
-    "settings.title": "Настройки Профиля", "settings.subtitle": "Настройте свой OXEN",
+    "settings.title": "Настройки Профиля", "settings.subtitle": "Настройте свой SAFARIO",
     "settings.account": "Аккаунт", "settings.privacy": "Приватность", "settings.security": "Безопасность",
     "settings.notifications": "Уведомления", "settings.appearance": "Внешний вид",
     "settings.offline": "Офлайн Режим", "settings.travel": "Настройки Путешествий",
@@ -326,8 +488,14 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "settings.exportHistory": "Экспорт Истории Путешествий",
     "settings.helpCenter": "Центр Помощи", "settings.contactSupport": "Связаться с Поддержкой",
     "settings.reportProblem": "Сообщить о Проблеме", "settings.sendFeedback": "Отправить Отзыв",
-    "settings.about": "О OXEN", "settings.logOut": "Выйти",
-    "settings.version": "OXEN v1.0.0 — Для исследователей",
+    "settings.about": "О SAFARIO", "settings.logOut": "Выйти",
+    "settings.version": "SAFARIO v1.0.0 — Для исследователей",
+
+    "nav.services": "Туристические Услуги", "nav.premium": "Премиум Подписка",
+    "nav.consulting": "Панель Консалтинга", "nav.statistics": "Статистика",
+    "nav.favorites": "Избранное", "nav.settings": "Настройки", "nav.help": "Помощь и Поддержка",
+    "nav.tagline": "Исследуйте мир",
+    "common.viewAll": "Смотреть все", "common.clear": "Очистить", "common.remove": "Удалить",
   },
   ar: {
     "nav.globe": "الكرة الأرضية", "nav.explore": "استكشف", "nav.travel": "سفر",
@@ -347,7 +515,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.back": "رجوع", "common.loading": "جار التحميل...",
     "common.error": "حدث خطأ ما", "common.save": "حفظ", "common.cancel": "إلغاء",
 
-    "settings.title": "إعدادات الملف الشخصي", "settings.subtitle": "خصص تجربة OXEN",
+    "settings.title": "إعدادات الملف الشخصي", "settings.subtitle": "خصص تجربة SAFARIO",
     "settings.account": "الحساب", "settings.privacy": "الخصوصية", "settings.security": "الأمان",
     "settings.notifications": "الإشعارات", "settings.appearance": "المظهر",
     "settings.offline": "وضع عدم الاتصال", "settings.travel": "إعدادات السفر",
@@ -373,8 +541,14 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "settings.exportHistory": "تصدير سجل السفر",
     "settings.helpCenter": "مركز المساعدة", "settings.contactSupport": "تواصل مع الدعم",
     "settings.reportProblem": "الإبلاغ عن مشكلة", "settings.sendFeedback": "إرسال ملاحظات",
-    "settings.about": "حول OXEN", "settings.logOut": "تسجيل الخروج",
-    "settings.version": "OXEN v1.0.0 — للمستكشفين",
+    "settings.about": "حول SAFARIO", "settings.logOut": "تسجيل الخروج",
+    "settings.version": "SAFARIO v1.0.0 — للمستكشفين",
+
+    "nav.services": "خدمات السفر", "nav.premium": "العضوية المميزة",
+    "nav.consulting": "لوحة الاستشارات", "nav.statistics": "الإحصائيات",
+    "nav.favorites": "المفضلة", "nav.settings": "الإعدادات", "nav.help": "المساعدة والدعم",
+    "nav.tagline": "استكشف العالم",
+    "common.viewAll": "عرض الكل", "common.clear": "مسح", "common.remove": "إزالة",
   },
   de: {
     "nav.globe": "Globus", "nav.explore": "Entdecken", "nav.travel": "Reisen",

@@ -20,7 +20,7 @@ import PostCreator from "@/components/PostCreator";
 import { COUNTRIES } from "@/data/countries";
 import { cn } from "@/lib/utils";
 
-const OXEN_LOGO = "https://r2-pub.rork.com/projects/jllemngulgwm5pb7uoc46/assets/b64891ed-f7c0-43c7-9079-36d87076a4c7.png";
+const SAFARIO_LOGO = "https://r2-pub.rork.com/projects/jllemngulgwm5pb7uoc46/assets/b64891ed-f7c0-43c7-9079-36d87076a4c7.png";
 
 /* ──────────────────────────────────────
    AnimatedCounter + CountUp (reusable)
@@ -72,13 +72,14 @@ function formatStat(n: number): string {
 
 function PostsGrid() {
   const { posts } = useTravel();
+  const { t } = useLanguage();
 
   if (posts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.03] text-3xl opacity-30">📸</div>
-        <p className="text-sm text-muted-foreground">No travel posts yet</p>
-        <p className="mt-1 text-xs text-muted-foreground/60">Use the button above to share your first adventure</p>
+        <p className="text-sm text-muted-foreground">{t("profile.noPosts", "No travel posts yet")}</p>
+        <p className="mt-1 text-xs text-muted-foreground/60">{t("profile.noPostsDesc", "Use the button above to share your first adventure")}</p>
       </div>
     );
   }
@@ -142,6 +143,7 @@ function PostsGrid() {
 
 function StoryBubbles({ onAdd, onView }: { onAdd: () => void; onView: (index: number) => void }) {
   const { stories } = useTravel();
+  const { t } = useLanguage();
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
@@ -157,7 +159,7 @@ function StoryBubbles({ onAdd, onView }: { onAdd: () => void; onView: (index: nu
         <div className="relative flex h-[74px] w-[74px] items-center justify-center rounded-full border-2 border-dashed border-white/[0.12] bg-white/[0.02] transition-colors hover:border-primary/30 hover:bg-primary/5">
           <Plus className="h-6 w-6 text-muted-foreground" />
         </div>
-        <span className="text-[10px] font-semibold text-muted-foreground">Add Story</span>
+        <span className="text-[10px] font-semibold text-muted-foreground">{t("profile.addStory", "Add Story")}</span>
       </motion.button>
 
       {/* Story bubbles */}
@@ -182,7 +184,7 @@ function StoryBubbles({ onAdd, onView }: { onAdd: () => void; onView: (index: nu
             </div>
           </div>
           <span className="text-[10px] font-semibold text-muted-foreground truncate max-w-[74px]">
-            {story.caption || "Story"}
+            {story.caption || t("profile.story", "Story")}
           </span>
         </motion.button>
       ))}
@@ -195,17 +197,18 @@ function StoryBubbles({ onAdd, onView }: { onAdd: () => void; onView: (index: nu
    ────────────────────────────────────── */
 
 function SavedList({ countries, navigate }: { countries: typeof COUNTRIES; navigate: (path: string) => void }) {
+  const { t } = useLanguage();
   if (countries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <Bookmark className="mb-3 h-10 w-10 text-muted-foreground/30" />
-        <p className="text-sm text-muted-foreground">No saved destinations yet</p>
-        <p className="mt-1 text-xs text-muted-foreground/60">Explore the globe and save your favorites</p>
+        <p className="text-sm text-muted-foreground">{t("profile.noSaved", "No saved destinations yet")}</p>
+        <p className="mt-1 text-xs text-muted-foreground/60">{t("profile.noSavedDesc", "Explore the globe and save your favorites")}</p>
         <button
           onClick={() => navigate("/")}
           className="gold-gradient mt-4 rounded-xl px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-lg transition hover:scale-105 active:scale-95"
         >
-          Explore globe
+          {t("profile.exploreGlobe", "Explore globe")}
         </button>
       </div>
     );
@@ -240,6 +243,7 @@ function SavedList({ countries, navigate }: { countries: typeof COUNTRIES; navig
 function TravelMapView({
   visited, wishlist, favorites,
 }: { visited: typeof COUNTRIES; wishlist: typeof COUNTRIES; favorites: typeof COUNTRIES }) {
+  const { t } = useLanguage();
   const totalCountries = 195;
   const percentVisited = Math.round((visited.length / totalCountries) * 100);
 
@@ -252,7 +256,7 @@ function TravelMapView({
           </div>
           <div>
             <p className="font-display text-lg font-extrabold">{visited.length} / {totalCountries}</p>
-            <p className="text-xs text-muted-foreground">countries visited ({percentVisited}%)</p>
+            <p className="text-xs text-muted-foreground">{t("profile.countriesVisited", "countries visited")} ({percentVisited}%)</p>
           </div>
         </div>
         <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/[0.06]">
@@ -267,7 +271,7 @@ function TravelMapView({
       {visited.length > 0 && (
         <div className="glass rounded-2xl border border-white/[0.06] p-4">
           <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <MapPinCheck className="h-3.5 w-3.5 text-emerald-400" /> Visited
+            <MapPinCheck className="h-3.5 w-3.5 text-emerald-400" /> {t("profile.visited", "Visited")}
           </h3>
           <div className="flex flex-wrap gap-2">
             {visited.map((c) => (
@@ -281,7 +285,7 @@ function TravelMapView({
       {wishlist.length > 0 && (
         <div className="glass rounded-2xl border border-white/[0.06] p-4">
           <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5 text-blue-400" /> Want to Visit
+            <MapPin className="h-3.5 w-3.5 text-blue-400" /> {t("profile.wantToVisit", "Want to Visit")}
           </h3>
           <div className="flex flex-wrap gap-2">
             {wishlist.map((c) => (
@@ -295,7 +299,7 @@ function TravelMapView({
       {favorites.length > 0 && (
         <div className="glass rounded-2xl border border-white/[0.06] p-4">
           <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <Heart className="h-3.5 w-3.5 text-rose-400" /> Favorites
+            <Heart className="h-3.5 w-3.5 text-rose-400" /> {t("profile.favorites", "Favorites")}
           </h3>
           <div className="flex flex-wrap gap-2">
             {favorites.map((c) => (
@@ -312,14 +316,15 @@ function TravelMapView({
 
 function StoryArchive() {
   const { stories } = useTravel();
+  const { t } = useLanguage();
 
   return (
     <div className="flex flex-wrap gap-3">
       {stories.length === 0 ? (
         <div className="flex w-full flex-col items-center justify-center py-16 text-center">
           <Clock className="mb-3 h-10 w-10 text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground">No story archive yet</p>
-          <p className="mt-1 text-xs text-muted-foreground/60">Your stories will appear here after you create them</p>
+          <p className="text-sm text-muted-foreground">{t("profile.noArchive", "No story archive yet")}</p>
+          <p className="mt-1 text-xs text-muted-foreground/60">{t("profile.noArchiveDesc", "Your stories will appear here after you create them")}</p>
         </div>
       ) : (
         stories.map((story, i) => (
@@ -492,7 +497,7 @@ export default function Profile() {
               className="gold-gradient flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-bold text-primary-foreground shadow-lg"
             >
               <UserPen className="h-3.5 w-3.5" />
-              Edit Profile
+              {t("profile.editProfile", "Edit Profile")}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -501,7 +506,7 @@ export default function Profile() {
               className="relative flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.04] py-2.5 text-xs font-bold text-foreground transition hover:bg-white/[0.08]"
             >
               <MessageSquare className="h-3.5 w-3.5" />
-              Messages
+              {t("profile.messages", "Messages")}
               {totalUnread > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
                   {totalUnread}
@@ -522,9 +527,9 @@ export default function Profile() {
           {/* Stats row */}
           <div className="mt-5 flex items-center gap-10">
             {[
-              { value: posts.length, label: "Posts" },
-              { value: 1243, label: "Followers" },
-              { value: 342, label: "Following" },
+              { value: posts.length, label: t("profile.posts", "Posts") },
+              { value: 1243, label: t("profile.followers", "Followers") },
+              { value: 342, label: t("profile.following", "Following") },
             ].map((stat) => (
               <div key={stat.label} className="flex flex-col items-center gap-0.5">
                 <span className="font-display text-xl font-extrabold tabular-nums">
@@ -557,15 +562,15 @@ export default function Profile() {
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary/10 border border-primary/20 py-3.5 text-sm font-bold text-primary transition-all hover:bg-primary/15 hover:border-primary/30 active:scale-[0.98]"
         >
           <Plus className="h-4 w-4" strokeWidth={2.5} />
-          + Create New Travel Post
+          + {t("profile.createPost", "Create New Travel Post")}
         </motion.button>
 
         {/* ── Travel statistics cards ── */}
         <div className="mt-5 grid grid-cols-3 gap-3">
           {([
-            { icon: MapPinCheck, label: "Want to Visit", value: wishlist.length, gradient: "from-blue-500/10 to-cyan-500/5", iconBg: "bg-blue-500/15 text-blue-400" },
-            { icon: Flag, label: "Visited", value: visited.length, gradient: "from-emerald-500/10 to-teal-500/5", iconBg: "bg-emerald-500/15 text-emerald-400" },
-            { icon: Heart, label: "Favorites", value: favorites.length, gradient: "from-rose-500/10 to-pink-500/5", iconBg: "bg-rose-500/15 text-rose-400" },
+            { icon: MapPinCheck, label: t("profile.wantToVisit", "Want to Visit"), value: wishlist.length, gradient: "from-blue-500/10 to-cyan-500/5", iconBg: "bg-blue-500/15 text-blue-400" },
+            { icon: Flag, label: t("profile.visited", "Visited"), value: visited.length, gradient: "from-emerald-500/10 to-teal-500/5", iconBg: "bg-emerald-500/15 text-emerald-400" },
+            { icon: Heart, label: t("profile.favorites", "Favorites"), value: favorites.length, gradient: "from-rose-500/10 to-pink-500/5", iconBg: "bg-rose-500/15 text-rose-400" },
           ] as const).map((card, i) => (
             <motion.div
               key={card.label}
@@ -597,10 +602,10 @@ export default function Profile() {
         <div className="mt-7">
           <div className="flex items-center border-b border-white/[0.06]">
             {([
-              { id: "posts" as const, icon: Grid3X3, label: "Posts" },
-              { id: "saved" as const, icon: Bookmark, label: "Saved" },
-              { id: "map" as const, icon: Globe2, label: "Travel Map" },
-              { id: "stories" as const, icon: Clock, label: "Stories" },
+              { id: "posts" as const, icon: Grid3X3, label: t("profile.posts", "Posts") },
+              { id: "saved" as const, icon: Bookmark, label: t("profile.saved", "Saved") },
+              { id: "map" as const, icon: Globe2, label: t("profile.travelMap", "Travel Map") },
+              { id: "stories" as const, icon: Clock, label: t("profile.stories", "Stories") },
             ]).map((tab) => (
               <button
                 key={tab.id}

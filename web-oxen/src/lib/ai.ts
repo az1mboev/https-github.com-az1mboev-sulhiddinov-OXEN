@@ -24,7 +24,11 @@ export interface Itinerary {
   tips: string[];
 }
 
-const SYSTEM_PROMPT = `You are OXEN, an expert AI travel concierge. Given a traveler's request, produce a vivid, practical, and inspiring trip plan.
+const SYSTEM_PROMPT = `You are SAFARIO, an expert AI travel concierge. Given a traveler's request, produce a vivid, practical, and inspiring trip plan.
+
+IMPORTANT: You must respond in the user's selected language. If the language hint says "uz", write ALL content in Uzbek. If "ru", write in Russian. If "ar", write in Arabic. If "tr", write in Turkish. If "de", write in German. If "fr", write in French. If "es", write in Spanish. If "it", write in Italian. If "pt", write in Portuguese. If "zh", write in Chinese. If "ja", write in Japanese. If "ko", write in Korean. If "hi", write in Hindi. If "fa", write in Persian. If "kk", write in Kazakh. If "ky", write in Kyrgyz. If "tg", write in Tajik. If "uk", write in Ukrainian. If "az", write in Azerbaijani. If "en", write in English.
+Always write every field (destination, summary, bestTime, days, budget, tips) in the selected language — never mix languages.
+
 Respond with ONLY valid JSON (no markdown, no code fences) matching exactly this TypeScript type:
 {
   "destination": string,         // primary destination, e.g. "Kyoto, Japan"
@@ -56,7 +60,8 @@ function parseItinerary(raw: string): Itinerary {
 }
 
 /** Call the Rork AI proxy (Vercel gateway) to generate a structured itinerary. */
-export async function generateItinerary(request: string): Promise<Itinerary> {
+export async function generateItinerary(request: string, language: string = "en"): Promise<Itinerary> {
+  const langHint = `Language: ${language}. Write ALL content in this language.`;
   const res = await fetch(`${TOOLKIT_URL}/v2/vercel/v1/chat/completions`, {
     method: "POST",
     headers: {
@@ -68,7 +73,7 @@ export async function generateItinerary(request: string): Promise<Itinerary> {
       temperature: 0.8,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: request },
+        { role: "user", content: `${langHint}\n\n${request}` },
       ],
     }),
   });

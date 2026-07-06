@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useTravel, type SavedItinerary } from "@/contexts/TravelContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const springIn = {
   type: "spring" as const,
@@ -30,6 +31,7 @@ function ItineraryCard({
   index: number;
   onRemove: (id: string) => void;
 }) {
+  const { t } = useLanguage();
   const dateStr = new Date(itinerary.createdAt).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -76,7 +78,7 @@ function ItineraryCard({
           ))}
           {itinerary.days.length > 3 && (
             <span className="rounded-lg bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              +{itinerary.days.length - 3} more
+              +{itinerary.days.length - 3} {t("trips.more", "more")}
             </span>
           )}
         </div>
@@ -85,7 +87,7 @@ function ItineraryCard({
       {/* Budget */}
       {itinerary.budget && itinerary.budget.length > 0 && (
         <div className="mb-4 rounded-xl bg-primary/5 p-3">
-          <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Estimated Budget</p>
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("trips.estimatedBudget", "Estimated Budget")}</p>
           <div className="space-y-1">
             {itinerary.budget.slice(0, 3).map((item, i) => (
               <div key={i} className="flex items-center justify-between text-xs">
@@ -103,7 +105,7 @@ function ItineraryCard({
         className="flex items-center gap-1.5 text-xs font-medium text-red-400/70 transition hover:text-red-400"
       >
         <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
-        Remove
+        {t("common.remove", "Remove")}
       </button>
     </motion.article>
   );
@@ -113,6 +115,7 @@ function ItineraryCard({
 
 export default function Trips() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { itineraries, removeItinerary } = useTravel();
 
   const handleRemove = useCallback(
@@ -133,17 +136,17 @@ export default function Trips() {
       >
         <div className="flex items-center gap-2 mb-2">
           <Briefcase className="h-5 w-5 text-primary" strokeWidth={2.2} />
-          <span className="text-xs font-bold uppercase tracking-widest text-primary">My Trips</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-primary">{t("nav.trips", "My Trips")}</span>
         </div>
         <h1 className="font-display text-3xl font-extrabold leading-tight">
-          Your saved
+          {t("trips.heading", "Your saved")}
           <br />
-          <span className="text-gold-gradient">adventures</span>
+          <span className="text-gold-gradient">{t("trips.headingAccent", "adventures")}</span>
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {itineraries.length > 0
-            ? `${itineraries.length} saved ${itineraries.length === 1 ? "itinerary" : "itineraries"}`
-            : "Plan your first trip and it'll appear here."}
+            ? `${itineraries.length} ${t("trips.saved", "saved")} ${itineraries.length === 1 ? t("trips.itinerary", "itinerary") : t("trips.itineraries", "itineraries")}`
+            : t("trips.empty", "Plan your first trip and it'll appear here.")}
         </p>
       </motion.div>
 
@@ -157,7 +160,7 @@ export default function Trips() {
         className="gold-gradient mb-6 flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-xl transition hover:scale-[1.02] active:scale-95"
       >
         <Plus className="h-4 w-4" strokeWidth={2.5} />
-        Plan a New Trip
+        {t("trips.planNew", "Plan a New Trip")}
       </motion.button>
 
       {/* Itineraries */}
@@ -184,15 +187,15 @@ export default function Trips() {
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
             <Sparkles className="h-8 w-8 text-primary" strokeWidth={1.5} />
           </div>
-          <h3 className="mt-5 font-display text-lg font-bold text-foreground">No trips yet</h3>
+          <h3 className="mt-5 font-display text-lg font-bold text-foreground">{t("trips.noTrips", "No trips yet")}</h3>
           <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-            Use the AI planner to create your first itinerary. It'll be saved here automatically.
+            {t("trips.noTripsDesc", "Use the AI planner to create your first itinerary. It'll be saved here automatically.")}
           </p>
           <button
             onClick={() => navigate("/planner")}
             className="mt-5 rounded-full bg-white/5 px-5 py-2.5 text-sm font-medium text-foreground transition hover:bg-white/10 active:scale-95"
           >
-            Start Planning →
+            {t("trips.startPlanning", "Start Planning")} →
           </button>
         </motion.div>
       )}

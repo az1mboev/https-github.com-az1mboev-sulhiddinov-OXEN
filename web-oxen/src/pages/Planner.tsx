@@ -3,6 +3,7 @@ import { Sparkles, Loader2, Send, Sun, Sunset, Moon, Wallet, Lightbulb, Bookmark
 import { useState } from "react";
 
 import { useTravel } from "@/contexts/TravelContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { generateItinerary, type Itinerary } from "@/lib/ai";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,6 +17,7 @@ const SUGGESTIONS = [
 export default function Planner() {
   const { toast } = useToast();
   const { saveItinerary } = useTravel();
+  const { language, t } = useLanguage();
   const [prompt, setPrompt] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
@@ -29,12 +31,12 @@ export default function Planner() {
     setSaved(false);
     setLastPrompt(text);
     try {
-      const result = await generateItinerary(text);
+      const result = await generateItinerary(text, language);
       setItinerary(result);
     } catch (err) {
       toast({
-        title: "The planner stumbled",
-        description: err instanceof Error ? err.message : "Please try again.",
+        title: t("planner.error", "The planner stumbled"),
+        description: err instanceof Error ? err.message : t("planner.retry", "Please try again."),
         variant: "destructive",
       });
     } finally {
@@ -46,7 +48,7 @@ export default function Planner() {
     if (!itinerary) return;
     saveItinerary(lastPrompt, itinerary);
     setSaved(true);
-    toast({ title: "Itinerary saved", description: "Find it on your dashboard." });
+    toast({ title: t("planner.saved", "Itinerary saved"), description: t("planner.savedDesc", "Find it on your dashboard.") });
   };
 
   return (
@@ -54,13 +56,13 @@ export default function Planner() {
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center gap-2 text-primary">
           <Sparkles className="h-5 w-5" />
-          <span className="text-xs font-bold uppercase tracking-widest">AI Travel Planner</span>
+          <span className="text-xs font-bold uppercase tracking-widest">{t("planner.title", "AI Travel Planner")}</span>
         </div>
         <h1 className="mt-2 font-display text-3xl font-extrabold leading-tight">
-          Describe your <span className="text-gold-gradient">dream trip.</span>
+          {t("planner.heading", "Describe your")} <span className="text-gold-gradient">{t("planner.headingAccent", "dream trip.")}</span>
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Tell OXEN where, how long, and your vibe — get a full itinerary in seconds.
+          Tell SAFARIO where, how long, and your vibe — get a full itinerary in seconds.
         </p>
       </motion.div>
 
@@ -70,7 +72,7 @@ export default function Planner() {
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="e.g. 6 days in Morocco, food and culture, mid budget for two…"
+            placeholder={t("planner.placeholder", "e.g. 6 days in Morocco, food and culture, mid budget for two…")}
             rows={3}
             className="w-full resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
           />
@@ -81,7 +83,7 @@ export default function Planner() {
               className="gold-gradient flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-lg transition hover:scale-105 active:scale-95 disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              {loading ? "Planning…" : "Generate"}
+              {loading ? t("planner.loading", "Planning…") : t("planner.generate", "Generate")}
             </button>
           </div>
         </div>
@@ -147,19 +149,19 @@ export default function Planner() {
                   }`}
                 >
                   {saved ? <Check className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
-                  {saved ? "Saved" : "Save"}
+                  {saved ? t("planner.savedBtn", "Saved") : t("common.save", "Save")}
                 </button>
               </div>
               {itinerary.bestTime && (
                 <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                  <Sun className="h-3.5 w-3.5" /> Best time: {itinerary.bestTime}
+                  <Sun className="h-3.5 w-3.5" /> {t("planner.bestTime", "Best time")}: {itinerary.bestTime}
                 </div>
               )}
             </div>
 
             {/* Daily plan */}
             <div>
-              <h3 className="mb-3 font-display text-lg font-bold">Day by day</h3>
+              <h3 className="mb-3 font-display text-lg font-bold">{t("planner.dayByDay", "Day by day")}</h3>
               <div className="space-y-3">
                 {itinerary.days.map((day, i) => (
                   <motion.div
@@ -176,9 +178,9 @@ export default function Planner() {
                       <span className="font-display font-bold">{day.title}</span>
                     </div>
                     <div className="space-y-2.5 pl-1">
-                      <Slot icon={Sun} label="Morning" text={day.morning} />
-                      <Slot icon={Sunset} label="Afternoon" text={day.afternoon} />
-                      <Slot icon={Moon} label="Evening" text={day.evening} />
+                      <Slot icon={Sun} label={t("planner.morning", "Morning")} text={day.morning} />
+                      <Slot icon={Sunset} label={t("planner.afternoon", "Afternoon")} text={day.afternoon} />
+                      <Slot icon={Moon} label={t("planner.evening", "Evening")} text={day.evening} />
                     </div>
                   </motion.div>
                 ))}
@@ -189,7 +191,7 @@ export default function Planner() {
             {itinerary.budget.length > 0 && (
               <div>
                 <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-bold">
-                  <Wallet className="h-5 w-5 text-primary" /> Budget breakdown
+                  <Wallet className="h-5 w-5 text-primary" /> {t("planner.budget", "Budget breakdown")}
                 </h3>
                 <div className="glass overflow-hidden rounded-2xl">
                   {itinerary.budget.map((b, i) => (
@@ -209,7 +211,7 @@ export default function Planner() {
             {itinerary.tips.length > 0 && (
               <div>
                 <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-bold">
-                  <Lightbulb className="h-5 w-5 text-primary" /> Insider tips
+                  <Lightbulb className="h-5 w-5 text-primary" /> {t("planner.tips", "Insider tips")}
                 </h3>
                 <div className="space-y-2">
                   {itinerary.tips.map((t, i) => (

@@ -613,7 +613,7 @@ export default function Support() {
                   }
                 }}
                 rows={1}
-                placeholder={editingMessageId ? "Edit message..." : "Message OXEN Support..."}
+                placeholder={editingMessageId ? "Edit message..." : "Message SAFARIO Support..."}
                 className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none max-h-24 min-w-0"
                 style={{ minHeight: "24px" }}
               />

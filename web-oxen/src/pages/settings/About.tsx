@@ -7,14 +7,14 @@ import { useNavigate } from "react-router-dom";
 
 import SettingsPageShell, { Card, SectionLabel } from "@/components/SettingsPageShell";
 
-const OXEN_LOGO = "https://r2-pub.rork.com/projects/jllemngulgwm5pb7uoc46/assets/b64891ed-f7c0-43c7-9079-36d87076a4c7.png";
+const SAFARIO_LOGO = "https://r2-pub.rork.com/projects/jllemngulgwm5pb7uoc46/assets/b64891ed-f7c0-43c7-9079-36d87076a4c7.png";
 
 export default function About() {
   const navigate = useNavigate();
 
   return (
     <SettingsPageShell
-      title="About OXEN"
+      title="About SAFARIO"
       subtitle="Version 1.0.0"
       icon={<Info className="h-4.5 w-4.5" />}
     >
@@ -26,10 +26,10 @@ export default function About() {
       >
         <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-400/30 via-amber-500/20 to-orange-500/30 p-[3px] shadow-lg shadow-amber-500/20">
           <div className="flex h-full w-full items-center justify-center rounded-3xl bg-card overflow-hidden">
-            <img src={OXEN_LOGO} alt="OXEN" className="h-full w-full object-cover" />
+            <img src={SAFARIO_LOGO} alt="SAFARIO" className="h-full w-full object-cover" />
           </div>
         </div>
-        <h1 className="mt-4 font-display text-2xl font-extrabold">OXEN</h1>
+        <h1 className="mt-4 font-display text-2xl font-extrabold">SAFARIO</h1>
         <p className="text-sm text-muted-foreground">AI-Powered Travel Platform</p>
         <div className="mt-2 flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-1">
           <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
@@ -40,7 +40,7 @@ export default function About() {
       {/* Description */}
       <div className="glass rounded-2xl border border-white/[0.06] p-5 text-center">
         <p className="text-sm text-muted-foreground leading-relaxed">
-          OXEN is a premium travel platform that lets you explore the world through an
+          SAFARIO is a premium travel platform that lets you explore the world through an
           interactive 3D globe. Discover countries, plan trips with AI, share your journeys,
           and connect with fellow explorers — all in one beautifully designed app.
         </p>
@@ -136,7 +136,7 @@ export default function About() {
           Made with <Heart className="inline h-3 w-3 text-rose-400" fill="currentColor" /> for explorers
         </p>
         <p className="mt-1 text-[10px] text-muted-foreground/60">
-          © 2026 OXEN Travel. All rights reserved.
+          © 2026 SAFARIO Travel. All rights reserved.
         </p>
       </div>
     </SettingsPageShell>

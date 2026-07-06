@@ -1,4 +1,4 @@
-/* OXEN Service Worker — offline-first cache, background sync, auto-update.
+/* SAFARIO Service Worker — offline-first cache, background sync, auto-update.
  * Strategy:
  *  - Precache app shell (HTML, JS, CSS, icons).
  *  - Cache-first for static assets (fonts, images, icons).
@@ -6,7 +6,7 @@
  *  - Network-first for navigation (HTML) with offline fallback.
  *  - Bypass for Supabase / auth / API POST requests.
  */
-const CACHE_VERSION = "oxen-v1";
+const CACHE_VERSION = "safario-v1";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_URL = "/offline.html";

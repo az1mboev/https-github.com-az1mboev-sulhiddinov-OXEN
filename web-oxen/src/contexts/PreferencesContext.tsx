@@ -48,9 +48,9 @@ interface PreferencesContextValue {
 
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 
-const CUR_KEY = "oxen.currency";
-const DIST_KEY = "oxen.distance";
-const TZ_KEY = "oxen.timezone";
+const CUR_KEY = "safario.currency";
+const DIST_KEY = "safario.distance";
+const TZ_KEY = "safario.timezone";
 
 function detectTimezone(): string {
   try {

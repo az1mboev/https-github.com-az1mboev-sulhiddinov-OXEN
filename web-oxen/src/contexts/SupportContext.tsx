@@ -69,10 +69,10 @@ interface SupportContextValue {
 /*  localStorage helpers                                               */
 /* ------------------------------------------------------------------ */
 
-const SUPPORT_KEY = "oxen.support.messages";
-const TYPING_KEY = "oxen.support.typing";
+const SUPPORT_KEY = "safario.support.messages";
+const TYPING_KEY = "safario.support.typing";
 const CURRENT_USER = { id: "user", name: "You", avatar: null as string | null };
-const DEVELOPER = { id: "developer", name: "OXEN Support", avatar: "🛡️" };
+const DEVELOPER = { id: "developer", name: "SAFARIO Support", avatar: "🛡️" };
 
 const SupportContext = createContext<SupportContextValue | null>(null);
 
@@ -99,7 +99,7 @@ function save<T>(key: string, value: T): void {
 
 const DEV_REPLIES: Record<string, string[]> = {
   general: [
-    "Hi! Welcome to OXEN Support 🌍 How can I help you today?",
+    "Hi! Welcome to SAFARIO Support 🌍 How can I help you today?",
     "Thanks for reaching out! Our team will look into this right away.",
     "Is there anything else I can help you with?",
   ],
@@ -131,7 +131,7 @@ const DEV_REPLIES: Record<string, string[]> = {
   safety: [
     "We take safety reports very seriously. 🛡️ Our moderation team is reviewing this now.",
     "The reported content has been flagged for immediate review.",
-    "Appropriate action will be taken within 24 hours. Thank you for helping keep OXEN safe.",
+    "Appropriate action will be taken within 24 hours. Thank you for helping keep SAFARIO safe.",
   ],
   technical: [
     "Let me help you with this technical issue. ⚙️ Have you tried clearing the app cache?",
@@ -159,16 +159,16 @@ function queueEmailNotification(categoryId: string, categoryName: string, messag
   // For now, we store the notification in localStorage so a backend
   // worker or edge function can pick it up and send the email.
   try {
-    const notifications = load<any[]>("oxen.support.email_queue", []);
+    const notifications = load<any[]>("safario.support.email_queue", []);
     notifications.push({
       id: crypto.randomUUID(),
       to: NOTIFICATION_EMAILS,
-      subject: `[OXEN Support] New ${messageType === "text" ? "message" : messageType} in ${categoryName}`,
+      subject: `[SAFARIO Support] New ${messageType === "text" ? "message" : messageType} in ${categoryName}`,
       body: `A user sent a new support message.\n\nCategory: ${categoryName}\nType: ${messageType}\nContent: ${messageType === "text" ? messageContent : `[${messageType} attachment]`}\nTimestamp: ${new Date().toISOString()}`,
       createdAt: Date.now(),
       sent: false,
     });
-    save("oxen.support.email_queue", notifications);
+    save("safario.support.email_queue", notifications);
   } catch {
     // ignore
   }
