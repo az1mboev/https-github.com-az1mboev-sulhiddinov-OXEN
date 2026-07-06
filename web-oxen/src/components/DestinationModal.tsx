@@ -81,14 +81,16 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
     <AnimatePresence>
       {open && (
         <>
-          {/* ── Subtle backdrop — dims but keeps globe visible ─────────── */}
+          {/* ── Subtle backdrop — dims but keeps globe fully interactive ─── */}
+          {/* pointer-events-none so taps pass through to the globe; closing */}
+          {/* is handled via Globe.onBackgroundTap + the close button.       */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px]"
-            onClick={onClose}
+            className="pointer-events-none fixed inset-0 z-40 bg-black/15"
+            aria-hidden
           />
 
           {/* ── Floating glass card — centered, globe stays visible behind ─── */}
@@ -97,7 +99,7 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.92 }}
             transition={{ type: "spring" as const, stiffness: 320, damping: 28, mass: 0.9 }}
-            className="floating-info-panel fixed left-1/2 z-50 flex max-h-[70vh] w-full max-w-[380px] -translate-x-1/2 flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-gradient-to-b from-[#14161f]/95 via-[#11131b]/95 to-[#0d0f15]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl"
+            className="floating-info-panel pointer-events-auto fixed left-1/2 z-50 flex max-h-[70vh] w-full max-w-[380px] -translate-x-1/2 flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-gradient-to-b from-[#14161f]/95 via-[#11131b]/95 to-[#0d0f15]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl"
             style={{
               top: "calc(env(safe-area-inset-top, 0px) + 80px)",
               bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",

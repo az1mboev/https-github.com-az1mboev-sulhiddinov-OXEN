@@ -532,12 +532,14 @@ function DayNightCycle() {
 function EarthSphere({
   onCountrySelect,
   onCountryDoubleClick,
+  onBackgroundTap,
   selectedCountry,
   hoveredCountry,
   onHoverCountry,
 }: {
   onCountrySelect: (c: Country) => void;
   onCountryDoubleClick: (c: Country) => void;
+  onBackgroundTap?: () => void;
   selectedCountry: Country | null;
   hoveredCountry: Country | null;
   onHoverCountry: (c: Country | null) => void;
@@ -598,11 +600,12 @@ function EarthSphere({
         lastClickCountry.current = null;
       } else {
         if (country) onCountrySelect(country);
+        else onBackgroundTap?.();
         lastClickTime.current = now;
         lastClickCountry.current = country;
       }
     },
-    [onCountrySelect, onCountryDoubleClick],
+    [onCountrySelect, onCountryDoubleClick, onBackgroundTap],
   );
 
   return (
@@ -765,6 +768,7 @@ function ZoomController({
 function Scene({
   onCountrySelect,
   onCountryDoubleClick,
+  onBackgroundTap,
   selectedCountry,
   hoveredCountry,
   onHoverCountry,
@@ -775,6 +779,7 @@ function Scene({
 }: {
   onCountrySelect: (c: Country) => void;
   onCountryDoubleClick: (c: Country) => void;
+  onBackgroundTap?: () => void;
   selectedCountry: Country | null;
   hoveredCountry: Country | null;
   onHoverCountry: (c: Country | null) => void;
@@ -789,6 +794,7 @@ function Scene({
       <EarthSphere
         onCountrySelect={onCountrySelect}
         onCountryDoubleClick={onCountryDoubleClick}
+        onBackgroundTap={onBackgroundTap}
         selectedCountry={selectedCountry}
         hoveredCountry={hoveredCountry}
         onHoverCountry={onHoverCountry}
@@ -812,12 +818,14 @@ function Scene({
 
 export default function Globe({
   onCountrySelect,
+  onBackgroundTap,
   selectedCountry,
   zoomTarget,
   visitedIds,
   wishlistIds,
 }: {
   onCountrySelect: (c: Country) => void;
+  onBackgroundTap?: () => void;
   selectedCountry: Country | null;
   zoomTarget?: { lat: number; lng: number } | null;
   visitedIds?: Set<string>;
@@ -851,6 +859,7 @@ export default function Globe({
           <Scene
             onCountrySelect={onCountrySelect}
             onCountryDoubleClick={handleDoubleClick}
+            onBackgroundTap={onBackgroundTap}
             selectedCountry={selectedCountry}
             hoveredCountry={hoveredCountry}
             onHoverCountry={handleHoverWithState}

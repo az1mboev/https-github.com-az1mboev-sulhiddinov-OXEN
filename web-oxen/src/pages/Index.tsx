@@ -368,6 +368,12 @@ export default function Index() {
     setTimeout(() => setSelectedCountry(null), 350);
   }, []);
 
+  // Tapping ocean on the globe closes the open panel (but keeps the globe
+  // fully interactive — rotate/drag/zoom are never blocked).
+  const handleBackgroundTap = useCallback(() => {
+    if (modalStep !== "closed") handleCloseAll();
+  }, [modalStep, handleCloseAll]);
+
   const handleSearchSelect = useCallback((country: Country) => {
     setSelectedCountry(country);
     setModalStep("destination");
@@ -394,6 +400,7 @@ export default function Index() {
           >
             <Globe
               onCountrySelect={handleCountrySelect}
+              onBackgroundTap={handleBackgroundTap}
               selectedCountry={selectedCountry}
               zoomTarget={zoomTarget}
               visitedIds={visitedSet}
