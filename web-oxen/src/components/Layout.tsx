@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, Globe2, Compass, Plane, Briefcase, User, WifiOff, RefreshCw } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import Sidebar from "@/components/Sidebar";
@@ -8,6 +9,8 @@ import { useSidebar } from "@/contexts/SidebarContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useOffline } from "@/contexts/OfflineContext";
 import { cn } from "@/lib/utils";
+
+const LanguageSwitcher = lazy(() => import("@/components/LanguageSwitcher"));
 
 const TABS = [
   { to: "/", label: "nav.globe", icon: Globe2, end: true },
@@ -64,11 +67,21 @@ export default function Layout() {
           onClick={open}
           className="fixed left-4 z-30 flex h-10 w-10 items-center justify-center rounded-xl bg-card/50 backdrop-blur-xl border border-white/10 text-muted-foreground shadow-lg transition-all hover:bg-card/70 hover:text-foreground hover:border-white/20 active:scale-95"
           style={{ top: "calc(env(safe-area-inset-top, 0px) + 16px)" }}
-          aria-label="Open navigation menu"
+          aria-label={t("nav.openMenu", "Open navigation menu")}
         >
           <Menu className="h-5 w-5" strokeWidth={2} />
         </motion.button>
       )}
+
+      {/* Top-right language switcher — available on every page */}
+      <div
+        className="fixed right-4 z-30"
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 18px)" }}
+      >
+        <Suspense fallback={null}>
+          <LanguageSwitcher />
+        </Suspense>
+      </div>
 
       {/* Dark overlay */}
       <AnimatePresence>

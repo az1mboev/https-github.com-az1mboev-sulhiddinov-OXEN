@@ -27,6 +27,7 @@ import { TravelProvider } from "./contexts/TravelContext";
 
 const Admin = lazy(() => import("./pages/Admin"));
 const Auth = lazy(() => import("./pages/Auth"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
 const City = lazy(() => import("./pages/City"));
 const ConsultingDashboard = lazy(() => import("./pages/ConsultingDashboard"));
 const Country = lazy(() => import("./pages/Country"));
@@ -121,6 +122,7 @@ const App = () => (
                             <Suspense fallback={<RouteFallback />}>
                               <Routes>
                               <Route path="/auth" element={<Auth />} />
+                              <Route path="/welcome" element={<Onboarding />} />
                               <Route element={<Layout />}>
                                 <Route path="/" element={<Index />} />
                                 <Route path="/country/:countryId" element={<Country />} />

@@ -265,6 +265,40 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
 
     /* Common — extra */
     "common.viewAll": "View all", "common.clear": "Clear", "common.remove": "Remove",
+    "common.saved": "Saved to favorites", "common.linkCopied": "Link copied to clipboard",
+
+    /* Onboarding */
+    "onboarding.badge": "Your journey starts here",
+    "onboarding.title1": "Explore the world", "onboarding.title2": "from your fingertips",
+    "onboarding.subtitle": "Spin a 3D globe, discover 200+ countries, and let AI plan your next great escape.",
+    "onboarding.start": "Get started", "onboarding.skip": "Skip for now",
+    "onboarding.languageTitle": "Choose your language",
+    "onboarding.languageSubtitle": "You can change this anytime in Settings.",
+    "onboarding.continue": "Continue",
+    "onboarding.readyTitle": "You're all set!",
+    "onboarding.readySubtitle": "Spin the globe, discover new places, and let AI craft your perfect itinerary.",
+    "onboarding.explore": "Start exploring",
+    "onboarding.feat1": "3D Globe", "onboarding.feat2": "AI Planner", "onboarding.feat3": "200+ Countries",
+
+    /* Home — extra */
+    "home.search": "Search destinations", "home.searchPlaceholder": "Search by country, city, or attraction…",
+    "home.noResults": "No destinations found for",
+    "home.postsTitle": "Travel Posts Around the World", "home.postsSubtitle": "Community stories from across the globe",
+    "home.quickExplore": "Quick explore",
+    "home.travelDesc": "Browse all destinations", "home.tripsDesc": "View saved itineraries",
+    "home.signinCtaTitle": "Save your journeys",
+    "home.signinCtaDesc": "Sign in to bookmark countries, plan trips, and share your travel stories.",
+
+    /* Nav — extra */
+    "nav.openMenu": "Open navigation menu",
+
+    /* Explore — chips + sections */
+    "explore.adventures": "Adventures", "explore.discover": "Discover",
+    "explore.chipAll": "All", "explore.chipBeaches": "Beaches",
+    "explore.chipMountains": "Mountains", "explore.chipHistorical": "Historical",
+    "explore.chipModern": "Modern Cities",
+    "explore.noResults": "No destinations in this category yet",
+    "explore.myTripsDesc": "View saved itineraries",
   },
   uz: {
     "nav.globe": "Globus", "nav.explore": "Kashf qilish", "nav.travel": "Sayohat",
@@ -390,6 +424,40 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
 
     /* Common */
     "common.viewAll": "Barchasini ko'rish", "common.clear": "Tozalash", "common.remove": "Olib tashlash",
+    "common.saved": "Sevimlilarga saqlandi", "common.linkCopied": "Havola nusxalandi",
+
+    /* Onboarding */
+    "onboarding.badge": "Sayohatingiz shu yerdan boshlanadi",
+    "onboarding.title1": "Dunyoni", "onboarding.title2": "barmoqlaringiz bilan o'rganing",
+    "onboarding.subtitle": "3D globusni aylantiring, 200+ mamlakatni kashf eting va AI sayohatingizni rejalashtirsin.",
+    "onboarding.start": "Boshlash", "onboarding.skip": "Hozircha o'tkazib yuborish",
+    "onboarding.languageTitle": "Tilingizni tanlang",
+    "onboarding.languageSubtitle": "Buni Sozlamalarda istalgan vaqtda o'zgartirishingiz mumkin.",
+    "onboarding.continue": "Davom etish",
+    "onboarding.readyTitle": "Hammasi tayyor!",
+    "onboarding.readySubtitle": "Globusni aylantiring, yangi joylarni kashf eting va AI mukammal marshrutingizni tuzsin.",
+    "onboarding.explore": "O'rganishni boshlash",
+    "onboarding.feat1": "3D Globus", "onboarding.feat2": "AI Rejalashtiruvchi", "onboarding.feat3": "200+ Mamlakat",
+
+    /* Home */
+    "home.search": "Yo'nalishlarni qidiring", "home.searchPlaceholder": "Mamlakat, shahar yoki diqqatga sazovor joy bo'yicha qidiring…",
+    "home.noResults": "Bunday yo'nalishlar topilmadi",
+    "home.postsTitle": "Dunyo bo'ylab sayohat postlari", "home.postsSubtitle": "Butun dunyo bo'ylab hamjamiyat hikoyalari",
+    "home.quickExplore": "Tezkor o'rganish",
+    "home.travelDesc": "Barcha yo'nalishlarni ko'rish", "home.tripsDesc": "Saqlangan marshrutlarni ko'rish",
+    "home.signinCtaTitle": "Sayohatlaringizni saqlang",
+    "home.signinCtaDesc": "Mamlakatlarni belgilash, sayohat rejalashtirish va sayohat hikoyalarini ulashish uchun tizimga kiring.",
+
+    /* Nav */
+    "nav.openMenu": "Navigatsiya menusini ochish",
+
+    /* Explore */
+    "explore.adventures": "Sarguzashtlar", "explore.discover": "Kashf etish",
+    "explore.chipAll": "Barchasi", "explore.chipBeaches": "Plajlar",
+    "explore.chipMountains": "Tog'lar", "explore.chipHistorical": "Tarixiy",
+    "explore.chipModern": "Zamonaviy shaharlar",
+    "explore.noResults": "Ushbu toifada hozircha yo'nalishlar yo'q",
+    "explore.myTripsDesc": "Saqlangan marshrutlarni ko'rish",
   },
   tr: {
     "nav.globe": "Küre", "nav.explore": "Keşfet", "nav.travel": "Seyahat",
@@ -443,6 +511,30 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "nav.favorites": "Favoriler", "nav.settings": "Ayarlar", "nav.help": "Yardım ve Destek",
     "nav.tagline": "Dünyayı keşfedin",
     "common.viewAll": "Tümünü gör", "common.clear": "Temizle", "common.remove": "Kaldır",
+    "common.saved": "Favorilere kaydedildi", "common.linkCopied": "Bağlantı kopyalandı",
+
+    /* Onboarding */
+    "onboarding.badge": "Yolculuğunuz burada başlıyor",
+    "onboarding.title1": "Dünyayı", "onboarding.title2": "parmaklarınızın ucundan keşfedin",
+    "onboarding.start": "Başla", "onboarding.skip": "Şimdilik atla",
+    "onboarding.languageTitle": "Dilinizi seçin",
+    "onboarding.languageSubtitle": "Bunu Ayarlar'da istediğiniz zaman değiştirebilirsiniz.",
+    "onboarding.continue": "Devam et",
+    "onboarding.readyTitle": "Hazırsınız!",
+    "onboarding.explore": "Keşfetmeye başla",
+    "onboarding.feat1": "3D Küre", "onboarding.feat2": "AI Planlayıcı", "onboarding.feat3": "200+ Ülke",
+
+    /* Home */
+    "home.search": "Destinations ara", "home.postsTitle": "Dünya Çapında Seyahat Yazıları",
+    "home.quickExplore": "Hızlı keşif",
+    "home.signinCtaTitle": "Yolculuklarınızı kaydedin",
+
+    /* Explore */
+    "explore.adventures": "Maceralar", "explore.discover": "Keşfet",
+    "explore.chipAll": "Tümü", "explore.chipBeaches": "Plajlar",
+    "explore.chipMountains": "Dağlar", "explore.chipHistorical": "Tarihi",
+    "explore.chipModern": "Modern Şehirler",
+    "explore.myTripsDesc": "Kayıtlı rotaları gör",
   },
   ru: {
     "nav.globe": "Глобус", "nav.explore": "Исследовать", "nav.travel": "Путешествия",
@@ -496,6 +588,30 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "nav.favorites": "Избранное", "nav.settings": "Настройки", "nav.help": "Помощь и Поддержка",
     "nav.tagline": "Исследуйте мир",
     "common.viewAll": "Смотреть все", "common.clear": "Очистить", "common.remove": "Удалить",
+    "common.saved": "Сохранено в избранное", "common.linkCopied": "Ссылка скопирована",
+
+    /* Onboarding */
+    "onboarding.badge": "Ваше путешествие начинается здесь",
+    "onboarding.title1": "Исследуйте мир", "onboarding.title2": "кончиками пальцев",
+    "onboarding.start": "Начать", "onboarding.skip": "Пропустить",
+    "onboarding.languageTitle": "Выберите язык",
+    "onboarding.languageSubtitle": "Вы можете изменить это в Настройках в любое время.",
+    "onboarding.continue": "Продолжить",
+    "onboarding.readyTitle": "Всё готово!",
+    "onboarding.explore": "Начать исследование",
+    "onboarding.feat1": "3D Глобус", "onboarding.feat2": "ИИ Планировщик", "onboarding.feat3": "200+ Стран",
+
+    /* Home */
+    "home.search": "Искать направления", "home.postsTitle": "Путевые посты со всего мира",
+    "home.quickExplore": "Быстрый старт",
+    "home.signinCtaTitle": "Сохраните свои путешествия",
+
+    /* Explore */
+    "explore.adventures": "Приключения", "explore.discover": "Открытия",
+    "explore.chipAll": "Все", "explore.chipBeaches": "Пляжи",
+    "explore.chipMountains": "Горы", "explore.chipHistorical": "Исторические",
+    "explore.chipModern": "Современные города",
+    "explore.myTripsDesc": "Просмотреть сохранённые маршруты",
   },
   ar: {
     "nav.globe": "الكرة الأرضية", "nav.explore": "استكشف", "nav.travel": "سفر",
