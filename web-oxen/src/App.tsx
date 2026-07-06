@@ -14,6 +14,7 @@ import { LanguageProvider } from "./contexts/LanguageContext";
 import { OfflineProvider } from "./contexts/OfflineContext";
 import { ReportProvider } from "./contexts/ReportContext";
 import { SidebarProvider } from "./contexts/SidebarContext";
+import { SupportProvider } from "./contexts/SupportContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { TravelProvider } from "./contexts/TravelContext";
 
@@ -39,6 +40,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const ServiceDetails = lazy(() => import("./pages/ServiceDetails"));
 const ServiceEditor = lazy(() => import("./pages/ServiceEditor"));
 const Services = lazy(() => import("./pages/Services"));
+const Support = lazy(() => import("./pages/Support"));
 const Travel = lazy(() => import("./pages/Travel"));
 const Trips = lazy(() => import("./pages/Trips"));
 
@@ -89,8 +91,9 @@ const App = () => (
               <ReportProvider>
                 <CommentsProvider>
                   <OfflineProvider>
-                    <SidebarProvider>
-                      <TooltipProvider>
+                    <SupportProvider>
+                      <SidebarProvider>
+                        <TooltipProvider>
                         <Toaster />
                         <Sonner />
                         <BrowserRouter
@@ -127,6 +130,7 @@ const App = () => (
                                 />
                                 <Route path="/profile" element={<Profile />} />
                                 <Route path="/profile/edit" element={<EditProfile />} />
+                                <Route path="/support" element={<Support />} />
                                 <Route path="/messages" element={<Messages />} />
                                 <Route path="/admin" element={<Admin />} />
                               </Route>
@@ -137,6 +141,7 @@ const App = () => (
                         </BrowserRouter>
                       </TooltipProvider>
                     </SidebarProvider>
+                    </SupportProvider>
                   </OfflineProvider>
                 </CommentsProvider>
               </ReportProvider>

@@ -132,7 +132,7 @@ export default function Sidebar() {
     { id: "statistics", label: "Statistics", icon: BarChart3, to: "/dashboard" },
     { id: "favorites", label: "Favorites", icon: Heart, to: "/dashboard" },
     { id: "settings", label: "Settings", icon: Settings, to: "/profile" },
-    { id: "help", label: "Help & Support", icon: HelpCircle, to: "/profile" },
+    { id: "help", label: "Help & Support", icon: HelpCircle, to: "/support" },
     { id: "logout", label: "Logout", icon: LogOut, danger: true, action: handleSignOut },
   ];
 

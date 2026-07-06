@@ -91,13 +91,17 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
             onClick={onClose}
           />
 
-          {/* ── Floating glass card — globe stays visible behind ────────── */}
+          {/* ── Floating glass card — centered, globe stays visible behind ─── */}
           <motion.div
             initial={{ opacity: 0, y: 30, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.92 }}
             transition={{ type: "spring" as const, stiffness: 320, damping: 28, mass: 0.9 }}
-            className="floating-info-panel fixed bottom-0 left-1/2 z-50 flex max-h-[85vh] w-full max-w-[380px] -translate-x-1/2 flex-col overflow-hidden rounded-t-[28px] border border-white/[0.08] bg-gradient-to-b from-[#14161f]/95 via-[#11131b]/95 to-[#0d0f15]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl sm:bottom-4 sm:rounded-[28px] md:max-h-[80vh]"
+            className="floating-info-panel fixed left-1/2 z-50 flex max-h-[70vh] w-full max-w-[380px] -translate-x-1/2 flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-gradient-to-b from-[#14161f]/95 via-[#11131b]/95 to-[#0d0f15]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl"
+            style={{
+              top: "calc(env(safe-area-inset-top, 0px) + 80px)",
+              bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* ── Grab handle (mobile) ──────────────────────────────────── */}

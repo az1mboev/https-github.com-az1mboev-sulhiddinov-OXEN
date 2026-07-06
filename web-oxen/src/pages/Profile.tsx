@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useCallback, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   Settings, Plus, MapPin, Heart, Play,
   Grid3X3, Bookmark, Globe2, Clock, ChevronRight,
@@ -44,7 +44,7 @@ function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: strin
 function CountUp({ target }: { target: number }) {
   const [display, setDisplay] = useState(0);
 
-  useState(() => {
+  useEffect(() => {
     if (target <= 0) { setDisplay(0); return; }
     const duration = 800;
     const steps = 30;
@@ -56,7 +56,7 @@ function CountUp({ target }: { target: number }) {
       else setDisplay(Math.floor(current));
     }, duration / steps);
     return () => clearInterval(timer);
-  });
+  }, [target]);
 
   return <>{display}</>;
 }
