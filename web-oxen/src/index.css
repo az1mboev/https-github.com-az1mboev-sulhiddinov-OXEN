@@ -772,6 +772,83 @@ html.dark, html.light {
   border-color: hsl(225 20% 80% / 0.15) !important;
 }
 
+/* ── Globe "Click" activation button ── */
+
+.globe-click-btn {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid hsl(40 40% 80% / 0.14);
+  background: hsl(225 38% 11% / 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: hsl(40 30% 92% / 0.55);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.3s ease, transform 0.2s ease, color 0.3s ease;
+  animation: globe-click-pulse 2.4s ease-in-out infinite;
+  -webkit-tap-highlight-color: transparent;
+}
+.globe-click-btn:hover {
+  opacity: 1;
+  color: hsl(40 30% 92% / 0.95);
+  transform: translateX(-50%) scale(1.06);
+}
+.globe-click-btn:active {
+  transform: translateX(-50%) scale(0.94);
+}
+.globe-click-btn__label {
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@keyframes globe-click-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+}
+
+.globe-click-check {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  width: 24px;
+  border-radius: 999px;
+  border: 1px solid hsl(150 60% 50% / 0.4);
+  background: hsl(150 60% 45% / 0.18);
+  color: hsl(150 60% 60%);
+  animation: globe-check-in 0.3s ease;
+}
+@keyframes globe-check-in {
+  from { opacity: 0; transform: translateX(-50%) scale(0.6); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+.light .globe-click-btn {
+  background: hsl(0 0% 100% / 0.6);
+  border-color: hsl(225 20% 80% / 0.25);
+  color: hsl(225 20% 30% / 0.55);
+}
+.light .globe-click-btn:hover {
+  color: hsl(225 20% 20% / 0.9);
+}
+
 /* ── Comments sheet ── */
 
 .comments-sheet {
@@ -957,6 +1034,18 @@ html, body {
   max-width: 100vw;
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
+}
+
+/* --- Hide the global vertical scrollbar (keep scrolling functional) --- */
+html, body {
+  scrollbar-width: none;           /* Firefox */
+  -ms-overflow-style: none;        /* IE / Edge Legacy */
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 /* Images and media never overflow their containers */

@@ -784,6 +784,18 @@ export default function Globe({
   const [internalZoomTarget, setInternalZoomTarget] = useState<{ lat: number; lng: number } | null>(null);
   const [hoveredCountry, setHoveredCountry] = useState<Country | null>(null);
 
+  // Manual rotation is locked until the user taps the "Click" button.
+  // Auto-rotate, zoom, animations, and country selection remain active.
+  const [interactionEnabled, setInteractionEnabled] = useState<boolean>(false);
+  const [showCheckmark, setShowCheckmark] = useState<boolean>(false);
+
+  const handleActivate = useCallback(() => {
+    if (interactionEnabled) return;
+    setInteractionEnabled(true);
+    setShowCheckmark(true);
+    setTimeout(() => setShowCheckmark(false), 1000);
+  }, [interactionEnabled]);
+
   // External zoom target (from search) takes priority
   const activeZoomTarget = zoomTarget ?? internalZoomTarget;
 
@@ -820,7 +832,7 @@ export default function Globe({
             ref={controlsRef}
             enablePan={false}
             enableZoom
-            enableRotate
+            enableRotate={interactionEnabled}
             minDistance={MIN_DISTANCE}
             maxDistance={MAX_DISTANCE}
             rotateSpeed={0.4}
@@ -834,6 +846,30 @@ export default function Globe({
           />
         </Suspense>
       </Canvas>
+
+      {/* "Click" activation button — locks manual rotation until pressed */}
+      {!interactionEnabled && (
+        <button
+          onClick={handleActivate}
+          className="globe-click-btn"
+          aria-label="Click to interact with the globe"
+        >
+          <span className="globe-click-btn__label">Click</span>
+        </button>
+      )}
+      {showCheckmark && (
+        <div className="globe-click-check" aria-hidden>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M5 12.5L10 17.5L19 7"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      )}
     </div>
   );
 }
