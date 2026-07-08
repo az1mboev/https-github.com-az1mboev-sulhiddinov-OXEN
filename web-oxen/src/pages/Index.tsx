@@ -17,7 +17,7 @@ import { useTravel } from "@/contexts/TravelContext";
 import { FEED_POSTS, type FeedPost } from "@/data/feedData";
 import { COUNTRIES, type Country } from "@/data/countries";
 
-const OXEN_LOGO = "https://r2-pub.rork.com/projects/jllemngulgwm5pb7uoc46/assets/b64891ed-f7c0-43c7-9079-36d87076a4c7.png";
+const SAFARIO_LOGO = "/logo.png";
 
 const Globe = lazy(() => import("@/components/Globe"));
 
@@ -62,7 +62,7 @@ function FeedPostCard({ post, index }: { post: FeedPost; index: number }) {
     if (navigator.share) {
       navigator.share({ title: `${post.city}, ${post.country}`, text: post.caption }).catch(() => {});
     } else {
-      navigator.clipboard?.writeText(`Check out ${post.city}, ${post.country} on OXEN Travel!`);
+      navigator.clipboard?.writeText(`Check out ${post.city}, ${post.country} on SAFARIO!`);
       toast.success("Link copied to clipboard");
     }
   }, [post.city, post.country, post.caption]);
@@ -418,11 +418,11 @@ export default function Index() {
         >
           <div className="flex items-center gap-2">
             <img
-              src={OXEN_LOGO}
-              alt="OXEN"
+              src={SAFARIO_LOGO}
+              alt="SAFARIO"
               className="h-9 w-9 rounded-xl object-contain shadow-lg"
             />
-            <span className="font-display text-xl font-extrabold tracking-wide">OXEN</span>
+            <span className="font-display text-xl font-extrabold tracking-wide">SAFARIO</span>
           </div>
 
           {/* Search button */}
@@ -465,14 +465,14 @@ export default function Index() {
       <section className="relative z-10 pt-8 pb-10">
         <div className="mb-4 flex items-center justify-between px-5">
           <div>
-            <h2 className="font-display text-lg font-bold">Travel Posts Around the World</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Community stories from across the globe</p>
+            <h2 className="font-display text-lg font-bold">{t("home.travelPosts", "Travel Posts Around the World")}</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("home.travelPostsDesc", "Community stories from across the globe")}</p>
           </div>
           <button
             onClick={() => navigate("/travel")}
             className="text-xs font-semibold text-primary transition hover:opacity-80"
           >
-            View all →
+            {t("home.viewAll", "View all")} →
           </button>
         </div>
 

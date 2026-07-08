@@ -97,7 +97,7 @@ export default function Dashboard() {
                   </div>
                   <button
                     onClick={() => removeItinerary(it.id)}
-                    aria-label="Delete itinerary"
+                    aria-label={t("dashboard.deleteItinerary", "Delete itinerary")}
                     className="shrink-0 rounded-lg p-2 text-muted-foreground transition hover:bg-destructive/15 hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />

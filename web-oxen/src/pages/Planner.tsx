@@ -7,12 +7,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { generateItinerary, type Itinerary } from "@/lib/ai";
 import { useToast } from "@/hooks/use-toast";
 
-const SUGGESTIONS = [
-  "5 relaxing days in Kyoto for a couple, mid budget",
-  "A week of adventure in Iceland on a budget",
-  "Romantic long weekend in Venice",
-  "10-day food tour through Thailand",
-];
+function useSuggestions(t: (key: string, fallback?: string) => string) {
+  return [
+    t("planner.suggestionKyoto", "5 relaxing days in Kyoto for a couple, mid budget"),
+    t("planner.suggestionIceland", "A week of adventure in Iceland on a budget"),
+    t("planner.suggestionVenice", "Romantic long weekend in Venice"),
+    t("planner.suggestionThailand", "10-day food tour through Thailand"),
+  ];
+}
 
 export default function Planner() {
   const { toast } = useToast();
@@ -62,7 +64,7 @@ export default function Planner() {
           {t("planner.heading", "Describe your")} <span className="text-gold-gradient">{t("planner.headingAccent", "dream trip.")}</span>
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Tell SAFARIO where, how long, and your vibe — get a full itinerary in seconds.
+          {t("planner.subtitle", "Tell SAFARIO where, how long, and your vibe — get a full itinerary in seconds.")}
         </p>
       </motion.div>
 
@@ -90,7 +92,7 @@ export default function Planner() {
 
         {!itinerary && !loading && (
           <div className="mt-4 flex flex-wrap gap-2">
-            {SUGGESTIONS.map((s) => (
+            {useSuggestions(t).map((s) => (
               <button
                 key={s}
                 onClick={() => {

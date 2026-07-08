@@ -5,8 +5,7 @@ import { Link } from "react-router-dom";
 import TravelIllustration from "@/components/TravelIllustration";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const SAFARIO_LOGO =
-  "https://r2-pub.rork.com/projects/jllemngulgwm5pb7uoc46/assets/b64891ed-f7c0-43c7-9079-36d87076a4c7.png";
+const SAFARIO_LOGO = "/logo.png";
 
 export default function Auth() {
   const { t } = useLanguage();

@@ -150,7 +150,7 @@ export default function Biometrics() {
           >
             <ShieldCheck className="h-4 w-4 shrink-0 text-blue-400 mt-0.5" />
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Biometric data never leaves your device. OXEN only receives a cryptographic confirmation that authentication succeeded.
+              Biometric data never leaves your device. SAFARIO only receives a cryptographic confirmation that authentication succeeded.
             </p>
           </motion.div>
         )}

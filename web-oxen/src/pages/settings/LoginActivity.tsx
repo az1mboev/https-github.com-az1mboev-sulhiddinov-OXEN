@@ -57,7 +57,7 @@ export default function LoginActivity() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `oxen-login-history.${format === "csv" ? "csv" : "txt"}`;
+    a.download = `safario-login-history.${format === "csv" ? "csv" : "txt"}`;
     a.click();
     URL.revokeObjectURL(url);
     toast({ title: `History exported as ${format.toUpperCase()}` });

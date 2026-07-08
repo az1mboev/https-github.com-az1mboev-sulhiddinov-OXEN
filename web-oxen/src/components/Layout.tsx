@@ -45,10 +45,10 @@ export default function Layout() {
             className="fixed left-1/2 top-16 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-2 backdrop-blur-xl"
           >
             <WifiOff className="h-3.5 w-3.5 text-amber-400" strokeWidth={2.5} />
-            <span className="text-xs font-semibold text-amber-300">Offline Mode</span>
+            <span className="text-xs font-semibold text-amber-300">{t("offline.mode", "Offline Mode")}</span>
             {pendingSync && (
               <span className="ml-1 flex items-center gap-1 text-[10px] text-amber-400/70">
-                <RefreshCw className="h-2.5 w-2.5 animate-spin" /> pending sync
+                <RefreshCw className="h-2.5 w-2.5 animate-spin" /> {t("offline.pendingSync", "pending sync")}
               </span>
             )}
           </motion.div>

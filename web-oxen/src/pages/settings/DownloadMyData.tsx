@@ -78,7 +78,7 @@ export default function DownloadMyData() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `oxen-data-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `safario-data-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
 
@@ -98,7 +98,7 @@ export default function DownloadMyData() {
       <div className="glass rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4">
         <p className="text-sm font-semibold">Your data, your control</p>
         <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-          Download a complete archive of your OXEN data. This includes your profile,
+          Download a complete archive of your SAFARIO data. This includes your profile,
           trips, favorites, posts, messages, and settings — in JSON format.
         </p>
       </div>

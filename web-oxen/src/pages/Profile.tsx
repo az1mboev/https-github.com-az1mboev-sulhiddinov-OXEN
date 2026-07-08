@@ -20,7 +20,7 @@ import PostCreator from "@/components/PostCreator";
 import { COUNTRIES } from "@/data/countries";
 import { cn } from "@/lib/utils";
 
-const SAFARIO_LOGO = "https://r2-pub.rork.com/projects/jllemngulgwm5pb7uoc46/assets/b64891ed-f7c0-43c7-9079-36d87076a4c7.png";
+const SAFARIO_LOGO = "/logo.png";
 
 /* ──────────────────────────────────────
    AnimatedCounter + CountUp (reusable)

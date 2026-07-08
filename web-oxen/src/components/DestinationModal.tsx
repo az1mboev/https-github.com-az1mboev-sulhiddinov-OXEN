@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useTravel } from "@/contexts/TravelContext";
 import type { Country } from "@/data/countries";
 import { getCountryIso, getFlagUrl, getCountryArea, formatArea } from "@/data/countryMeta";
+import { translateCountry } from "@/lib/countryLocale";
 
 /* ------------------------------------------------------------------ */
 /*  Types & helpers                                                    */
@@ -51,7 +52,7 @@ function formatPopulation(pop: number): string {
 /* ══════════════════════════════════════════════════════════════════ */
 
 export default function DestinationModal({ country, open, onClose, onShowOptions }: DestinationModalProps) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { isWishlisted, toggleWishlist } = useTravel();
   const [flagError, setFlagError] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -82,18 +83,20 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
 
   if (!country) return null;
 
-  const isoCode = country.isoCode ?? getCountryIso(country.id);
+  const localizedCountry = translateCountry(country, language);
+
+  const isoCode = localizedCountry.isoCode ?? getCountryIso(localizedCountry.id);
   const flagUrl = isoCode && !flagError ? getFlagUrl(isoCode) : null;
-  const area = country.area ?? getCountryArea(country.id);
-  const wishlisted = isWishlisted(country.id);
+  const area = localizedCountry.area ?? getCountryArea(localizedCountry.id);
+  const wishlisted = isWishlisted(localizedCountry.id);
 
   const stats = [
-    { icon: Globe2, label: "Continent", value: country.continent },
-    { icon: Users, label: "Population", value: formatPopulation(country.population) },
-    { icon: Coins, label: "Currency", value: country.currency },
-    { icon: Languages, label: "Language", value: country.language },
-    { icon: Clock, label: "Time Zone", value: country.timezone },
-    { icon: Ruler, label: "Area", value: area ? formatArea(area) : "—" },
+    { icon: Globe2, label: t("modal.continent", "Continent"), value: localizedCountry.continent },
+    { icon: Users, label: t("modal.population", "Population"), value: formatPopulation(localizedCountry.population) },
+    { icon: Coins, label: t("modal.currency", "Currency"), value: localizedCountry.currency },
+    { icon: Languages, label: t("modal.language", "Language"), value: localizedCountry.language },
+    { icon: Clock, label: t("modal.timezone", "Time Zone"), value: localizedCountry.timezone },
+    { icon: Ruler, label: t("modal.area", "Area"), value: area ? formatArea(area) : "—" },
   ];
 
   // ── Responsive positioning ──────────────────────────────────────────
@@ -159,7 +162,7 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
             <button
               onClick={onClose}
               className="absolute right-3.5 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.06] text-white/50 backdrop-blur-sm transition hover:bg-white/15 hover:text-white active:scale-90"
-              aria-label="Close"
+              aria-label={t("modal.close", "Close")}
             >
               <X className="h-4 w-4" />
             </button>
@@ -184,7 +187,7 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
                   {flagUrl && (
                     <img
                       src={flagUrl}
-                      alt={`Flag of ${country.name}`}
+                      alt={`Flag of ${localizedCountry.name}`}
                       className="h-full w-full object-cover"
                       onError={() => setFlagError(true)}
                     />
@@ -196,7 +199,7 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
                     style={flagUrl ? { zIndex: -1, opacity: 0.3 } : {}}
                     aria-hidden
                   >
-                    {country.flag}
+                    {localizedCountry.flag}
                   </span>
                 </motion.div>
 
@@ -207,7 +210,7 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
                   transition={{ delay: 0.06, type: "spring" as const, stiffness: 280, damping: 26 }}
                   className="font-display text-2xl font-extrabold tracking-tight text-white"
                 >
-                  {country.name}
+                  {localizedCountry.name}
                 </motion.h2>
 
                 {/* ── Capital + continent row ───────────────────────────── */}
@@ -218,9 +221,9 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
                   className="mt-1.5 flex items-center gap-2 text-sm font-medium text-white/55"
                 >
                   <MapPin className="h-3.5 w-3.5 shrink-0 text-blue-400/70" />
-                  <span>{country.capital}</span>
+                  <span>{localizedCountry.capital}</span>
                   <span className="text-white/20">•</span>
-                  <span>{country.continent}</span>
+                  <span>{localizedCountry.continent}</span>
                 </motion.div>
 
                 {/* ── Tagline ───────────────────────────────────────────── */}
@@ -230,7 +233,7 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
                   transition={{ delay: 0.18, duration: 0.35 }}
                   className="mt-2.5 max-w-[260px] text-center text-xs font-medium italic leading-relaxed text-white/35"
                 >
-                  "{country.tagline}"
+                  "{localizedCountry.tagline}"
                 </motion.p>
               </div>
 
@@ -265,8 +268,8 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
                 transition={{ delay: 0.28, ...rowSpring }}
                 className="px-6 pb-4"
               >
-                <p className="text-[10px] font-medium uppercase tracking-wider text-white/35 mb-1.5">Travel Description</p>
-                <p className="text-xs leading-relaxed text-white/60">{country.blurb}</p>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-white/35 mb-1.5">{t("modal.travelDescription", "Travel Description")}</p>
+                <p className="text-xs leading-relaxed text-white/60">{localizedCountry.blurb}</p>
               </motion.div>
 
               {/* ── Major cities ────────────────────────────────────────── */}
@@ -277,9 +280,9 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
                   transition={{ delay: 0.32, ...rowSpring }}
                   className="px-6 pb-4"
                 >
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-white/35 mb-2">Major Cities</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-white/35 mb-2">{t("modal.majorCities", "Major Cities")}</p>
                   <div className="flex flex-wrap gap-2">
-                    {country.cities.slice(0, 5).map((city) => (
+                    {localizedCountry.cities.slice(0, 5).map((city) => (
                       <span
                         key={city.id}
                         className="rounded-lg bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-white/60"
@@ -304,10 +307,10 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
                 className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:from-blue-400 hover:to-blue-500 active:scale-[0.98]"
               >
                 <Plane className="h-4 w-4" />
-                {t("modal.travelButton", "Travel Here")}
+                {t("modal.travelHere", "Travel Here")}
               </button>
               <button
-                onClick={() => toggleWishlist(country.id)}
+                onClick={() => toggleWishlist(localizedCountry.id)}
                 className={`flex items-center justify-center gap-2 rounded-xl border px-5 py-3 text-sm font-medium transition active:scale-[0.98] ${
                   wishlisted
                     ? "border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/15"
@@ -315,7 +318,7 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
                 }`}
               >
                 <Heart className={`h-4 w-4 ${wishlisted ? "fill-rose-400" : ""}`} strokeWidth={2} />
-                {wishlisted ? "In Wishlist" : "Add to Wishlist"}
+                {wishlisted ? t("modal.inWishlist", "In Wishlist") : t("modal.addToWishlist", "Add to Wishlist")}
               </button>
             </motion.div>
           </motion.div>
