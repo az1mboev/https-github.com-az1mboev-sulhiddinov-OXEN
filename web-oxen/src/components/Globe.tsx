@@ -1,4 +1,4 @@
-import { OrbitControls, useTexture, Html } from "@react-three/drei";
+import { OrbitControls, useTexture } from "@react-three/drei";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import * as THREE from "three";
@@ -411,56 +411,6 @@ function CountryHighlight({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Flag marker — pulsing ring + label on the globe surface             */
-/* ------------------------------------------------------------------ */
-
-function FlagMarker({ country }: { country: Country }) {
-  const pos = useMemo(() => latLngToVec3(country.lat, country.lng, RADIUS), [country.lat, country.lng]);
-  const outerPos = useMemo(() => pos.clone().normalize().multiplyScalar(RADIUS + 0.06), [pos]);
-
-  const ringRef = useRef<THREE.Mesh>(null);
-  const dotRef = useRef<THREE.Mesh>(null);
-
-  useFrame(() => {
-    if (ringRef.current) {
-      const s = 1 + Math.sin(Date.now() * 0.004) * 0.18;
-      ringRef.current.scale.setScalar(s);
-      (ringRef.current.material as THREE.MeshBasicMaterial).opacity = 0.45 + Math.sin(Date.now() * 0.005) * 0.25;
-    }
-    if (dotRef.current) {
-      const s = 1 + Math.sin(Date.now() * 0.005 + 1) * 0.1;
-      dotRef.current.scale.setScalar(s);
-    }
-  });
-
-  return (
-    <group position={outerPos}>
-      <mesh ref={ringRef}>
-        <ringGeometry args={[0.08, 0.11, 32]} />
-        <meshBasicMaterial
-          color="#ff3b30"
-          transparent
-          opacity={0.55}
-          side={THREE.DoubleSide}
-          depthTest
-          depthWrite={false}
-        />
-      </mesh>
-      <mesh ref={dotRef}>
-        <sphereGeometry args={[0.04, 16, 16]} />
-        <meshBasicMaterial color="#ff5045" transparent opacity={0.9} depthTest />
-      </mesh>
-      <Html position={[0, 0.15, 0]} center distanceFactor={8} occlude={false} style={{ pointerEvents: "none" }}>
-        <div className="flex flex-col items-center whitespace-nowrap rounded-lg bg-black/60 px-2 py-1 backdrop-blur-sm">
-          <span className="text-lg leading-none">{country.flag}</span>
-          <span className="mt-0.5 text-[10px] font-semibold text-white/90">{country.name}</span>
-        </div>
-      </Html>
-    </group>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  Dynamic clouds layer — slowly rotating, semi-transparent            */
 /* ------------------------------------------------------------------ */
 
@@ -647,8 +597,6 @@ function EarthSphere({
         <CountryHighlight country={hoveredCountry} isSelected={false} isHovered />
       )}
 
-      {/* Selected country flag marker */}
-      {selectedCountry && <FlagMarker country={selectedCountry} />}
     </group>
   );
 }
