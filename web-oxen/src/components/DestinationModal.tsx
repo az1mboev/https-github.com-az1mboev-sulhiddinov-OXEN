@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, MapPin, Plane, Heart, Globe2, Users, Coins, Languages, Clock, Ruler } from "lucide-react";
 
@@ -32,6 +33,14 @@ const rowSpring = {
   mass: 0.75,
 };
 
+/** iOS-style sheet spring — soft, smooth, natural deceleration */
+const panelSpring = {
+  type: "spring" as const,
+  stiffness: 320,
+  damping: 30,
+  mass: 0.85,
+};
+
 function formatPopulation(pop: number): string {
   if (pop >= 1_000_000_000) return `${(pop / 1_000_000_000).toFixed(2)}B`;
   if (pop >= 1_000_000) return `${(pop / 1_000_000).toFixed(1)}M`;
@@ -45,6 +54,16 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
   const { t } = useLanguage();
   const { isWishlisted, toggleWishlist } = useTravel();
   const [flagError, setFlagError] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Track viewport for responsive panel positioning (mobile vs tablet/desktop)
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   // ESC closes the modal (desktop)
   useEffect(() => {
@@ -77,33 +96,58 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
     { icon: Ruler, label: "Area", value: area ? formatArea(area) : "—" },
   ];
 
-  return (
+  // ── Responsive positioning ──────────────────────────────────────────
+  // Mobile: centered floating card, ~90% width, respects all safe areas.
+  // Desktop/tablet: right-side floating panel with fixed width.
+  const panelStyle: React.CSSProperties = isMobile
+    ? {
+        top: "calc(env(safe-area-inset-top, 0px) + 76px)",
+        left: "calc(env(safe-area-inset-left, 0px) + 5vw)",
+        right: "calc(env(safe-area-inset-right, 0px) + 5vw)",
+        maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 168px)",
+      }
+    : {
+        top: "calc(env(safe-area-inset-top, 0px) + 80px)",
+        right: "32px",
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+        width: "380px",
+        maxWidth: "380px",
+      };
+
+  // ── Animation: slide from nearest available edge ───────────────────
+  // Mobile: slides up from bottom (sheet-like). Desktop: slides from right.
+  const initialAnim = isMobile
+    ? { opacity: 0, y: 40, scale: 0.95 }
+    : { opacity: 0, x: 60, scale: 0.96 };
+  const animateAnim = { opacity: 1, x: 0, y: 0, scale: 1 };
+  const exitAnim = isMobile
+    ? { opacity: 0, y: 40, scale: 0.95 }
+    : { opacity: 0, x: 60, scale: 0.96 };
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <>
-          {/* ── Subtle backdrop — dims but keeps globe fully interactive ─── */}
-          {/* pointer-events-none so taps pass through to the globe; closing */}
-          {/* is handled via Globe.onBackgroundTap + the close button.       */}
+          {/* ── Subtle backdrop — dims + blurs globe but keeps it interactive ── */}
+          {/* pointer-events-none so taps pass through to the globe; closing   */}
+          {/* is handled via Globe.onBackgroundTap + the close button.          */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="pointer-events-none fixed inset-0 z-40 bg-black/15"
+            className="pointer-events-none fixed inset-0 z-40 bg-black/15 backdrop-blur-[2px]"
             aria-hidden
           />
 
-          {/* ── Floating glass card — centered, globe stays visible behind ─── */}
+          {/* ── Floating glass card — fully visible inside viewport ─────────── */}
           <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.92 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.92 }}
-            transition={{ type: "spring" as const, stiffness: 320, damping: 28, mass: 0.9 }}
-            className="floating-info-panel pointer-events-auto fixed left-1/2 z-50 flex max-h-[70vh] w-full max-w-[380px] -translate-x-1/2 flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-gradient-to-b from-[#14161f]/95 via-[#11131b]/95 to-[#0d0f15]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl"
-            style={{
-              top: "calc(env(safe-area-inset-top, 0px) + 80px)",
-              bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
-            }}
+            initial={initialAnim}
+            animate={animateAnim}
+            exit={exitAnim}
+            transition={panelSpring}
+            className="floating-info-panel pointer-events-auto fixed z-50 flex flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-gradient-to-b from-[#14161f]/95 via-[#11131b]/95 to-[#0d0f15]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl"
+            style={panelStyle}
             onClick={(e) => e.stopPropagation()}
           >
             {/* ── Grab handle (mobile) ──────────────────────────────────── */}
@@ -277,6 +321,7 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
