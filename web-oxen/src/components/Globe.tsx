@@ -724,6 +724,7 @@ function Scene({
   controlsRef,
   visitedIds,
   wishlistIds,
+  interactionEnabled,
 }: {
   onCountrySelect: (c: Country) => void;
   onCountryDoubleClick: (c: Country) => void;
@@ -735,22 +736,40 @@ function Scene({
   controlsRef: React.RefObject<any>;
   visitedIds: Set<string>;
   wishlistIds: Set<string>;
+  interactionEnabled: boolean;
 }) {
+  const guardedSelect = useCallback(
+    (c: Country) => { if (interactionEnabled) onCountrySelect(c); },
+    [interactionEnabled, onCountrySelect],
+  );
+  const guardedDoubleClick = useCallback(
+    (c: Country) => { if (interactionEnabled) onCountryDoubleClick(c); },
+    [interactionEnabled, onCountryDoubleClick],
+  );
+  const guardedBackgroundTap = useCallback(
+    () => { if (interactionEnabled) onBackgroundTap?.(); },
+    [interactionEnabled, onBackgroundTap],
+  );
+  const guardedHover = useCallback(
+    (c: Country | null) => { if (interactionEnabled) onHoverCountry(c); },
+    [interactionEnabled, onHoverCountry],
+  );
+
   return (
     <>
       <DayNightCycle />
       <EarthSphere
-        onCountrySelect={onCountrySelect}
-        onCountryDoubleClick={onCountryDoubleClick}
-        onBackgroundTap={onBackgroundTap}
+        onCountrySelect={guardedSelect}
+        onCountryDoubleClick={guardedDoubleClick}
+        onBackgroundTap={guardedBackgroundTap}
         selectedCountry={selectedCountry}
         hoveredCountry={hoveredCountry}
-        onHoverCountry={onHoverCountry}
+        onHoverCountry={guardedHover}
       />
       <StatusMarkers
         visitedIds={visitedIds}
         wishlistIds={wishlistIds}
-        onMarkerClick={onCountrySelect}
+        onMarkerClick={guardedSelect}
       />
       <CapitalMarkers />
       <Starfield />
@@ -827,19 +846,20 @@ export default function Globe({
             controlsRef={controlsRef}
             visitedIds={visitedIds ?? EMPTY_SET}
             wishlistIds={wishlistIds ?? EMPTY_SET}
+            interactionEnabled={interactionEnabled}
           />
           <OrbitControls
             ref={controlsRef}
             enablePan={false}
-            enableZoom
+            enableZoom={interactionEnabled}
             enableRotate={interactionEnabled}
+            enableDamping={interactionEnabled}
             minDistance={MIN_DISTANCE}
             maxDistance={MAX_DISTANCE}
             rotateSpeed={0.4}
             zoomSpeed={1.1}
             autoRotate
             autoRotateSpeed={BASE_ROTATION_SPEED}
-            enableDamping
             dampingFactor={0.08}
             minPolarAngle={0}
             maxPolarAngle={Math.PI}
