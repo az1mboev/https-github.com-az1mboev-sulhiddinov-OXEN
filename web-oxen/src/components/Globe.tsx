@@ -313,8 +313,8 @@ function StatusMarkers({
 /* ------------------------------------------------------------------ */
 
 const UNI_MARKER_OFFSET = 0.025;
-const UNI_MARKER_BLUE = new THREE.Color("#007AFF");
-const UNI_MARKER_GOLD = new THREE.Color("#FFD700");
+const UNI_MARKER_YELLOW = new THREE.Color("#FFD700");
+const UNI_MARKER_GOLD = new THREE.Color("#FFB300");
 const UNI_MARKER_GREEN = new THREE.Color("#34C759");
 const UNI_MARKER_RED = new THREE.Color("#FF3B30");
 
@@ -366,7 +366,7 @@ function UniversityClusterMarkers({
     (uniId: string): THREE.Color => {
       if (visitedIds.has(uniId)) return UNI_MARKER_GREEN;
       if (wishlistIds.has(uniId)) return UNI_MARKER_GOLD;
-      return UNI_MARKER_BLUE;
+      return UNI_MARKER_YELLOW;
     },
     [visitedIds, wishlistIds],
   );
@@ -930,6 +930,8 @@ function Scene({
   uniWishlistIds,
   uniVisitedIds,
   onUniversitySelect,
+  showCountries,
+  showUniversities,
 }: {
   onCountrySelect: (c: Country) => void;
   onCountryDoubleClick: (c: Country) => void;
@@ -948,6 +950,8 @@ function Scene({
   uniWishlistIds?: Set<string>;
   uniVisitedIds?: Set<string>;
   onUniversitySelect?: (uni: University) => void;
+  showCountries?: boolean;
+  showUniversities?: boolean;
 }) {
   const guardedSelect = useCallback(
     (c: Country) => { if (interactionEnabled) onCountrySelect(c); },
@@ -970,6 +974,9 @@ function Scene({
     [interactionEnabled, onUniversitySelect],
   );
 
+  const showCountryMarkers = !universityMode || showCountries !== false;
+  const showUniMarkers = universityMode && showUniversities !== false && !!universities && !!onUniversitySelect;
+
   return (
     <>
       <DayNightCycle />
@@ -981,21 +988,22 @@ function Scene({
         hoveredCountry={hoveredCountry}
         onHoverCountry={guardedHover}
       />
-      {universityMode && universities && onUniversitySelect ? (
+      {showCountryMarkers && (
+        <StatusMarkers
+          visitedIds={visitedIds}
+          wishlistIds={wishlistIds}
+          onMarkerClick={guardedSelect}
+        />
+      )}
+      {showUniMarkers && (
         <UniversityClusterMarkers
-          universities={universities}
+          universities={universities!}
           selectedId={selectedUniversityId ?? null}
           wishlistIds={uniWishlistIds ?? EMPTY_SET}
           visitedIds={uniVisitedIds ?? EMPTY_SET}
           onMarkerClick={guardedUniSelect}
           interactionEnabled={interactionEnabled}
           controlsRef={controlsRef}
-        />
-      ) : (
-        <StatusMarkers
-          visitedIds={visitedIds}
-          wishlistIds={wishlistIds}
-          onMarkerClick={guardedSelect}
         />
       )}
       <CapitalMarkers />
@@ -1023,6 +1031,8 @@ export default function Globe({
   uniWishlistIds,
   uniVisitedIds,
   onUniversitySelect,
+  showCountries = true,
+  showUniversities = true,
 }: {
   onCountrySelect?: (c: Country) => void;
   onBackgroundTap?: () => void;
@@ -1036,6 +1046,8 @@ export default function Globe({
   uniWishlistIds?: Set<string>;
   uniVisitedIds?: Set<string>;
   onUniversitySelect?: (uni: University) => void;
+  showCountries?: boolean;
+  showUniversities?: boolean;
 }) {
   const controlsRef = useRef<any>(null);
   const hoveredCountryRef = useRef<Country | null>(null);
@@ -1097,6 +1109,8 @@ export default function Globe({
             uniWishlistIds={uniWishlistIds}
             uniVisitedIds={uniVisitedIds}
             onUniversitySelect={onUniversitySelect}
+            showCountries={showCountries}
+            showUniversities={showUniversities}
           />
           <OrbitControls
             ref={controlsRef}

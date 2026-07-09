@@ -22,17 +22,21 @@ import {
   Trash2,
   Loader2,
   MapPin,
+  Globe2,
 } from "lucide-react";
 import { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+import DestinationModal from "@/components/DestinationModal";
 import UniversityModal from "@/components/UniversityModal";
 import VideoPlayer from "@/components/VideoPlayer";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebar } from "@/contexts/SidebarContext";
+import { useTravel } from "@/contexts/TravelContext";
 import { useUniversity } from "@/contexts/UniversityContext";
+import { COUNTRIES, type Country } from "@/data/countries";
 import {
   UNIVERSITIES,
   UNIVERSITY_VIDEO_CATEGORIES,
@@ -297,9 +301,13 @@ function UniversityPostCard({ post, index }: { post: UniversityPost; index: numb
   );
 }
 
-/* ── Search overlay ───────────────────────────────────────────────── */
+/* ── Unified search overlay (countries + universities) ────────────── */
 
-function UniversitySearchOverlay({
+type SearchResult =
+  | { type: "country"; country: Country }
+  | { type: "university"; uni: University };
+
+function UnifiedSearchOverlay({
   query,
   setQuery,
   onSelect,
@@ -307,12 +315,24 @@ function UniversitySearchOverlay({
 }: {
   query: string;
   setQuery: (v: string) => void;
-  onSelect: (uni: University) => void;
+  onSelect: (result: SearchResult) => void;
   onClose: () => void;
 }) {
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    return searchUniversities(query).slice(0, 8);
+  const { t } = useLanguage();
+  const results = useMemo<SearchResult[]>(() => {
+    const q = query.toLowerCase().trim();
+    if (!q) return [];
+    const countries = COUNTRIES.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.capital.toLowerCase().includes(q) ||
+        c.continent.toLowerCase().includes(q),
+    ).slice(0, 5);
+    const unis = searchUniversities(query).slice(0, 8);
+    return [
+      ...countries.map((country) => ({ type: "country" as const, country })),
+      ...unis.map((uni) => ({ type: "university" as const, uni })),
+    ];
   }, [query]);
 
   return (
@@ -338,7 +358,7 @@ function UniversitySearchOverlay({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by university, country, city, program..."
+            placeholder={t("uni.searchPlaceholder", "Search countries or universities...")}
             className="flex-1 bg-transparent text-sm text-white placeholder:text-white/35 focus:outline-none"
           />
           <button
@@ -355,25 +375,42 @@ function UniversitySearchOverlay({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.25 }}
-            className="glass-strong mt-3 overflow-hidden rounded-2xl shadow-2xl"
+            className="glass-strong mt-3 max-h-[60vh] overflow-y-auto no-scrollbar rounded-2xl shadow-2xl"
           >
-            {results.map((uni, i) => (
+            {results.map((result, i) => (
               <motion.button
-                key={uni.id}
+                key={result.type === "country" ? `c-${result.country.id}` : `u-${result.uni.id}`}
                 initial={{ opacity: 0, x: -12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.04 * i, duration: 0.2 }}
-                onClick={() => onSelect(uni)}
+                onClick={() => onSelect(result)}
                 className="flex w-full items-center gap-3 border-b border-white/[0.04] px-4 py-3 text-left transition hover:bg-white/[0.05] last:border-0"
               >
-                <img src={uni.logo} alt={uni.name} className="h-10 w-10 rounded-lg object-cover" loading="lazy" />
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-semibold text-white">{uni.name}</p>
-                  <p className="truncate text-xs text-white/40">
-                    {uni.flag} {uni.city} · QS #{uni.qsRanking}
-                  </p>
-                </div>
-                <GraduationCap className="h-4 w-4 text-white/20" strokeWidth={2} />
+                {result.type === "country" ? (
+                  <>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15 text-xl">
+                      {result.country.flag}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-semibold text-white">{result.country.name}</p>
+                      <p className="truncate text-xs text-white/40">
+                        {result.country.capital} · {result.country.continent}
+                      </p>
+                    </div>
+                    <Globe2 className="h-4 w-4 shrink-0 text-blue-400/60" strokeWidth={2} />
+                  </>
+                ) : (
+                  <>
+                    <img src={result.uni.logo} alt={result.uni.name} className="h-10 w-10 rounded-lg object-cover" loading="lazy" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-semibold text-white">{result.uni.name}</p>
+                      <p className="truncate text-xs text-white/40">
+                        {result.uni.flag} {result.uni.city} · QS #{result.uni.qsRanking}
+                      </p>
+                    </div>
+                    <GraduationCap className="h-4 w-4 shrink-0 text-amber-400/60" strokeWidth={2} />
+                  </>
+                )}
               </motion.button>
             ))}
           </motion.div>
@@ -381,7 +418,7 @@ function UniversitySearchOverlay({
 
         {query.trim() && results.length === 0 && (
           <div className="glass-strong mt-3 rounded-2xl px-4 py-8 text-center shadow-2xl">
-            <p className="text-sm text-white/40">No universities found for "{query}"</p>
+            <p className="text-sm text-white/40">No results found for "{query}"</p>
           </div>
         )}
       </motion.div>
@@ -900,12 +937,17 @@ export default function Universities() {
   const { t } = useLanguage();
   const { isOpen: sidebarOpen } = useSidebar();
   const { wishlist, visited, compareList } = useUniversity();
+  const { visited: travelVisited, wishlist: travelWishlist } = useTravel();
 
   const wishlistSet = useMemo(() => new Set(wishlist), [wishlist]);
   const visitedSet = useMemo(() => new Set(visited), [visited]);
+  const travelVisitedSet = useMemo(() => new Set(travelVisited), [travelVisited]);
+  const travelWishlistSet = useMemo(() => new Set(travelWishlist), [travelWishlist]);
 
   const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
+  const [countryModalOpen, setCountryModalOpen] = useState<boolean>(false);
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [zoomTarget, setZoomTarget] = useState<{ lat: number; lng: number } | null>(null);
@@ -913,25 +955,45 @@ export default function Universities() {
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<SortOption>("highest-ranking");
   const [showCompare, setShowCompare] = useState<boolean>(false);
+  const [showCountries, setShowCountries] = useState<boolean>(true);
+  const [showUniversities, setShowUniversities] = useState<boolean>(true);
 
   const handleUniversitySelect = useCallback((uni: University) => {
     setSelectedUniversity(uni);
     setModalOpen(true);
+    setZoomTarget({ lat: uni.latitude, lng: uni.longitude });
   }, []);
 
-  const handleCloseModal = useCallback(() => {
+  const handleCountrySelect = useCallback((country: Country) => {
+    setSelectedCountry(country);
+    setCountryModalOpen(true);
+  }, []);
+
+  const handleCloseUniModal = useCallback(() => {
     setModalOpen(false);
     setTimeout(() => setSelectedUniversity(null), 350);
   }, []);
 
-  const handleBackgroundTap = useCallback(() => {
-    if (modalOpen) handleCloseModal();
-  }, [modalOpen, handleCloseModal]);
+  const handleCloseCountryModal = useCallback(() => {
+    setCountryModalOpen(false);
+    setTimeout(() => setSelectedCountry(null), 350);
+  }, []);
 
-  const handleSearchSelect = useCallback((uni: University) => {
-    setSelectedUniversity(uni);
-    setModalOpen(true);
-    setZoomTarget({ lat: uni.latitude, lng: uni.longitude });
+  const handleBackgroundTap = useCallback(() => {
+    if (modalOpen) handleCloseUniModal();
+    if (countryModalOpen) handleCloseCountryModal();
+  }, [modalOpen, handleCloseUniModal, countryModalOpen, handleCloseCountryModal]);
+
+  const handleSearchSelect = useCallback((result: SearchResult) => {
+    if (result.type === "country") {
+      setSelectedCountry(result.country);
+      setCountryModalOpen(true);
+      setZoomTarget({ lat: result.country.lat, lng: result.country.lng });
+    } else {
+      setSelectedUniversity(result.uni);
+      setModalOpen(true);
+      setZoomTarget({ lat: result.uni.latitude, lng: result.uni.longitude });
+    }
     setSearchOpen(false);
     setSearchQuery("");
   }, []);
@@ -1035,15 +1097,20 @@ export default function Universities() {
             }
           >
             <Globe
-              selectedCountry={null}
+              selectedCountry={selectedCountry}
+              onCountrySelect={handleCountrySelect}
               onBackgroundTap={handleBackgroundTap}
               zoomTarget={zoomTarget}
+              visitedIds={travelVisitedSet}
+              wishlistIds={travelWishlistSet}
               universityMode
               universities={filteredUniversities}
               selectedUniversityId={selectedUniversity?.id ?? null}
               onUniversitySelect={handleUniversitySelect}
               uniWishlistIds={wishlistSet}
               uniVisitedIds={visitedSet}
+              showCountries={showCountries}
+              showUniversities={showUniversities}
             />
           </Suspense>
         </motion.div>
@@ -1071,6 +1138,29 @@ export default function Universities() {
                 {compareList.length}
               </button>
             )}
+            {/* Layer toggles */}
+            <div className="flex items-center gap-1.5 rounded-full bg-white/[0.06] px-2 py-1.5 backdrop-blur-xl border border-white/10">
+              <button
+                onClick={() => setShowCountries((v) => !v)}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition active:scale-95 ${
+                  showCountries ? "bg-blue-500/20 text-blue-400" : "text-white/40"
+                }`}
+                aria-label="Toggle country markers"
+              >
+                <span className="h-2 w-2 rounded-full bg-blue-400" />
+                {t("uni.countries", "Countries")}
+              </button>
+              <button
+                onClick={() => setShowUniversities((v) => !v)}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition active:scale-95 ${
+                  showUniversities ? "bg-amber-500/20 text-amber-400" : "text-white/40"
+                }`}
+                aria-label="Toggle university markers"
+              >
+                <span className="h-2 w-2 rounded-full bg-amber-400" />
+                {t("uni.universities", "Universities")}
+              </button>
+            </div>
             {/* Filter button */}
             <button
               onClick={() => setShowFilters(true)}
@@ -1111,6 +1201,23 @@ export default function Universities() {
           <p className="mx-auto mt-3 max-w-xs text-sm text-muted-foreground">
             {t("uni.heroSubtitle", "Spin the globe, discover universities, and let AI find your perfect match.")}
           </p>
+        </motion.div>
+
+        {/* Floating legend */}
+        <motion.div
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.8, duration: 0.5 }}
+          className="pointer-events-none absolute left-4 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-2 sm:flex"
+        >
+          <div className="glass-strong flex items-center gap-2 rounded-full px-3 py-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.6)]" />
+            <span className="text-xs font-medium text-white/70">{t("uni.countryCapital", "Country Capital")}</span>
+          </div>
+          <div className="glass-strong flex items-center gap-2 rounded-full px-3 py-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.6)]" />
+            <span className="text-xs font-medium text-white/70">{t("uni.university", "University")}</span>
+          </div>
         </motion.div>
       </section>
 
@@ -1215,7 +1322,7 @@ export default function Universities() {
       {/* ── Search overlay ─────────────────────────── */}
       <AnimatePresence>
         {searchOpen && (
-          <UniversitySearchOverlay
+          <UnifiedSearchOverlay
             query={searchQuery}
             setQuery={setSearchQuery}
             onSelect={handleSearchSelect}
@@ -1245,7 +1352,20 @@ export default function Universities() {
             key={`uni-modal-${selectedUniversity.id}`}
             university={selectedUniversity}
             open={modalOpen}
-            onClose={handleCloseModal}
+            onClose={handleCloseUniModal}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Country info modal ─────────────────────── */}
+      <AnimatePresence>
+        {selectedCountry && countryModalOpen && (
+          <DestinationModal
+            key={`country-modal-${selectedCountry.id}`}
+            country={selectedCountry}
+            open
+            onClose={handleCloseCountryModal}
+            onShowOptions={handleCloseCountryModal}
           />
         )}
       </AnimatePresence>
