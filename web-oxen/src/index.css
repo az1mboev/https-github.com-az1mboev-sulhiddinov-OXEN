@@ -1049,9 +1049,19 @@ body::-webkit-scrollbar {
 }
 
 /* Images and media never overflow their containers */
-img, video, canvas, svg {
+img, video, svg {
   max-width: 100%;
   height: auto;
+}
+
+/* R3F/WebGL canvas must always fill its container — never apply height:auto */
+canvas {
+  max-width: 100%;
+}
+.globe-wrapper canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 
 /* --- Long-press prevention on mobile (avoid callout / image save popup) --- */
