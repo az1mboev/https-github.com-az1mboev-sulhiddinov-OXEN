@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -95,7 +95,31 @@ export default function UniversityModal({ university, open, onClose }: Universit
     { icon: Users, label: t("uni.students", "Students"), value: formatStudents(university.studentsCount) },
     { icon: GraduationCap, label: t("uni.programs", "Programs"), value: String(university.programsCount) },
     { icon: Building2, label: t("uni.campusSize", "Campus Size"), value: university.campusSize },
+    { icon: Coins, label: t("uni.livingCost", "Living Cost"), value: university.livingCost },
+    { icon: GraduationCap, label: t("uni.employmentRate", "Employment Rate"), value: `${university.employmentRate}%` },
   ];
+
+  /* Deadline countdown */
+  const deadlineDate = useMemo(() => {
+    const dateMatch = university.deadline.match(/(\w+\s\d+,?\s\d+)/);
+    if (dateMatch) {
+      const d = new Date(dateMatch[1]);
+      if (!isNaN(d.getTime())) return d;
+    }
+    return null;
+  }, [university.deadline]);
+  const daysLeft = deadlineDate
+    ? Math.max(0, Math.ceil((deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+
+  /* Visa difficulty indicator based on country */
+  const visaDifficulty = useMemo((): { label: string; color: string } => {
+    const hardVisa = ["United States", "United Kingdom", "Australia", "Canada"];
+    const mediumVisa = ["Germany", "France", "Netherlands", "Sweden", "Italy", "Spain", "Japan", "South Korea"];
+    if (hardVisa.includes(university.country)) return { label: t("uni.visaHard", "Hard"), color: "text-red-400" };
+    if (mediumVisa.includes(university.country)) return { label: t("uni.visaMedium", "Medium"), color: "text-amber-400" };
+    return { label: t("uni.visaEasy", "Easy"), color: "text-green-400" };
+  }, [university.country, t]);
 
   const panelStyle: React.CSSProperties = isMobile
     ? {
@@ -218,14 +242,44 @@ export default function UniversityModal({ university, open, onClose }: Universit
                   <span>{university.country}</span>
                 </motion.div>
 
-                {university.hasScholarship && (
+                {/* Badges row */}
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.16, type: "spring" as const, stiffness: 280, damping: 26 }}
+                  className="mt-2.5 flex flex-wrap items-center justify-center gap-2"
+                >
+                  {university.hasScholarship && (
+                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold text-amber-400">
+                      {t("uni.scholarshipAvailable", "Scholarship Available")}
+                    </span>
+                  )}
+                  <span className={`rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-semibold ${visaDifficulty.color}`}>
+                    {t("uni.visa", "Visa")}: {visaDifficulty.label}
+                  </span>
+                  {university.housingAvailable && (
+                    <span className="rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-[11px] font-semibold text-green-400">
+                      {t("uni.housing", "Housing Available")}
+                    </span>
+                  )}
+                </motion.div>
+
+                {/* Deadline countdown */}
+                {daysLeft !== null && (
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.16, type: "spring" as const, stiffness: 280, damping: 26 }}
-                    className="mt-2.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold text-amber-400"
+                    transition={{ delay: 0.2, type: "spring" as const, stiffness: 280, damping: 26 }}
+                    className={`mt-2.5 rounded-lg px-3 py-1.5 text-center text-xs font-bold ${
+                      daysLeft <= 30
+                        ? "bg-red-500/15 text-red-400"
+                        : daysLeft <= 90
+                          ? "bg-amber-500/15 text-amber-400"
+                          : "bg-blue-500/15 text-blue-400"
+                    }`}
                   >
-                    {t("uni.scholarshipAvailable", "Scholarship Available")}
+                    <Clock className="mr-1 inline h-3 w-3" />
+                    {daysLeft} {t("uni.daysUntilDeadline", "days until deadline")}
                   </motion.div>
                 )}
 
@@ -369,10 +423,27 @@ export default function UniversityModal({ university, open, onClose }: Universit
                   {t("uni.compare", "Compare")}
                 </button>
               </div>
+              {/* Official Application + Google Maps */}
               <div className="flex gap-2.5">
                 <button
-                  onClick={handleOfficialWebsite}
+                  onClick={() => window.open(university.officialApplicationLink, "_blank", "noopener,noreferrer")}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-green-500/20 bg-green-500/10 px-3 py-2.5 text-xs font-semibold text-green-400 transition hover:bg-green-500/20 active:scale-[0.98]"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} />
+                  {t("uni.officialApply", "Apply on Official Website")}
+                </button>
+              </div>
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${university.latitude},${university.longitude}`, "_blank", "noopener,noreferrer")}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-xs font-medium text-white/50 transition hover:text-white/75 active:scale-[0.98]"
+                >
+                  <MapPin className="h-3.5 w-3.5" strokeWidth={2} />
+                  {t("uni.googleMaps", "Google Maps")}
+                </button>
+                <button
+                  onClick={handleOfficialWebsite}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-xs font-medium text-white/50 transition hover:text-white/75 active:scale-[0.98]"
                 >
                   <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} />
                   {t("uni.website", "Website")}

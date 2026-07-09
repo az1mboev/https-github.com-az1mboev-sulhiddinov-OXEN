@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "rea
 import * as THREE from "three";
 
 import { COUNTRIES, type Country } from "@/data/countries";
+import type { University } from "@/data/universities";
 
 const RADIUS = 2;
 const BORDER_OFFSET = 0.015;
@@ -293,6 +294,204 @@ function StatusMarkers({
               <meshBasicMaterial
                 ref={(m) => { if (m) colorRefs.current[i] = m as unknown as THREE.MeshBasicMaterial; }}
                 color={col}
+                transparent
+                opacity={0.9}
+                depthTest
+              />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  University markers with zoom-based clustering                      */
+/*  When zoomed out, nearby universities are clustered into groups.    */
+/*  As the user zooms in, clusters split into individual universities.  */
+/* ------------------------------------------------------------------ */
+
+const UNI_MARKER_OFFSET = 0.025;
+const UNI_MARKER_BLUE = new THREE.Color("#007AFF");
+const UNI_MARKER_GOLD = new THREE.Color("#FFD700");
+const UNI_MARKER_GREEN = new THREE.Color("#34C759");
+const UNI_MARKER_RED = new THREE.Color("#FF3B30");
+
+interface UniMarkerData {
+  id: string;
+  pos: THREE.Vector3;
+  lat: number;
+  lng: number;
+}
+
+function UniversityClusterMarkers({
+  universities,
+  selectedId,
+  wishlistIds,
+  visitedIds,
+  onMarkerClick,
+  interactionEnabled,
+  controlsRef,
+}: {
+  universities: University[];
+  selectedId: string | null;
+  wishlistIds: Set<string>;
+  visitedIds: Set<string>;
+  onMarkerClick: (uni: University) => void;
+  interactionEnabled: boolean;
+  controlsRef: React.RefObject<any>;
+}) {
+  const { camera } = useThree();
+  const pulseRefs = useRef<THREE.Mesh[]>([]);
+  const dotRefs = useRef<THREE.Mesh[]>([]);
+  const colorRefs = useRef<THREE.MeshBasicMaterial[]>([]);
+  const groupRef = useRef<THREE.Group>(null);
+  const visibleIndicesRef = useRef<number[]>([]);
+
+  const markerData = useMemo<UniMarkerData[]>(() => {
+    return universities.map((uni) => {
+      const pos = latLngToVec3(uni.latitude, uni.longitude, RADIUS + UNI_MARKER_OFFSET);
+      return { id: uni.id, pos, lat: uni.latitude, lng: uni.longitude };
+    });
+  }, [universities]);
+
+  const uniMap = useMemo(() => {
+    const m = new Map<string, University>();
+    universities.forEach((u) => m.set(u.id, u));
+    return m;
+  }, [universities]);
+
+  const getMarkerColor = useCallback(
+    (uniId: string): THREE.Color => {
+      if (visitedIds.has(uniId)) return UNI_MARKER_GREEN;
+      if (wishlistIds.has(uniId)) return UNI_MARKER_GOLD;
+      return UNI_MARKER_BLUE;
+    },
+    [visitedIds, wishlistIds],
+  );
+
+  // Clustering: determine which markers to show based on camera distance
+  useFrame(() => {
+    if (!controlsRef.current || !groupRef.current) return;
+    const dist = camera.position.distanceTo(controlsRef.current.target);
+    const zoomLevel = THREE.MathUtils.clamp((MAX_DISTANCE - dist) / (MAX_DISTANCE - MIN_DISTANCE), 0, 1);
+
+    // Cluster threshold: at low zoom, skip markers that are too close together
+    const clusterThreshold = THREE.MathUtils.lerp(25, 3, zoomLevel); // degrees
+    const visible = new Set<number>();
+    const lastShownLat: number[] = [];
+    const lastShownLng: number[] = [];
+
+    for (let i = 0; i < markerData.length; i++) {
+      const md = markerData[i];
+      let tooClose = false;
+      for (let j = 0; j < lastShownLat.length; j++) {
+        const d = greatCircleDistDeg(
+          { lat: md.lat, lng: md.lng },
+          { lat: lastShownLat[j], lng: lastShownLng[j] },
+        );
+        if (d < clusterThreshold) {
+          tooClose = true;
+          break;
+        }
+      }
+      if (!tooClose || md.id === selectedId) {
+        visible.add(i);
+        lastShownLat.push(md.lat);
+        lastShownLng.push(md.lng);
+      }
+    }
+
+    // Only update DOM/three objects if the visible set changed
+    const newVisible = Array.from(visible).sort((a, b) => a - b);
+    const oldVisible = visibleIndicesRef.current;
+    if (newVisible.length !== oldVisible.length || newVisible.some((v, i) => v !== oldVisible[i])) {
+      visibleIndicesRef.current = newVisible;
+      groupRef.current.children.forEach((child, idx) => {
+        child.visible = visible.has(idx);
+      });
+    }
+
+    // Pulse animation for visible markers
+    const t = Date.now() * 0.003;
+    pulseRefs.current.forEach((mesh, i) => {
+      if (!mesh || !visible.has(i)) return;
+      const isSelected = markerData[i]?.id === selectedId;
+      const phase = isSelected ? Date.now() * 0.006 : t + i * 0.15;
+      const baseScale = isSelected ? 1.5 : 1;
+      const amp = isSelected ? 0.35 : 0.25;
+      const s = baseScale + Math.sin(phase) * amp;
+      mesh.scale.setScalar(s);
+      (mesh.material as THREE.MeshBasicMaterial).opacity = isSelected
+        ? 0.4 + Math.sin(phase) * 0.2
+        : 0.25 + Math.sin(phase) * 0.15;
+    });
+  });
+
+  // Update colors when status changes
+  useEffect(() => {
+    colorRefs.current.forEach((mat, i) => {
+      if (!mat) return;
+      const md = markerData[i];
+      if (!md) return;
+      const isSelected = md.id === selectedId;
+      mat.color.copy(isSelected ? UNI_MARKER_GOLD : getMarkerColor(md.id));
+    });
+    dotRefs.current.forEach((mesh, i) => {
+      if (!mesh) return;
+      const md = markerData[i];
+      if (!md) return;
+      const isSelected = md.id === selectedId;
+      const mat = mesh.material as THREE.MeshBasicMaterial;
+      mat.color.copy(isSelected ? UNI_MARKER_GOLD : getMarkerColor(md.id));
+    });
+  }, [visitedIds, wishlistIds, getMarkerColor, markerData, selectedId]);
+
+  const handleClick = useCallback(
+    (uni: University) => (e: ThreeEvent<MouseEvent>) => {
+      e.stopPropagation();
+      if (interactionEnabled) onMarkerClick(uni);
+    },
+    [onMarkerClick, interactionEnabled],
+  );
+
+  return (
+    <group ref={groupRef}>
+      {markerData.map(({ id, pos }, i) => {
+        const uni = uniMap.get(id);
+        if (!uni) return null;
+        const col = getMarkerColor(id);
+        const isSelected = selectedId === id;
+        return (
+          <group key={id} position={pos} visible={i < 50}>
+            {/* Pulsing halo */}
+            <mesh
+              ref={(m) => { if (m) pulseRefs.current[i] = m; }}
+              raycast={() => {}}
+              scale={isSelected ? 1.5 : 1}
+            >
+              <sphereGeometry args={[0.028, 16, 16]} />
+              <meshBasicMaterial
+                color={isSelected ? UNI_MARKER_GOLD : col}
+                transparent
+                opacity={0.3}
+                depthTest
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+              />
+            </mesh>
+            {/* Solid dot */}
+            <mesh
+              ref={(m) => { if (m) dotRefs.current[i] = m; }}
+              onClick={handleClick(uni)}
+              onPointerOver={() => { if (interactionEnabled) document.body.style.cursor = "pointer"; }}
+              onPointerOut={() => { document.body.style.cursor = "auto"; }}
+            >
+              <sphereGeometry args={[0.015, 12, 12]} />
+              <meshBasicMaterial
+                ref={(m) => { if (m) colorRefs.current[i] = m as unknown as THREE.MeshBasicMaterial; }}
+                color={isSelected ? UNI_MARKER_GOLD : col}
                 transparent
                 opacity={0.9}
                 depthTest
@@ -725,6 +924,12 @@ function Scene({
   visitedIds,
   wishlistIds,
   interactionEnabled,
+  universityMode,
+  universities,
+  selectedUniversityId,
+  uniWishlistIds,
+  uniVisitedIds,
+  onUniversitySelect,
 }: {
   onCountrySelect: (c: Country) => void;
   onCountryDoubleClick: (c: Country) => void;
@@ -737,6 +942,12 @@ function Scene({
   visitedIds: Set<string>;
   wishlistIds: Set<string>;
   interactionEnabled: boolean;
+  universityMode?: boolean;
+  universities?: University[];
+  selectedUniversityId?: string | null;
+  uniWishlistIds?: Set<string>;
+  uniVisitedIds?: Set<string>;
+  onUniversitySelect?: (uni: University) => void;
 }) {
   const guardedSelect = useCallback(
     (c: Country) => { if (interactionEnabled) onCountrySelect(c); },
@@ -754,6 +965,10 @@ function Scene({
     (c: Country | null) => { if (interactionEnabled) onHoverCountry(c); },
     [interactionEnabled, onHoverCountry],
   );
+  const guardedUniSelect = useCallback(
+    (uni: University) => { if (interactionEnabled && onUniversitySelect) onUniversitySelect(uni); },
+    [interactionEnabled, onUniversitySelect],
+  );
 
   return (
     <>
@@ -766,11 +981,23 @@ function Scene({
         hoveredCountry={hoveredCountry}
         onHoverCountry={guardedHover}
       />
-      <StatusMarkers
-        visitedIds={visitedIds}
-        wishlistIds={wishlistIds}
-        onMarkerClick={guardedSelect}
-      />
+      {universityMode && universities && onUniversitySelect ? (
+        <UniversityClusterMarkers
+          universities={universities}
+          selectedId={selectedUniversityId ?? null}
+          wishlistIds={uniWishlistIds ?? EMPTY_SET}
+          visitedIds={uniVisitedIds ?? EMPTY_SET}
+          onMarkerClick={guardedUniSelect}
+          interactionEnabled={interactionEnabled}
+          controlsRef={controlsRef}
+        />
+      ) : (
+        <StatusMarkers
+          visitedIds={visitedIds}
+          wishlistIds={wishlistIds}
+          onMarkerClick={guardedSelect}
+        />
+      )}
       <CapitalMarkers />
       <Starfield />
       <RotationController controlsRef={controlsRef} />
@@ -790,13 +1017,25 @@ export default function Globe({
   zoomTarget,
   visitedIds,
   wishlistIds,
+  universityMode,
+  universities,
+  selectedUniversityId,
+  uniWishlistIds,
+  uniVisitedIds,
+  onUniversitySelect,
 }: {
-  onCountrySelect: (c: Country) => void;
+  onCountrySelect?: (c: Country) => void;
   onBackgroundTap?: () => void;
   selectedCountry: Country | null;
   zoomTarget?: { lat: number; lng: number } | null;
   visitedIds?: Set<string>;
   wishlistIds?: Set<string>;
+  universityMode?: boolean;
+  universities?: University[];
+  selectedUniversityId?: string | null;
+  uniWishlistIds?: Set<string>;
+  uniVisitedIds?: Set<string>;
+  onUniversitySelect?: (uni: University) => void;
 }) {
   const controlsRef = useRef<any>(null);
   const hoveredCountryRef = useRef<Country | null>(null);
@@ -827,6 +1066,11 @@ export default function Globe({
     setHoveredCountry(c);
   }, []);
 
+  const noopCountrySelect = useCallback((c: Country) => {
+    // In university mode, country selection is not used
+    void c;
+  }, []);
+
   return (
     <div className="relative h-full w-full">
       <Canvas
@@ -836,7 +1080,7 @@ export default function Globe({
       >
         <Suspense fallback={null}>
           <Scene
-            onCountrySelect={onCountrySelect}
+            onCountrySelect={onCountrySelect ?? noopCountrySelect}
             onCountryDoubleClick={handleDoubleClick}
             onBackgroundTap={onBackgroundTap}
             selectedCountry={selectedCountry}
@@ -847,6 +1091,12 @@ export default function Globe({
             visitedIds={visitedIds ?? EMPTY_SET}
             wishlistIds={wishlistIds ?? EMPTY_SET}
             interactionEnabled={interactionEnabled}
+            universityMode={universityMode}
+            universities={universities}
+            selectedUniversityId={selectedUniversityId}
+            uniWishlistIds={uniWishlistIds}
+            uniVisitedIds={uniVisitedIds}
+            onUniversitySelect={onUniversitySelect}
           />
           <OrbitControls
             ref={controlsRef}

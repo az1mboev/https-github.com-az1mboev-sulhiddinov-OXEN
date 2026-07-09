@@ -162,7 +162,7 @@ function post(id: string, cover: string, username: string, userId: string, flag:
    SEED UNIVERSITIES — 20 universities with real GPS coordinates
    ================================================================== */
 
-export const UNIVERSITIES: University[] = [
+const BASE_UNIVERSITIES: University[] = [
   {
     id: "harvard",
     name: "Harvard University",
@@ -1530,6 +1530,98 @@ export const UNIVERSITIES: University[] = [
 ];
 
 /* ── Helpers ────────────────────────────────────────────────────── */
+
+/* Generate full University objects from compact seeds */
+import { UNIVERSITY_SEEDS, type UniSeed } from "@/data/uniList";
+
+const COVER_IMAGES = [
+  "https://images.unsplash.com/photo-1562774011-d5a8a8c51e84?w=1200&h=600&fit=crop",
+  "https://images.unsplash.com/photo-1573164407897-1c4b4b8e2e2e?w=1200&h=600&fit=crop",
+  "https://images.unsplash.com/photo-1607233134-r5a9f4a8c8c0?w=1200&h=600&fit=crop",
+  "https://images.unsplash.com/photo-1591291621164-2c6367723315?w=1200&h=600&fit=crop",
+  "https://images.unsplash.com/photo-1577896851239-4194636f342e?w=1200&h=600&fit=crop",
+  "https://images.unsplash.com/photo-1606857521015-7f9fcf423740?w=1200&h=600&fit=crop",
+];
+
+function generateFromSeed(seed: UniSeed, index: number): University {
+  const cover = COVER_IMAGES[index % COVER_IMAGES.length];
+  const gallery = [cover, COVER_IMAGES[(index + 2) % COVER_IMAGES.length]];
+  const logoUrl = "https://images.unsplash.com/photo-1562774011-d5a8a8c51e84?w=200&h=200&fit=crop";
+
+  return {
+    id: seed.id,
+    name: seed.name,
+    country: seed.country,
+    flag: seed.flag,
+    city: seed.city,
+    continent: seed.continent,
+    latitude: seed.lat,
+    longitude: seed.lng,
+    logo: logoUrl,
+    coverImage: cover,
+    gallery,
+    description: `${seed.name} is a ${seed.type} university located in ${seed.city}, ${seed.country}. It offers ${seed.programsCount} programs and serves ${seed.studentsCount.toLocaleString()} students.`,
+    shortDescription: `${seed.city}, ${seed.country} · QS #${seed.qsRanking}`,
+    qsRanking: seed.qsRanking,
+    worldRanking: seed.qsRanking + Math.floor(Math.random() * 20),
+    tuition: seed.tuition,
+    tuitionNumeric: seed.tuitionNumeric,
+    scholarship: seed.hasScholarship ? "Merit and need-based scholarships available" : "Limited scholarships available",
+    hasScholarship: seed.hasScholarship,
+    deadline: seed.deadline,
+    applicationFee: "$50-100",
+    website: `https://${seed.id}.edu`,
+    admissionLink: `https://${seed.id}.edu/admissions`,
+    officialApplicationLink: `https://${seed.id}.edu/apply`,
+    acceptanceRate: seed.acceptanceRate,
+    campusSize: "Various campuses",
+    studentsCount: seed.studentsCount,
+    programsCount: seed.programsCount,
+    email: `admissions@${seed.id}.edu`,
+    phone: "+1-555-0100",
+    socialLinks: [{ platform: "twitter", url: `https://twitter.com/${seed.id}` }],
+    type: seed.type,
+    ieltsRequirement: seed.ielts,
+    toeflRequirement: seed.toefl,
+    satRequirement: seed.sat,
+    actRequirement: seed.act,
+    language: seed.language,
+    nearbyCity: seed.city,
+    requiredDocuments: STANDARD_DOCS,
+    bachelorPrograms: [
+      prog(`${seed.id}-b1`, "Computer Science", "bachelor", "3-4 years", seed.tuition, seed.language.split("/")[0], "Comprehensive CS program."),
+      prog(`${seed.id}-b2`, "Engineering", "bachelor", "3-4 years", seed.tuition, seed.language.split("/")[0], "Engineering program."),
+    ],
+    masterPrograms: [
+      prog(`${seed.id}-m1`, "Master of Science", "master", "1-2 years", seed.tuition, "English", "Advanced master's program."),
+    ],
+    phdPrograms: [
+      prog(`${seed.id}-p1`, "PhD Program", "phd", "3-5 years", "Funded for many programs", "English", "Research-focused doctoral program."),
+    ],
+    videos: [
+      vid(`${seed.id}-v1`, `${seed.name} Campus Tour`, "campus-tour", index % 5, cover),
+    ],
+    reviews: [
+      rev(`${seed.id}-r1`, "Student Reviewer", "https://i.pravatar.cc/150?img=10", 5, "2025-06", `Great experience at ${seed.name}!`, "General"),
+    ],
+    posts: [
+      post(`${seed.id}-p1`, cover, "student", "u-student", seed.flag, seed.country, seed.city, `Life at ${seed.name}! 🎓`, 1000 + index * 10, 50 + index),
+    ],
+    employmentRate: seed.employmentRate,
+    livingCost: seed.livingCost,
+    housingAvailable: seed.housingAvailable,
+  };
+}
+
+/* Merge detailed seed universities with generated ones from compact list */
+const DETAILED_IDS = new Set(BASE_UNIVERSITIES.map((u) => u.id));
+const generatedUniversities = UNIVERSITY_SEEDS
+  .filter((seed) => !DETAILED_IDS.has(seed.id))
+  .map((seed, i) => generateFromSeed(seed, i + 100));
+
+/* Export the combined list as UNIVERSITIES (back-compat with all existing imports) */
+export const UNIVERSITIES: University[] = [...BASE_UNIVERSITIES, ...generatedUniversities];
+export const ALL_UNIVERSITIES = UNIVERSITIES;
 
 export function getUniversity(id: string): University | undefined {
   return UNIVERSITIES.find((u) => u.id === id);

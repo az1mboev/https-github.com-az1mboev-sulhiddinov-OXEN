@@ -79,7 +79,7 @@ export function UniversityProvider({ children }: { children: ReactNode }) {
         save(COMPARE_KEY, next);
         return next;
       }
-      if (prev.length >= 3) return prev;
+      if (prev.length >= 5) return prev;
       const next = [...prev, universityId];
       save(COMPARE_KEY, next);
       return next;

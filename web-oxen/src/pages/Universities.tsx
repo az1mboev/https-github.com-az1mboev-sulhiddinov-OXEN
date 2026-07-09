@@ -44,7 +44,7 @@ import {
 import { getUniversityRecommendations, type UniversityAIInput, type UniversityRecommendation } from "@/lib/uniAI";
 
 const SAFARIO_LOGO = "/logo.png";
-const UniversityGlobe = lazy(() => import("@/components/UniversityGlobe"));
+const Globe = lazy(() => import("@/components/Globe"));
 
 /* ── Filter state ────────────────────────────────────────────────── */
 
@@ -999,6 +999,25 @@ export default function Universities() {
     return count;
   }, [filters]);
 
+  /* ── Themed recommendation feed sections ── */
+  const themedFeeds = useMemo(() => {
+    const ivyIds = new Set(["harvard", "stanford", "mit", "princeton", "yale", "columbia", "upenn", "caltech", "uchicago", "cornell", "duke", "johnshopkins"]);
+    return [
+      { icon: "🔥", title: t("uni.trending", "Trending Universities"), items: [...UNIVERSITIES].sort((a, b) => b.studentsCount - a.studentsCount).slice(0, 12) },
+      { icon: "⭐", title: t("uni.topRanked", "Top Ranked"), items: [...UNIVERSITIES].sort((a, b) => a.qsRanking - b.qsRanking).slice(0, 12) },
+      { icon: "💰", title: t("uni.affordable", "Affordable Universities"), items: [...UNIVERSITIES].sort((a, b) => a.tuitionNumeric - b.tuitionNumeric).slice(0, 12) },
+      { icon: "🎓", title: t("uni.bestScholarships", "Best Scholarships"), items: UNIVERSITIES.filter((u) => u.hasScholarship).slice(0, 12) },
+      { icon: "🌍", title: t("uni.studyAbroad", "Study Abroad Picks"), items: UNIVERSITIES.filter((u) => u.continent !== "North America").slice(0, 12) },
+      { icon: "🏛", title: t("uni.ivyLeague", "Ivy League"), items: UNIVERSITIES.filter((u) => ivyIds.has(u.id)).slice(0, 12) },
+      { icon: "💻", title: t("uni.bestCS", "Best Computer Science"), items: UNIVERSITIES.filter((u) => u.bachelorPrograms.some((p) => p.name.toLowerCase().includes("computer"))).slice(0, 12) },
+      { icon: "🤖", title: t("uni.aiUniversities", "AI Universities"), items: UNIVERSITIES.filter((u) => u.bachelorPrograms.some((p) => p.name.toLowerCase().includes("ai") || p.name.toLowerCase().includes("machine"))).slice(0, 12) },
+      { icon: "🩺", title: t("uni.medical", "Medical Universities"), items: UNIVERSITIES.filter((u) => u.bachelorPrograms.some((p) => p.name.toLowerCase().includes("medicine") || p.name.toLowerCase().includes("medical"))).slice(0, 12) },
+      { icon: "⚙", title: t("uni.engineering", "Engineering Universities"), items: UNIVERSITIES.filter((u) => u.bachelorPrograms.some((p) => p.name.toLowerCase().includes("engineer"))).slice(0, 12) },
+      { icon: "📈", title: t("uni.businessSchools", "Business Schools"), items: UNIVERSITIES.filter((u) => u.bachelorPrograms.some((p) => p.name.toLowerCase().includes("business") || p.name.toLowerCase().includes("economics") || p.name.toLowerCase().includes("mba"))).slice(0, 12) },
+      { icon: "🎨", title: t("uni.artDesign", "Art & Design"), items: UNIVERSITIES.filter((u) => u.bachelorPrograms.some((p) => p.name.toLowerCase().includes("art") || p.name.toLowerCase().includes("design") || p.name.toLowerCase().includes("architecture"))).slice(0, 12) },
+    ];
+  }, [t]);
+
   return (
     <div className="relative">
       {/* ── Hero globe ─────────────────────────────── */}
@@ -1015,14 +1034,16 @@ export default function Universities() {
               </div>
             }
           >
-            <UniversityGlobe
+            <Globe
+              selectedCountry={null}
+              onBackgroundTap={handleBackgroundTap}
+              zoomTarget={zoomTarget}
+              universityMode
               universities={filteredUniversities}
               selectedUniversityId={selectedUniversity?.id ?? null}
               onUniversitySelect={handleUniversitySelect}
-              onBackgroundTap={handleBackgroundTap}
-              zoomTarget={zoomTarget}
-              wishlistIds={wishlistSet}
-              visitedIds={visitedSet}
+              uniWishlistIds={wishlistSet}
+              uniVisitedIds={visitedSet}
             />
           </Suspense>
         </motion.div>
@@ -1121,22 +1142,24 @@ export default function Universities() {
         </p>
       </section>
 
-      {/* ── University Discover (horizontal cards) ── */}
-      <section className="relative z-10 pt-4 pb-6">
-        <div className="mb-4 flex items-center justify-between px-5">
-          <div>
-            <h2 className="font-display text-lg font-bold">{t("uni.discover", "University Discover")}</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">{t("uni.discoverDesc", "Top universities worldwide")}</p>
+      {/* ── Themed Recommendation Feeds ── */}
+      {themedFeeds.map((section, sectionIdx) => (
+        <section key={sectionIdx} className="relative z-10 pt-4 pb-3">
+          <div className="mb-3 flex items-center justify-between px-5">
+            <h2 className="flex items-center gap-2 font-display text-lg font-bold">
+              <span className="text-xl">{section.icon}</span>
+              {section.title}
+            </h2>
           </div>
-        </div>
-        <div className="-mx-0 overflow-x-auto no-scrollbar">
-          <div className="flex gap-4 px-5">
-            {filteredUniversities.map((uni, i) => (
-              <UniversityDiscoverCard key={uni.id} uni={uni} index={i} />
-            ))}
+          <div className="-mx-0 overflow-x-auto no-scrollbar">
+            <div className="flex gap-4 px-5">
+              {section.items.map((uni, i) => (
+                <UniversityDiscoverCard key={uni.id} uni={uni} index={i} />
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ))}
 
       {/* ── Campus Videos ──────────────────────────── */}
       <section className="relative z-10 pt-4 pb-6">

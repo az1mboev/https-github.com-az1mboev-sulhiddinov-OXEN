@@ -27,8 +27,11 @@ import {
   Trophy,
   X,
   ChevronRight,
+  Sparkles,
+  Send,
+  Plane,
 } from "lucide-react";
-import { useCallback, useMemo, useState, Suspense } from "react";
+import { useCallback, useMemo, useState, Suspense, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
@@ -189,6 +192,178 @@ function VideoCard({ video, index }: { video: UniversityVideo; index: number }) 
         document.body,
       )}
     </>
+  );
+}
+
+/* ── Living Cost Calculator ─────────────────────────────────────── */
+
+function LivingCostCalculator({ tuition, livingCost }: { tuition: number; livingCost: string }) {
+  const { t } = useLanguage();
+  const [accommodation, setAccommodation] = useState<number>(800);
+  const [food, setFood] = useState<number>(400);
+  const [transport, setTransport] = useState<number>(150);
+  const [misc, setMisc] = useState<number>(300);
+
+  const monthlyTotal = accommodation + food + transport + misc;
+  const yearlyTotal = monthlyTotal * 12 + tuition;
+
+  const sliderClass = "w-full accent-blue-500";
+
+  return (
+    <div className="glass rounded-2xl p-4 space-y-4">
+      <div>
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">{t("uni.accommodation", "Accommodation")}</span>
+          <span className="font-semibold">${accommodation}/mo</span>
+        </div>
+        <input type="range" min={200} max={2500} step={50} value={accommodation} onChange={(e) => setAccommodation(Number(e.target.value))} className={sliderClass} />
+      </div>
+      <div>
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">{t("uni.food", "Food")}</span>
+          <span className="font-semibold">${food}/mo</span>
+        </div>
+        <input type="range" min={150} max={800} step={25} value={food} onChange={(e) => setFood(Number(e.target.value))} className={sliderClass} />
+      </div>
+      <div>
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">{t("uni.transport", "Transport")}</span>
+          <span className="font-semibold">${transport}/mo</span>
+        </div>
+        <input type="range" min={50} max={400} step={25} value={transport} onChange={(e) => setTransport(Number(e.target.value))} className={sliderClass} />
+      </div>
+      <div>
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">{t("uni.miscellaneous", "Miscellaneous")}</span>
+          <span className="font-semibold">${misc}/mo</span>
+        </div>
+        <input type="range" min={100} max={800} step={50} value={misc} onChange={(e) => setMisc(Number(e.target.value))} className={sliderClass} />
+      </div>
+      <div className="border-t border-white/5 pt-3">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">{t("uni.monthlyTotal", "Monthly Total")}</span>
+          <span className="font-bold text-primary">${monthlyTotal.toLocaleString()}/mo</span>
+        </div>
+        <div className="mt-2 flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">{t("uni.yearlyTotal", "Yearly Total (incl. tuition)")}</span>
+          <span className="font-display text-lg font-bold text-primary">${yearlyTotal.toLocaleString()}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── AI Chat Widget for university-specific questions ────────────── */
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+function AIChatWidget({ university }: { university: NonNullable<ReturnType<typeof getUniversity>> }) {
+  const { t, language } = useLanguage();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSend = useCallback(async () => {
+    if (!input.trim() || loading) return;
+    const userMsg: ChatMessage = { role: "user", content: input.trim() };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const TOOLKIT_URL2 = import.meta.env.EXPO_PUBLIC_TOOLKIT_URL ?? "https://toolkit.rork.com";
+      const TOOLKIT_KEY2 = import.meta.env.EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY ?? "";
+
+      const systemPrompt = `You are an AI admissions assistant for ${university.name} in ${university.city}, ${university.country}.
+You help students with questions about admissions, programs, tuition, scholarships, deadlines, campus life, and requirements.
+University details: QS Ranking #${university.qsRanking}, Tuition ${university.tuition}, Acceptance Rate ${university.acceptanceRate}%, IELTS ${university.ieltsRequirement}, TOEFL ${university.toeflRequirement}, Deadline ${university.deadline}, Type ${university.type}, Language ${university.language}.
+Respond in the language code "${language}". Be helpful, concise, and accurate. Maximum 3 sentences.`;
+
+      const res = await fetch(`${TOOLKIT_URL2}/v2/vercel/v1/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${TOOLKIT_KEY2}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "anthropic/claude-haiku-4.5",
+          temperature: 0.6,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMsg.content },
+          ],
+        }),
+      });
+
+      if (!res.ok) throw new Error("AI request failed");
+      const data = await res.json();
+      const content: string = data?.choices?.[0]?.message?.content ?? t("uni.aiError", "Sorry, I couldn't process your request.");
+      setMessages((prev) => [...prev, { role: "assistant", content }]);
+    } catch {
+      setMessages((prev) => [...prev, { role: "assistant", content: t("uni.aiError", "Sorry, I couldn't process your request. Please try again.") }]);
+    } finally {
+      setLoading(false);
+    }
+  }, [input, loading, university, language, t]);
+
+  return (
+    <div className="glass rounded-2xl p-4">
+      <div ref={scrollRef} className="mb-3 max-h-60 space-y-2 overflow-y-auto no-scrollbar">
+        {messages.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">
+            {t("uni.aiChatHint", "Ask me anything about admissions, programs, tuition, or campus life at")} {university.name}
+          </p>
+        ) : (
+          messages.map((msg, i) => (
+            <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+              <div className={cn(
+                "max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed",
+                msg.role === "user" ? "bg-blue-500/20 text-white" : "bg-white/[0.05] text-white/80",
+              )}>
+                {msg.content}
+              </div>
+            </div>
+          ))
+        )}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="rounded-2xl bg-white/[0.05] px-3 py-2 text-xs text-white/40">
+              <span className="inline-flex gap-1">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/40" style={{ animationDelay: "0ms" }} />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/40" style={{ animationDelay: "150ms" }} />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/40" style={{ animationDelay: "300ms" }} />
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+          placeholder={t("uni.askQuestion", "Ask a question...")}
+          className="flex-1 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500/40"
+        />
+        <button
+          onClick={handleSend}
+          disabled={loading || !input.trim()}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500 text-white transition active:scale-90 disabled:opacity-50"
+        >
+          <Send className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -711,6 +886,140 @@ export default function UniversityDetail() {
           </div>
         </Section>
       )}
+
+      {/* ── Virtual Campus Tour (360) ───────────────────────────── */}
+      {university.gallery.length > 0 && (
+        <Section title={t("uni.virtualTour", "Virtual Campus Tour")} icon={Globe2}>
+          <div className="grid grid-cols-2 gap-2">
+            {university.gallery.map((img, i) => (
+              <motion.button
+                key={i}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setActiveGalleryIdx(i)}
+                className="group relative aspect-square overflow-hidden rounded-2xl"
+              >
+                <img src={img} alt={`360 view ${i + 1}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute left-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">360°</div>
+              </motion.button>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* ── Visa Information ─────────────────────────────────────── */}
+      <Section title={t("uni.visaInfo", "Visa Information")} icon={FileText}>
+        <div className="glass rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{t("uni.visaDifficulty", "Visa Difficulty")}</span>
+            {(() => {
+              const hardVisa = ["United States", "United Kingdom", "Australia", "Canada"];
+              const mediumVisa = ["Germany", "France", "Netherlands", "Sweden", "Italy", "Spain", "Japan", "South Korea"];
+              if (hardVisa.includes(university.country)) return <span className="text-sm font-bold text-red-400">{t("uni.visaHard", "Hard")}</span>;
+              if (mediumVisa.includes(university.country)) return <span className="text-sm font-bold text-amber-400">{t("uni.visaMedium", "Medium")}</span>;
+              return <span className="text-sm font-bold text-green-400">{t("uni.visaEasy", "Easy")}</span>;
+            })()}
+          </div>
+          <div className="flex items-center justify-between border-t border-white/5 pt-3">
+            <span className="text-sm text-muted-foreground">{t("uni.studentVisa", "Student Visa Required")}</span>
+            <span className="text-sm font-semibold">✓</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-white/5 pt-3">
+            <span className="text-sm text-muted-foreground">{t("uni.workWhileStudying", "Work While Studying")}</span>
+            <span className="text-sm font-semibold">{["Germany", "Canada", "Australia", "United Kingdom"].includes(university.country) ? "✓ 20hrs/week" : "Limited"}</span>
+          </div>
+        </div>
+      </Section>
+
+      {/* ── Campus Facilities ────────────────────────────────────── */}
+      <Section title={t("uni.campusFacilities", "Campus Facilities")} icon={Building2}>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: t("uni.library", "Library"), available: true },
+            { label: t("uni.laboratories", "Laboratories"), available: true },
+            { label: t("uni.dormitories", "Dormitories"), available: university.housingAvailable },
+            { label: t("uni.sportsFacilities", "Sports Facilities"), available: true },
+            { label: t("uni.researchCenters", "Research Centers"), available: true },
+            { label: t("uni.exchangePrograms", "Exchange Programs"), available: true },
+          ].map((facility, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.04 }}
+              className="glass flex items-center gap-2 rounded-xl p-3"
+            >
+              <CheckCircle2 className={cn("h-4 w-4 shrink-0", facility.available ? "text-green-400" : "text-white/20")} />
+              <span className="text-xs font-medium">{facility.label}</span>
+            </motion.div>
+          ))}
+        </div>
+      </Section>
+
+      {/* ── Internships & Employment ──────────────────────────────── */}
+      <Section title={t("uni.internships", "Internships & Employment")} icon={Briefcase}>
+        <div className="glass rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{t("uni.employmentRate", "Employment Rate")}</span>
+            <span className="text-sm font-bold text-green-400">{university.employmentRate}%</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-white/5 pt-3">
+            <span className="text-sm text-muted-foreground">{t("uni.graduateSalary", "Average Graduate Salary")}</span>
+            <span className="text-sm font-semibold">$55,000 - $95,000/yr</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-white/5 pt-3">
+            <span className="text-sm text-muted-foreground">{t("uni.internshipOpportunities", "Internship Opportunities")}</span>
+            <span className="text-sm font-semibold">✓</span>
+          </div>
+        </div>
+      </Section>
+
+      {/* ── Nearby Airports & Hotels ──────────────────────────────── */}
+      <Section title={t("uni.nearbyAirports", "Nearby Airports & Hotels")} icon={MapPin}>
+        <div className="space-y-3">
+          <div className="glass rounded-2xl p-4">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{t("uni.airports", "Nearest Airports")}</p>
+            <p className="text-sm text-muted-foreground">{university.nearbyCity} International Airport · ~30-60 min from campus</p>
+          </div>
+          <div className="glass rounded-2xl p-4">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{t("uni.hotels", "Nearest Hotels")}</p>
+            <p className="text-sm text-muted-foreground">Budget: $40-80/night · Mid-range: $90-180/night · Luxury: $200+/night</p>
+          </div>
+        </div>
+      </Section>
+
+      {/* ── Weather & Time Zone ───────────────────────────────────── */}
+      <Section title={t("uni.weatherTimezone", "Weather & Time Zone")} icon={Globe2}>
+        <div className="glass rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{t("uni.climate", "Climate")}</span>
+            <span className="text-sm font-semibold">{university.continent === "Europe" ? "Temperate" : university.continent === "Asia" ? "Varies" : "Varies"}</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-white/5 pt-3">
+            <span className="text-sm text-muted-foreground">{t("uni.timeZone", "Time Zone")}</span>
+            <span className="text-sm font-semibold">UTC {university.longitude > 0 ? "+" : ""}{Math.round(university.longitude / 15)}</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-white/5 pt-3">
+            <span className="text-sm text-muted-foreground">{t("uni.transportation", "Public Transportation")}</span>
+            <span className="text-sm font-semibold">✓</span>
+          </div>
+        </div>
+      </Section>
+
+      {/* ── Living Cost Calculator ────────────────────────────────── */}
+      <Section title={t("uni.livingCostCalculator", "Living Cost Calculator")} icon={Coins}>
+        <LivingCostCalculator tuition={university.tuitionNumeric} livingCost={university.livingCost} />
+      </Section>
+
+      {/* ── AI Chatbot ────────────────────────────────────────────── */}
+      <Section title={t("uni.aiAssistant", "AI Admissions Assistant")} icon={Sparkles}>
+        <AIChatWidget university={university} />
+      </Section>
 
       {/* ── Official Application CTA ─────────────────────────────── */}
       <section className="px-5 pt-8 pb-4">
