@@ -28,6 +28,8 @@ export interface SupportCategory {
   id: string;
   label: string;
   description: string;
+  labelKey: string;
+  descriptionKey: string;
   icon: string; // emoji or lucide name key
   color: string;
 }
@@ -37,14 +39,14 @@ export interface SupportCategory {
 /* ------------------------------------------------------------------ */
 
 export const SUPPORT_CATEGORIES: SupportCategory[] = [
-  { id: "general", label: "General Support", description: "Questions about the app, features, or your account", icon: "💬", color: "#3B82F6" },
-  { id: "account", label: "Account & Security", description: "Login, password, privacy, and account settings", icon: "🔐", color: "#8B5CF6" },
-  { id: "bookings", label: "Travel & Bookings", description: "Trips, itineraries, bookings, and travel plans", icon: "✈️", color: "#F59E0B" },
-  { id: "payments", label: "Payments & Billing", description: "Subscriptions, refunds, and payment issues", icon: "💳", color: "#10B981" },
-  { id: "bug", label: "Report a Bug", description: "Something not working? Tell us what happened", icon: "🐞", color: "#EF4444" },
-  { id: "feedback", label: "Feature Request", description: "Suggest new features or improvements", icon: "💡", color: "#F97316" },
-  { id: "safety", label: "Safety & Reports", description: "Report users, content, or safety concerns", icon: "🛡️", color: "#EC4899" },
-  { id: "technical", label: "Technical Issues", description: "App crashes, loading problems, performance", icon: "⚙️", color: "#6366F1" },
+  { id: "general", label: "General Support", labelKey: "support.category.general", description: "Questions about the app, features, or your account", descriptionKey: "support.categoryDesc.general", icon: "💬", color: "#3B82F6" },
+  { id: "account", label: "Account & Security", labelKey: "support.category.account", description: "Login, password, privacy, and account settings", descriptionKey: "support.categoryDesc.account", icon: "🔐", color: "#8B5CF6" },
+  { id: "bookings", label: "Travel & Bookings", labelKey: "support.category.bookings", description: "Trips, itineraries, bookings, and travel plans", descriptionKey: "support.categoryDesc.bookings", icon: "✈️", color: "#F59E0B" },
+  { id: "payments", label: "Payments & Billing", labelKey: "support.category.payments", description: "Subscriptions, refunds, and payment issues", descriptionKey: "support.categoryDesc.payments", icon: "💳", color: "#10B981" },
+  { id: "bug", label: "Report a Bug", labelKey: "support.category.bug", description: "Something not working? Tell us what happened", descriptionKey: "support.categoryDesc.bug", icon: "🐞", color: "#EF4444" },
+  { id: "feedback", label: "Feature Request", labelKey: "support.category.feedback", description: "Suggest new features or improvements", descriptionKey: "support.categoryDesc.feedback", icon: "💡", color: "#F97316" },
+  { id: "safety", label: "Safety & Reports", labelKey: "support.category.safety", description: "Report users, content, or safety concerns", descriptionKey: "support.categoryDesc.safety", icon: "🛡️", color: "#EC4899" },
+  { id: "technical", label: "Technical Issues", labelKey: "support.category.technical", description: "App crashes, loading problems, performance", descriptionKey: "support.categoryDesc.technical", icon: "⚙️", color: "#6366F1" },
 ];
 
 /* ------------------------------------------------------------------ */

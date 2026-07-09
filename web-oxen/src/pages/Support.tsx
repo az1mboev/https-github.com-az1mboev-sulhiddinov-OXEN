@@ -13,6 +13,7 @@ import {
   SUPPORT_CATEGORIES,
   type SupportMessage,
 } from "@/contexts/SupportContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 
 const EMOJIS = ["😀", "😂", "😍", "🥰", "😎", "🤔", "😢", "😡", "👍", "👎", "❤️", "🔥", "✨", "🎉", "🚀", "🌍", "✈️", "🏝️", "📸", "🙌", "🙏", "💡", "🐞", "🛡️"];
@@ -23,15 +24,18 @@ function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function formatDateDivider(ts: number): string {
-  const d = new Date(ts);
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+function useFormatDateDivider() {
+  const { t } = useLanguage();
+  return (ts: number): string => {
+    const d = new Date(ts);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
 
-  if (d.toDateString() === today.toDateString()) return "Today";
-  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
-  return d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+    if (d.toDateString() === today.toDateString()) return t("support.today", "Today");
+    if (d.toDateString() === yesterday.toDateString()) return t("support.yesterday", "Yesterday");
+    return d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  };
 }
 
 function formatFileSize(bytes: number): string {
@@ -53,6 +57,7 @@ interface MessageBubbleProps {
 }
 
 function MessageBubble({ msg, isMe, index, replyToMessage, onDelete, onEdit, onReply }: MessageBubbleProps) {
+  const { t } = useLanguage();
   const [showMenu, setShowMenu] = useState(false);
   const isDeleted = msg.deletedForEveryone;
 
@@ -111,7 +116,7 @@ function MessageBubble({ msg, isMe, index, replyToMessage, onDelete, onEdit, onR
           {/* Edit indicator */}
           {msg.editedAt && !isDeleted && (
             <span className={cn("mt-0.5 block text-[10px] opacity-40", isMe ? "text-white/50" : "text-current")}>
-              edited
+              {t("support.edited", "edited")}
             </span>
           )}
 
@@ -233,6 +238,7 @@ function TypingIndicator() {
 
 export default function Support() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const {
     categories,
@@ -386,6 +392,7 @@ export default function Support() {
   /* ── Chat view (full screen) ── */
   if (activeCategory) {
     let lastDateDivider = "";
+    const formatDate = useFormatDateDivider();
     const typing = isTyping(activeCategory.id);
 
     return createPortal(
@@ -409,14 +416,14 @@ export default function Support() {
             {activeCategory.icon}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold truncate">{activeCategory.label}</p>
+            <p className="text-sm font-bold truncate">{t(activeCategory.labelKey, activeCategory.label)}</p>
             <p className="text-xs flex items-center gap-1.5">
               {typing ? (
-                <span className="text-emerald-400">typing…</span>
+                <span className="text-emerald-400">{t("support.typing", "typing…")}</span>
               ) : (
                 <span className="text-emerald-400 flex items-center gap-1">
                   <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                  Online
+                  {t("settings.online", "Online")}
                 </span>
               )}
             </p>
@@ -433,14 +440,14 @@ export default function Support() {
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04] text-3xl">
                 {activeCategory.icon}
               </div>
-              <p className="text-sm font-medium text-muted-foreground">{activeCategory.label}</p>
-              <p className="mt-1 max-w-[240px] text-xs text-muted-foreground/60">{activeCategory.description}</p>
-              <p className="mt-3 text-xs text-muted-foreground/50">Send a message to start the conversation</p>
+              <p className="text-sm font-medium text-muted-foreground">{t(activeCategory.labelKey, activeCategory.label)}</p>
+              <p className="mt-1 max-w-[240px] text-xs text-muted-foreground/60">{t(activeCategory.descriptionKey, activeCategory.description)}</p>
+              <p className="mt-3 text-xs text-muted-foreground/50">{t("support.startConversation", "Send a message to start the conversation")}</p>
             </div>
           )}
           {activeMessages.map((msg, i) => {
             const isMe = msg.senderId === "user";
-            const dateDivider = formatDateDivider(msg.createdAt);
+            const dateDivider = formatDate(msg.createdAt);
             const showDivider = dateDivider !== lastDateDivider;
             lastDateDivider = dateDivider;
             const replyMsg = msg.replyTo
@@ -486,7 +493,7 @@ export default function Support() {
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-primary">{replyToMessage.senderName}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {replyToMessage.type === "text" ? replyToMessage.content : `[${replyToMessage.type}]`}
+                    {replyToMessage.type === "text" ? replyToMessage.content : `[${t(`support.${replyToMessage.type}`, replyToMessage.type)}]`}
                   </p>
                 </div>
                 <button
@@ -511,7 +518,7 @@ export default function Support() {
             >
               <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 px-3 py-2">
                 <Pencil className="h-4 w-4 shrink-0 text-amber-400" />
-                <p className="text-xs text-amber-300/80 flex-1">Editing message…</p>
+                <p className="text-xs text-amber-300/80 flex-1">{t("support.editMessagePlaceholder", "Editing message…")}</p>
                 <button
                   onClick={() => { setEditingMessageId(null); setMessageText(""); }}
                   className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground transition hover:text-foreground"
@@ -562,21 +569,21 @@ export default function Support() {
                   className="flex flex-col items-center gap-1.5 rounded-2xl bg-white/[0.06] px-5 py-3 transition hover:bg-white/[0.1] active:scale-95"
                 >
                   <ImageIcon className="h-6 w-6 text-blue-400" />
-                  <span className="text-xs font-medium">Photo</span>
+                  <span className="text-xs font-medium">{t("support.photo", "Photo")}</span>
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="flex flex-col items-center gap-1.5 rounded-2xl bg-white/[0.06] px-5 py-3 transition hover:bg-white/[0.1] active:scale-95"
                 >
                   <Video className="h-6 w-6 text-purple-400" />
-                  <span className="text-xs font-medium">Video</span>
+                  <span className="text-xs font-medium">{t("support.video", "Video")}</span>
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="flex flex-col items-center gap-1.5 rounded-2xl bg-white/[0.06] px-5 py-3 transition hover:bg-white/[0.1] active:scale-95"
                 >
                   <FileText className="h-6 w-6 text-emerald-400" />
-                  <span className="text-xs font-medium">File</span>
+                  <span className="text-xs font-medium">{t("support.file", "File")}</span>
                 </button>
               </div>
               <input
@@ -613,7 +620,7 @@ export default function Support() {
                   }
                 }}
                 rows={1}
-                placeholder={editingMessageId ? "Edit message..." : "Message SAFARIO Support..."}
+                placeholder={editingMessageId ? t("support.editMessagePlaceholder", "Edit message…") : t("support.messagePlaceholder", "Message SAFARIO Support…")}
                 className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none max-h-24 min-w-0"
                 style={{ minHeight: "24px" }}
               />
@@ -663,10 +670,10 @@ export default function Support() {
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-xl font-extrabold truncate flex items-center gap-2">
             <Headphones className="h-5 w-5 text-primary" />
-            Help & Support
+            {t("support.title", "Help & Support")}
           </h1>
           <p className="text-xs text-muted-foreground truncate">
-            We're here to help · {totalUnread > 0 ? `${totalUnread} new` : "All caught up"}
+            {t("support.hereToHelp", "We're here to help")} · {totalUnread > 0 ? `${totalUnread} ${t("settings.unread", "new")}` : t("settings.caughtUp", "All caught up")}
           </p>
         </div>
       </motion.div>
@@ -682,7 +689,7 @@ export default function Support() {
         <input
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search support categories..."
+          placeholder={t("support.search", "Search support categories…")}
           className="w-full rounded-2xl border border-white/[0.06] bg-white/[0.04] py-3 pl-11 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/30 focus:bg-white/[0.06] transition"
         />
         {searchQuery && (
@@ -719,7 +726,7 @@ export default function Support() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-bold truncate">{cat.label}</p>
+                  <p className="text-sm font-bold truncate">{t(cat.labelKey, cat.label)}</p>
                   {lastMsg && (
                     <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(lastMsg.createdAt)}</span>
                   )}
@@ -727,15 +734,15 @@ export default function Support() {
                 <p className="text-xs text-muted-foreground truncate mt-0.5">
                   {lastMsg
                     ? lastMsg.type === "image"
-                      ? "📷 Photo"
+                      ? `📷 ${t("support.photo", "Photo")}`
                       : lastMsg.type === "video"
-                        ? "🎥 Video"
+                        ? `🎥 ${t("support.video", "Video")}`
                         : lastMsg.type === "file"
-                          ? "📎 File"
+                          ? `📎 ${t("support.file", "File")}`
                           : lastMsg.deletedForEveryone
-                            ? "🚫 Message deleted"
+                            ? `🚫 ${t("support.messageDeleted", "Message deleted")}`
                             : lastMsg.content
-                    : cat.description}
+                    : t(cat.descriptionKey, cat.description)}
                 </p>
               </div>
               {unread > 0 && (
@@ -753,7 +760,7 @@ export default function Support() {
 
       {filteredCategories.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-sm text-muted-foreground">No support categories found</p>
+          <p className="text-sm text-muted-foreground">{t("support.noCategories", "No support categories found")}</p>
         </div>
       )}
 
@@ -765,10 +772,10 @@ export default function Support() {
         className="mt-6 rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 text-center"
       >
         <p className="text-xs text-muted-foreground/70">
-          Need urgent help? Our support team typically responds within a few minutes.
+          {t("support.urgentHelp", "Need urgent help? Our support team typically responds within a few minutes.")}
         </p>
         <p className="mt-1 text-[11px] text-muted-foreground/40">
-          All conversations are stored securely and confidentially.
+          {t("support.confidential", "All conversations are stored securely and confidentially.")}
         </p>
       </motion.div>
     </div>

@@ -3,6 +3,7 @@ import { useCallback, useRef, useState, type ChangeEvent, type DragEvent } from 
 import { X, Upload, Play, Image, Loader2, Hash, MapPin } from "lucide-react";
 
 import { useTravel } from "@/contexts/TravelContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { COUNTRIES } from "@/data/countries";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ interface PostCreatorProps {
 }
 
 export default function PostCreator({ open, onClose }: PostCreatorProps) {
+  const { t } = useLanguage();
   const { addPost } = useTravel();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState<boolean>(false);
@@ -199,15 +201,15 @@ export default function PostCreator({ open, onClose }: PostCreatorProps) {
               ) : (
                 <>
                   <Upload className="h-7 w-7 text-muted-foreground" />
-                  <p className="text-sm font-medium text-white/50">Drop photos or videos here</p>
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/50">or tap to browse</span>
+                  <p className="text-sm font-medium text-white/50">{t("post.dropMedia", "Drop photos or videos here")}</p>
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/50">{t("post.tapToBrowse", "or tap to browse")}</span>
                 </>
               )}
             </div>
 
             {/* Caption */}
             <textarea
-              placeholder="Write a caption..."
+              placeholder={t("post.caption", "Write a caption…")}
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               maxLength={500}
@@ -226,7 +228,7 @@ export default function PostCreator({ open, onClose }: PostCreatorProps) {
                   onChange={(e) => setCountry(e.target.value)}
                   className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none transition focus:border-primary/30"
                 >
-                  <option value="" className="bg-[#1a1d24]">Select country</option>
+                  <option value="" className="bg-[#1a1d24]">{t("post.selectCountry", "Select country")}</option>
                   {COUNTRIES.map((c) => (
                     <option key={c.id} value={c.name} className="bg-[#1a1d24]">{c.flag} {c.name}</option>
                   ))}
@@ -238,7 +240,7 @@ export default function PostCreator({ open, onClose }: PostCreatorProps) {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Paris"
+                  placeholder={t("post.cityPlaceholder", "e.g. Paris")}
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm text-white placeholder:text-white/25 outline-none transition focus:border-primary/30"
@@ -251,7 +253,7 @@ export default function PostCreator({ open, onClose }: PostCreatorProps) {
               <label className="text-[11px] font-semibold uppercase tracking-wide text-white/40">Location Name</label>
               <input
                 type="text"
-                placeholder="e.g. Eiffel Tower, Shibuya Crossing..."
+                placeholder={t("post.locationPlaceholder", "e.g. Eiffel Tower, Shibuya Crossing…")}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none transition focus:border-primary/30"
@@ -266,7 +268,7 @@ export default function PostCreator({ open, onClose }: PostCreatorProps) {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Add a tag..."
+                  placeholder={t("post.tagPlaceholder", "Add a tag…")}
                   value={hashtagInput}
                   onChange={(e) => setHashtagInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddHashtag(); } }}
@@ -305,7 +307,7 @@ export default function PostCreator({ open, onClose }: PostCreatorProps) {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs text-white/50">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Sharing post...
+                  {t("post.sharing", "Sharing post…")}
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
                   <motion.div
@@ -342,7 +344,7 @@ export default function PostCreator({ open, onClose }: PostCreatorProps) {
                     : "cursor-not-allowed bg-white/5 text-white/25",
                 )}
               >
-                Share Post
+                {t("post.share", "Share Post")}
               </button>
             </div>
           )}

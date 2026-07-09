@@ -598,16 +598,16 @@ export const DESTINATIONS: TrendingDestination[] = [
 export const CATEGORIES: {
   key: DestinationCategory;
   emoji: string;
-  label: string;
+  labelKey: string;
 }[] = [
-  { key: "trending", emoji: "🔥", label: "Trending Destinations" },
-  { key: "most-visited", emoji: "🏆", label: "Most Visited Countries" },
-  { key: "most-loved", emoji: "❤️", label: "Most Loved Destinations" },
-  { key: "popular-cities", emoji: "🌎", label: "Popular Cities" },
-  { key: "beaches", emoji: "🏖️", label: "Beaches" },
-  { key: "mountains", emoji: "🏔️", label: "Mountains" },
-  { key: "modern-cities", emoji: "🏙️", label: "Modern Cities" },
-  { key: "historical", emoji: "🏛️", label: "Historical Places" },
+  { key: "trending", emoji: "🔥", labelKey: "travel.category.trending" },
+  { key: "most-visited", emoji: "🏆", labelKey: "travel.category.most-visited" },
+  { key: "most-loved", emoji: "❤️", labelKey: "travel.category.most-loved" },
+  { key: "popular-cities", emoji: "🌎", labelKey: "travel.category.popular-cities" },
+  { key: "beaches", emoji: "🏖️", labelKey: "travel.category.beaches" },
+  { key: "mountains", emoji: "🏔️", labelKey: "travel.category.mountains" },
+  { key: "modern-cities", emoji: "🏙️", labelKey: "travel.category.modern-cities" },
+  { key: "historical", emoji: "🏛️", labelKey: "travel.category.historical" },
 ];
 
 /* ── Backward-compat export ───────────────────────────────────────── */

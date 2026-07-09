@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 
 import { useComments } from "@/contexts/CommentsContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { CURRENT_USER_ID } from "@/data/demoUsers";
 import type { Comment } from "@/data/feedData";
 import { cn } from "@/lib/utils";
@@ -16,18 +17,20 @@ import { cn } from "@/lib/utils";
 
 const EMOJIS = ["❤️", "😍", "🔥", "✨", "🙌", "👏", "😅", "😮", "🥺", "👍", "💎", "🌍"];
 
-function timeAgo(ts: number): string {
-  const diff = Date.now() - ts;
-  const sec = Math.floor(diff / 1000);
-  if (sec < 60) return "now";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h`;
-  const days = Math.floor(hr / 24);
-  if (days < 7) return `${days}d`;
-  const weeks = Math.floor(days / 7);
-  return `${weeks}w`;
+function useTimeAgo(t: (key: string, fallback?: string) => string) {
+  return (ts: number): string => {
+    const diff = Date.now() - ts;
+    const sec = Math.floor(diff / 1000);
+    if (sec < 60) return t("common.now", "now");
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}${t("common.minuteShort", "m")}`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}${t("common.hourShort", "h")}`;
+    const days = Math.floor(hr / 24);
+    if (days < 7) return `${days}${t("common.dayShort", "d")}`;
+    const weeks = Math.floor(days / 7);
+    return `${weeks}${t("common.weekShort", "w")}`;
+  };
 }
 
 /** Render text with @mentions highlighted */
@@ -63,6 +66,8 @@ interface CommentItemProps {
 function CommentItem({
   comment, replies, isReply, onReply, onLike, onEdit, onDelete, isLiked,
 }: CommentItemProps) {
+  const { t } = useLanguage();
+  const formatTime = useTimeAgo(t);
   const [showMenu, setShowMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
@@ -103,7 +108,7 @@ function CommentItem({
           <div className="rounded-2xl rounded-tl-md bg-white/[0.05] px-3.5 py-2.5">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-bold text-white/90 truncate">{comment.username}</span>
-              <span className="text-[10px] text-white/30 shrink-0">{timeAgo(comment.createdAt)}</span>
+              <span className="text-[10px] text-white/30 shrink-0">{formatTime(comment.createdAt)}</span>
             </div>
 
             {editing ? (
@@ -120,21 +125,21 @@ function CommentItem({
                     onClick={() => setEditing(false)}
                     className="rounded-lg px-3 py-1.5 text-[10px] font-medium text-white/40 hover:text-white/70"
                   >
-                    Cancel
+                    {t("common.cancel", "Cancel")}
                   </button>
                   <button
                     onClick={handleSaveEdit}
                     className="flex items-center gap-1 rounded-lg bg-blue-500/20 px-3 py-1.5 text-[10px] font-semibold text-blue-400 hover:bg-blue-500/30"
                   >
                     <Check className="h-3 w-3" />
-                    Save
+                    {t("common.save", "Save")}
                   </button>
                 </div>
               </div>
             ) : (
               <p className="mt-0.5 text-xs leading-relaxed text-white/75 break-words">
                 {renderText(comment.text)}
-                {comment.edited && <span className="ml-1 text-[9px] text-white/25">(edited)</span>}
+                {comment.edited && <span className="ml-1 text-[9px] text-white/25">({t("comments.edited", "edited")})</span>}
               </p>
             )}
           </div>
@@ -151,7 +156,7 @@ function CommentItem({
                   strokeWidth={2}
                 />
                 <span className={cn(isLiked ? "text-red-400" : "text-white/40")}>
-                  {comment.likes > 0 ? comment.likes : "Like"}
+                  {comment.likes > 0 ? comment.likes : t("comments.like", "Like")}
                 </span>
               </button>
               {/* Allow replies on both top-level and reply comments */}
@@ -159,7 +164,7 @@ function CommentItem({
                 onClick={() => onReply(comment)}
                 className="text-[10px] font-medium text-white/40 transition hover:text-white/70 active:scale-90"
               >
-                Reply
+                {t("comments.reply", "Reply")}
               </button>
               {replies.length > 0 && !isReply && (
                 <button
@@ -167,7 +172,7 @@ function CommentItem({
                   className="flex items-center gap-1 text-[10px] font-medium text-white/30 transition hover:text-white/60"
                 >
                   <CornerDownRight className="h-2.5 w-2.5" />
-                  {showReplies ? "Hide" : "Show"} {replies.length}
+                  {showReplies ? t("comments.hide", "Hide") : t("comments.show", "Show")} {replies.length}
                 </button>
               )}
 
@@ -195,14 +200,14 @@ function CommentItem({
                             className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-white/70 transition hover:bg-white/10 whitespace-nowrap"
                           >
                             <Edit2 className="h-3 w-3" />
-                            Edit
+                            {t("comments.edit", "Edit")}
                           </button>
                           <button
                             onClick={handleDelete}
                             className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-red-400 transition hover:bg-red-500/15 whitespace-nowrap"
                           >
                             <Trash2 className="h-3 w-3" />
-                            Delete
+                            {t("comments.delete", "Delete")}
                           </button>
                         </motion.div>
                       </>
@@ -248,6 +253,7 @@ interface CommentsSheetProps {
 }
 
 export default function CommentsSheet({ postId, isOpen, onClose }: CommentsSheetProps) {
+  const { t } = useLanguage();
   const {
     getTopLevelComments, getReplies, addComment, editComment,
     deleteComment, toggleCommentLike, isCommentLiked,
@@ -445,13 +451,13 @@ export default function CommentsSheet({ postId, isOpen, onClose }: CommentsSheet
                   <div className="flex items-center justify-between px-4 py-2">
                     <div className="flex items-center gap-2 text-xs text-white/50 min-w-0">
                       <ArrowLeft className="h-3 w-3 shrink-0" />
-                      <span className="truncate">Replying to <span className="font-semibold text-blue-400">@{replyTo.username}</span></span>
+                      <span className="truncate">{t("comments.replyingTo", "Replying to")} <span className="font-semibold text-blue-400">@{replyTo.username}</span></span>
                     </div>
                     <button
                       onClick={() => setReplyTo(null)}
                       className="text-xs font-medium text-white/40 transition hover:text-white/70 shrink-0 ml-2"
                     >
-                      Cancel
+                      {t("common.cancel", "Cancel")}
                     </button>
                   </div>
                 </motion.div>
@@ -476,7 +482,7 @@ export default function CommentsSheet({ postId, isOpen, onClose }: CommentsSheet
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   rows={1}
-                  placeholder={replyTo ? `Reply to @${replyTo.username}...` : "Add a comment..."}
+                  placeholder={replyTo ? t("comments.replyPlaceholder", "Reply to @{username}…").replace("{username}", replyTo.username) : t("comments.placeholder", "Add a comment…")}
                   className="flex-1 resize-none rounded-2xl bg-white/[0.05] px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none min-w-0"
                   style={{ maxHeight: 80 }}
                 />

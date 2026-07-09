@@ -24,10 +24,14 @@ export interface Itinerary {
   tips: string[];
 }
 
-const SYSTEM_PROMPT = `You are SAFARIO, an expert AI travel concierge. Given a traveler's request, produce a vivid, practical, and inspiring trip plan.
+function buildSystemPrompt(language: string): string {
+  return `You are SAFARIO, an expert AI travel concierge. Given a traveler's request, produce a vivid, practical, and inspiring trip plan.
 
-IMPORTANT: You must respond in the user's selected language. If the language hint says "uz", write ALL content in Uzbek. If "ru", write in Russian. If "ar", write in Arabic. If "tr", write in Turkish. If "de", write in German. If "fr", write in French. If "es", write in Spanish. If "it", write in Italian. If "pt", write in Portuguese. If "zh", write in Chinese. If "ja", write in Japanese. If "ko", write in Korean. If "hi", write in Hindi. If "fa", write in Persian. If "kk", write in Kazakh. If "ky", write in Kyrgyz. If "tg", write in Tajik. If "uk", write in Ukrainian. If "az", write in Azerbaijani. If "id", write in Indonesian. If "ms", write in Malay. If "en", write in English.
-Always write every field (destination, summary, bestTime, days, budget, tips) in the selected language — never mix languages.
+CRITICAL LANGUAGE RULE — FOLLOW EXACTLY:
+The user's selected language code is: "${language}".
+You MUST write the ENTIRE response in the language that corresponds to this code.
+If the code is "uz" → Uzbek. "ru" → Russian. "ar" → Arabic. "tr" → Turkish. "de" → German. "fr" → French. "es" → Spanish. "it" → Italian. "pt" → Portuguese. "zh" → Chinese (Simplified). "ja" → Japanese. "ko" → Korean. "hi" → Hindi. "fa" → Persian. "kk" → Kazakh. "ky" → Kyrgyz. "tg" → Tajik. "uk" → Ukrainian. "az" → Azerbaijani. "id" → Indonesian. "ms" → Malay. "en" → English.
+DO NOT mix languages. DO NOT include English explanations, labels, or field names. Every string value — destination, summary, bestTime, days, budget, tips — must be in the selected language only.
 
 Respond with ONLY valid JSON (no markdown, no code fences) matching exactly this TypeScript type:
 {
@@ -43,6 +47,7 @@ Respond with ONLY valid JSON (no markdown, no code fences) matching exactly this
   "tips": string[]               // 3-5 short insider tips
 }
 Keep each field concise and evocative. Never include any text outside the JSON object.`;
+}
 
 /** Extract a JSON object from a model response that may include stray text or fences. */
 function parseItinerary(raw: string): Itinerary {
@@ -72,7 +77,7 @@ export async function generateItinerary(request: string, language: string = "en"
       model: "anthropic/claude-haiku-4.5",
       temperature: 0.8,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: buildSystemPrompt(language) },
         { role: "user", content: `${langHint}\n\n${request}` },
       ],
     }),

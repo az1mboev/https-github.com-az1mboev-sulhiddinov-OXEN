@@ -37,7 +37,7 @@ function DestinationSection({
   onToggleSave,
   onWatchVideo,
 }: {
-  category: { key: DestinationCategory; emoji: string; label: string };
+  category: { key: DestinationCategory; emoji: string; labelKey: string };
   saved: Set<string>;
   onToggleSave: (id: string) => void;
   onWatchVideo: (dest: TrendingDestination) => void;
@@ -53,7 +53,7 @@ function DestinationSection({
       {/* Section header */}
       <div className="mb-4 flex items-center gap-2.5 px-5">
         <span className="text-xl">{category.emoji}</span>
-        <h2 className="font-display text-lg font-bold">{category.label}</h2>
+        <h2 className="font-display text-lg font-bold">{t(category.labelKey)}</h2>
         <span className="ml-auto text-xs text-muted-foreground">{items.length} {t("travel.places", "places")}</span>
       </div>
 

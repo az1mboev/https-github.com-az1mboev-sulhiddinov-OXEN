@@ -187,9 +187,9 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const handleSignOut = useCallback(async () => {
     await signOut();
     onClose();
-    toast({ title: "Signed out", description: "See you on the next adventure." });
+    toast({ title: t("settings.signedOut", "Signed out"), description: t("settings.signOutDesc", "See you on the next adventure.") });
     navigate("/");
-  }, [signOut, onClose, toast, navigate]);
+  }, [signOut, onClose, toast, navigate, t]);
 
   if (!user) return null;
 
@@ -292,7 +292,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     key={opt.value}
                     onClick={() => {
                       setTheme(opt.value);
-                      toast({ title: `${opt.label} enabled`, description: "Your theme preference has been saved." });
+                      toast({ title: t("settings.themeSaved", "Theme saved"), description: t("settings.themeSavedDesc", "Your theme preference has been saved.") });
                     }}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.04] active:scale-[0.98]"
                   >
@@ -314,7 +314,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   value={forceOffline}
                   onChange={(v) => {
                     setForceOffline(v);
-                    toast({ title: v ? "Offline mode enabled" : "Online mode restored", description: v ? "Changes will sync when you go online" : undefined });
+                    toast({ title: v ? t("settings.offlineEnabled", "Offline mode enabled") : t("settings.offlineDisabled", "Online mode restored"), description: v ? t("settings.offlineChanges", "Changes will sync when you go online") : undefined });
                   }}
                 />
                 <SettingsRow
@@ -328,7 +328,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     icon={RefreshCw}
                     label={t("settings.pendingSync", "Pending Sync")}
                     value="Changes waiting to sync"
-                    onClick={() => { sync(); toast({ title: "Syncing..." }); }}
+                    onClick={() => { sync(); toast({ title: t("settings.syncing", "Syncing…") }); }}
                   />
                 )}
                 {lastSyncedAt && (
