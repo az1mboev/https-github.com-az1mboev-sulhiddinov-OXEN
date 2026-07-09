@@ -64,7 +64,7 @@ export default function Planner() {
           {t("planner.heading", "Describe your")} <span className="text-gold-gradient">{t("planner.headingAccent", "dream trip.")}</span>
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          {t("planner.subtitle", "Tell SAFARIO where, how long, and your vibe — get a full itinerary in seconds.")}
+          {t("planner.subtitle", "Tell OXEN where, how long, and your vibe — get a full itinerary in seconds.")}
         </p>
       </motion.div>
 

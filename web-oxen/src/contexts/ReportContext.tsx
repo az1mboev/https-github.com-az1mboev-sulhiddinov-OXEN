@@ -159,7 +159,7 @@ interface ReportContextValue {
   getReportById: (id: string) => Report | null;
 }
 
-const REPORTS_KEY = "safario.reports";
+const REPORTS_KEY = "oxen.reports";
 
 const ReportContext = createContext<ReportContextValue | null>(null);
 

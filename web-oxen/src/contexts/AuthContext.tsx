@@ -42,7 +42,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 /** Mock guest used while Supabase is being configured. */
 const GUEST_USER: AuthUser = {
   id: "guest-explorer",
-  email: "explorer@safario.travel",
+  email: "explorer@oxen.travel",
   name: "Guest Explorer",
   avatarUrl: null,
   provider: "email",

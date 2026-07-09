@@ -17,8 +17,8 @@ interface OfflineContextValue {
 
 const OfflineContext = createContext<OfflineContextValue | null>(null);
 
-const OFFLINE_KEY = "safario.force-offline";
-const SYNC_KEY = "safario.last-sync";
+const OFFLINE_KEY = "oxen.force-offline";
+const SYNC_KEY = "oxen.last-sync";
 
 export function OfflineProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState<boolean>(

@@ -18,7 +18,7 @@ import { useTravel } from "@/contexts/TravelContext";
 import { FEED_POSTS, type FeedPost } from "@/data/feedData";
 import { COUNTRIES, type Country } from "@/data/countries";
 
-const SAFARIO_LOGO = "/logo.png";
+const OXEN_LOGO = "/logo.png";
 
 const Globe = lazy(() => import("@/components/Globe"));
 
@@ -63,7 +63,7 @@ function FeedPostCard({ post, index }: { post: FeedPost; index: number }) {
     if (navigator.share) {
       navigator.share({ title: `${post.city}, ${post.country}`, text: post.caption }).catch(() => {});
     } else {
-      navigator.clipboard?.writeText(`Check out ${post.city}, ${post.country} on SAFARIO!`);
+      navigator.clipboard?.writeText(`Check out ${post.city}, ${post.country} on OXEN!`);
       toast.success("Link copied to clipboard");
     }
   }, [post.city, post.country, post.caption]);
@@ -419,13 +419,13 @@ export default function Index() {
         >
           <div className="flex items-center gap-2">
             <img
-              src={SAFARIO_LOGO}
-              alt="SAFARIO"
+              src={OXEN_LOGO}
+              alt="OXEN"
               className="h-9 w-9 rounded-xl object-contain shadow-lg"
               loading="lazy"
               onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
             />
-            <span className="font-display text-xl font-extrabold tracking-wide">SAFARIO</span>
+            <span className="font-display text-xl font-extrabold tracking-wide">OXEN</span>
           </div>
 
           {/* Search button */}

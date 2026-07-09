@@ -48,7 +48,7 @@ import {
 } from "@/data/universities";
 import { getUniversityRecommendations, type UniversityAIInput, type UniversityRecommendation } from "@/lib/uniAI";
 
-const SAFARIO_LOGO = "/logo.png";
+const OXEN_LOGO = "/logo.png";
 const Globe = lazy(() => import("@/components/Globe"));
 
 /* ── Filter state ────────────────────────────────────────────────── */
@@ -103,7 +103,7 @@ function UniversityDiscoverCard({ uni, index }: { uni: University; index: number
     if (navigator.share) {
       navigator.share({ title: uni.name, text: uni.shortDescription }).catch(() => {});
     } else {
-      navigator.clipboard?.writeText(`Check out ${uni.name} on SAFARIO!`);
+      navigator.clipboard?.writeText(`Check out ${uni.name} on OXEN!`);
       toast.success("Link copied");
     }
   }, [uni.name, uni.shortDescription]);
@@ -1124,8 +1124,8 @@ export default function Universities() {
           className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-5 pt-6"
         >
           <div className="flex items-center gap-2">
-            <img src={SAFARIO_LOGO} alt="SAFARIO" className="h-9 w-9 rounded-xl object-contain shadow-lg" loading="lazy" onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }} />
-            <span className="font-display text-xl font-extrabold tracking-wide">SAFARIO</span>
+            <img src={OXEN_LOGO} alt="OXEN" className="h-9 w-9 rounded-xl object-contain shadow-lg" loading="lazy" onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }} />
+            <span className="font-display text-xl font-extrabold tracking-wide">OXEN</span>
           </div>
 
           <div className="pointer-events-auto flex items-center gap-2">

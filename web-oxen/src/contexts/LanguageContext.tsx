@@ -42,7 +42,7 @@ export const LANGUAGES: LanguageMeta[] = [
   { code: "ms", label: "Malay", native: "Bahasa Melayu", flag: "🇲🇾" },
 ];
 
-const STORAGE_KEY = "safario.language";
+const STORAGE_KEY = "oxen.language";
 
 interface LanguageContextValue {
   language: Language;
@@ -142,7 +142,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "Something went wrong", "common.save": "Save", "common.cancel": "Cancel",
 
     /* Settings — section headers */
-    "settings.title": "Profile Settings", "settings.subtitle": "Customize your SAFARIO experience",
+    "settings.title": "Profile Settings", "settings.subtitle": "Customize your OXEN experience",
     "settings.account": "Account", "settings.privacy": "Privacy", "settings.security": "Security",
     "settings.notifications": "Notifications", "settings.appearance": "Appearance",
     "settings.offline": "Offline Mode", "settings.travel": "Travel Settings",
@@ -186,10 +186,10 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     /* Settings — support */
     "settings.helpCenter": "Help Center", "settings.contactSupport": "Contact Support",
     "settings.reportProblem": "Report Problem", "settings.sendFeedback": "Send Feedback",
-    "settings.about": "About SAFARIO",
+    "settings.about": "About OXEN",
 
     /* Settings — misc */
-    "settings.logOut": "Log Out", "settings.version": "SAFARIO v1.0.0 — Built for explorers",
+    "settings.logOut": "Log Out", "settings.version": "OXEN v1.0.0 — Built for explorers",
 
     /* Nav — sidebar extra */
     "nav.services": "Travel Services", "nav.premium": "Premium Membership",
@@ -260,7 +260,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "auth.soon": "Soon", "auth.continueAsGuest": "Continue as Guest Explorer",
     "auth.guestDesc": "No account needed — explore 200+ countries, plan trips with AI, and discover the world.",
     "auth.fullAuthNote": "Full authentication with Google, Apple, and email will be available after Supabase setup is complete.",
-    "auth.travelTheWorld": "Travel the world", "auth.withSafario": "with SAFARIO",
+    "auth.travelTheWorld": "Travel the world", "auth.withOxen": "with OXEN",
     "auth.featureCountries": "200+ Countries", "auth.featureAIPlanner": "AI Planner",
     "auth.featureLocalGuides": "Local Guides", "auth.featureOfflineMaps": "Offline Maps",
     "auth.bottomTagline": "Discover destinations, plan with AI, and explore every corner of the world — all in one place.",
@@ -298,10 +298,10 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "modal.travelHere": "Travel Here",
 
     /* About */
-    "about.title": "About SAFARIO",
+    "about.title": "About OXEN",
     "about.subtitle": "Version 1.0.0",
     "about.tagline": "AI-Powered Travel Platform",
-    "about.description": "SAFARIO is a premium travel platform that lets you explore the world through an interactive 3D globe. Discover countries, plan trips with AI, share your journeys, and connect with fellow explorers — all in one beautifully designed app.",
+    "about.description": "OXEN is a premium travel platform that lets you explore the world through an interactive 3D globe. Discover countries, plan trips with AI, share your journeys, and connect with fellow explorers — all in one beautifully designed app.",
     "about.keyFeatures": "Key Features",
     "about.3dGlobe": "3D Globe",
     "about.aiTripPlanner": "AI Trip Planner",
@@ -317,10 +317,10 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "about.emailSupport": "Email Support",
     "about.helpSupport": "Help & Support",
     "about.madeWithLove": "Made with love for explorers",
-    "about.copyright": "© 2026 SAFARIO Travel. All rights reserved.",
+    "about.copyright": "© 2026 OXEN Travel. All rights reserved.",
 
     /* Planner */
-    "planner.subtitle": "Tell SAFARIO where, how long, and your vibe — get a full itinerary in seconds.",
+    "planner.subtitle": "Tell OXEN where, how long, and your vibe — get a full itinerary in seconds.",
     "planner.suggestionKyoto": "5 relaxing days in Kyoto for a couple, mid budget",
     "planner.suggestionIceland": "A week of adventure in Iceland on a budget",
     "planner.suggestionVenice": "Romantic long weekend in Venice",
@@ -408,7 +408,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     /* Support / chat */
     "support.title": "Help & Support",
     "support.search": "Search topics…",
-    "support.messagePlaceholder": "Message SAFARIO Support…",
+    "support.messagePlaceholder": "Message OXEN Support…",
     "support.editMessagePlaceholder": "Edit message…",
     "support.today": "Today",
     "support.yesterday": "Yesterday",
@@ -457,7 +457,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "settings.changesWaiting": "Changes waiting to sync",
 
     /* Onboarding */
-    "onboarding.welcome": "Welcome to SAFARIO",
+    "onboarding.welcome": "Welcome to OXEN",
     "onboarding.tagline": "Your world, reimagined.",
     "onboarding.step1": "Explore",
     "onboarding.step1Desc": "Spin the globe and discover every country.",
@@ -622,7 +622,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.back": "Orqaga", "common.loading": "Yuklanmoqda...",
     "common.error": "Xatolik yuz berdi", "common.save": "Saqlash", "common.cancel": "Bekor qilish",
 
-    "settings.title": "Profil Sozlamalari", "settings.subtitle": "SAFARIO tajribangizni sozlang",
+    "settings.title": "Profil Sozlamalari", "settings.subtitle": "OXEN tajribangizni sozlang",
     "settings.account": "Hisob", "settings.privacy": "Maxfiylik", "settings.security": "Xavfsizlik",
     "settings.notifications": "Bildirishnomalar", "settings.appearance": "Ko'rinish",
     "settings.offline": "Offlayn Rejim", "settings.travel": "Sayohat Sozlamalari",
@@ -648,8 +648,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "settings.exportHistory": "Sayohat Tarixini Eksport",
     "settings.helpCenter": "Yordam Markazi", "settings.contactSupport": "Yordam Bilan Bog'lanish",
     "settings.reportProblem": "Muammoni Xabar Berish", "settings.sendFeedback": "Fikr Yuborish",
-    "settings.about": "SAFARIO Haqida", "settings.logOut": "Chiqish",
-    "settings.version": "SAFARIO v1.0.0 — Tadqiqotchilar uchun",
+    "settings.about": "OXEN Haqida", "settings.logOut": "Chiqish",
+    "settings.version": "OXEN v1.0.0 — Tadqiqotchilar uchun",
 
     /* Nav — sidebar */
     "nav.services": "Sayohat Xizmatlari", "nav.premium": "Premium A'zolik",
@@ -720,7 +720,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "auth.soon": "Tez Orada", "auth.continueAsGuest": "Mehmon Tadqiqotchi sifatida Davom Etish",
     "auth.guestDesc": "Hisob kerak emas — 200+ mamlakatni o'rganing, AI bilan sayohat rejalashtiring va dunyoni kashf eting.",
     "auth.fullAuthNote": "Google, Apple va email orqali to'liq avtentifikatsiya Supabase sozlanishi tugagandan keyin mavjud bo'ladi.",
-    "auth.travelTheWorld": "Dunyoni sayohat qiling", "auth.withSafario": "SAFARIO bilan",
+    "auth.travelTheWorld": "Dunyoni sayohat qiling", "auth.withOxen": "OXEN bilan",
     "auth.featureCountries": "200+ Mamlakat", "auth.featureAIPlanner": "AI Rejalashtiruvchi",
     "auth.featureLocalGuides": "Mahalliy Yo'riqnomalar", "auth.featureOfflineMaps": "Offlayn Xaritalar",
     "auth.bottomTagline": "Yo'nalishlarni kashf eting, AI bilan rejalashtiring va dunyoning har bir burchagini o'rganing — barchasi bitta joyda.",
@@ -744,8 +744,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "modal.area": "Maydon", "modal.travelDescription": "Sayohat Tavsifi", "modal.majorCities": "Asosiy Shaharlar",
     "modal.addToWishlist": "Istaklar Ro'yxatiga Qo'shish", "modal.inWishlist": "Istaklar Ro'yxatida",
     "modal.close": "Yopish", "modal.travelHere": "Bu Yerga Sayohat",
-    "about.title": "SAFARIO Haqida", "about.subtitle": "Versiya 1.0.0", "about.tagline": "AI Qo'shimcha Sayohat Platformasi",
-    "about.description": "SAFARIO — interaktiv 3D globus orqali dunyoni kashf etishga imkon beruvchi premium sayohat platformasi. Mamlakatlarni kashf eting, AI bilan sayohat rejalashtiring, sarguzashtlaringizni ulashing va boshqa tadqiqotchilar bilan bog'laning — barchasi bitta chiroyli ilovada.",
+    "about.title": "OXEN Haqida", "about.subtitle": "Versiya 1.0.0", "about.tagline": "AI Qo'shimcha Sayohat Platformasi",
+    "about.description": "OXEN — interaktiv 3D globus orqali dunyoni kashf etishga imkon beruvchi premium sayohat platformasi. Mamlakatlarni kashf eting, AI bilan sayohat rejalashtiring, sarguzashtlaringizni ulashing va boshqa tadqiqotchilar bilan bog'laning — barchasi bitta chiroyli ilovada.",
     "about.keyFeatures": "Asosiy Xususiyatlar",
     "about.3dGlobe": "3D Globus", "about.aiTripPlanner": "AI Sayohat Rejalashtiruvchi",
     "about.socialTravel": "Ijtimoiy Sayohat", "about.privacyFirst": "Maxfiylik Birinchi O'rinda",
@@ -754,8 +754,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "about.termsOfService": "Xizmat Shartlari", "about.cookiePolicy": "Cookie Siyosati",
     "about.contact": "Aloqa", "about.emailSupport": "Email Yordam", "about.helpSupport": "Yordam va Qo'llab-quvvatlash",
     "about.madeWithLove": "Tadqiqotchilar uchun muhabbat bilan yaratilgan",
-    "about.copyright": "© 2026 SAFARIO Travel. Barcha huquqlar himoyalangan.",
-    "planner.subtitle": "SAFARIOga qayerga, qancha vaqtni va kayfiyatingizni ayting — soniyalarda to'liq marshrut oling.",
+    "about.copyright": "© 2026 OXEN Travel. Barcha huquqlar himoyalangan.",
+    "planner.subtitle": "OXENga qayerga, qancha vaqtni va kayfiyatingizni ayting — soniyalarda to'liq marshrut oling.",
     "planner.suggestionKyoto": "Kyotoda juftlik uchun 5 kun dam olish, o'rta byudjet",
     "planner.suggestionIceland": "Byudjetda Islandiyada sarguzasht haftasi",
     "planner.suggestionVenice": "Venedikda romantik uzoq hafta oxiri",
@@ -841,7 +841,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     /* Support */
     "support.title": "Yordam va Qo'llab-quvvatlash",
     "support.search": "Mavzularni qidiring…",
-    "support.messagePlaceholder": "SAFARIO Qo'llab-quvvatlashiga xabar yozing…",
+    "support.messagePlaceholder": "OXEN Qo'llab-quvvatlashiga xabar yozing…",
     "support.editMessagePlaceholder": "Xabarni tahrirlang…",
     "support.today": "Bugun",
     "support.yesterday": "Kecha",
@@ -890,7 +890,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "settings.changesWaiting": "Sinxronizatsiya kutilayotgan o'zgarishlar",
 
     /* Onboarding */
-    "onboarding.welcome": "SAFARIOga xush kelibsiz",
+    "onboarding.welcome": "OXENga xush kelibsiz",
     "onboarding.tagline": "Sizning dunyongiz, qayta tasavvur qilingan.",
     "onboarding.step1": "O'rganing",
     "onboarding.step1Desc": "Globusni aylantiring va har bir mamlakatni kashf eting.",
@@ -935,7 +935,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.back": "Geri", "common.loading": "Yükleniyor...",
     "common.error": "Bir hata oluştu", "common.save": "Kaydet", "common.cancel": "İptal",
 
-    "settings.title": "Profil Ayarları", "settings.subtitle": "SAFARIO deneyiminizi özelleştirin",
+    "settings.title": "Profil Ayarları", "settings.subtitle": "OXEN deneyiminizi özelleştirin",
     "settings.account": "Hesap", "settings.privacy": "Gizlilik", "settings.security": "Güvenlik",
     "settings.notifications": "Bildirimler", "settings.appearance": "Görünüm",
     "settings.offline": "Çevrimdışı Mod", "settings.travel": "Seyahat Ayarları",
@@ -961,8 +961,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "settings.exportHistory": "Seyahat Geçmişini Dışa Aktar",
     "settings.helpCenter": "Yardım Merkezi", "settings.contactSupport": "Destekle İletişim",
     "settings.reportProblem": "Sorun Bildir", "settings.sendFeedback": "Geri Bildirim Gönder",
-    "settings.about": "SAFARIO Hakkında", "settings.logOut": "Çıkış Yap",
-    "settings.version": "SAFARIO v1.0.0 — Kaşifler için",
+    "settings.about": "OXEN Hakkında", "settings.logOut": "Çıkış Yap",
+    "settings.version": "OXEN v1.0.0 — Kaşifler için",
 
     "nav.services": "Seyahat Hizmetleri", "nav.premium": "Premium Üyelik",
     "nav.consulting": "Danışmanlık Paneli", "nav.statistics": "İstatistikler",
@@ -978,8 +978,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "modal.currency": "Para Birimi", "modal.language": "Dil", "modal.timezone": "Saat Dilimi",
     "modal.area": "Alan", "modal.travelDescription": "Seyahat Açıklaması", "modal.majorCities": "Büyük Şehirler",
     "modal.addToWishlist": "İstek Listesine Ekle", "modal.inWishlist": "İstek Listesinde", "modal.close": "Kapat", "modal.travelHere": "Buraya Seyahat Et",
-    "about.title": "SAFARIO Hakkında", "about.subtitle": "Sürüm 1.0.0", "about.tagline": "AI Destekli Seyahat Platformu",
-    "about.description": "SAFARIO, interaktif 3D küre üzerinden dünyayı keşfetmenizi sağlayan premium bir seyahat platformudur. Ülkeleri keşfedin, AI ile seyahat planlayın, yolculuklarınızı paylaşın ve diğer gezginlerle bağlantı kurun — hepsi tek güzel uygulamada.",
+    "about.title": "OXEN Hakkında", "about.subtitle": "Sürüm 1.0.0", "about.tagline": "AI Destekli Seyahat Platformu",
+    "about.description": "OXEN, interaktif 3D küre üzerinden dünyayı keşfetmenizi sağlayan premium bir seyahat platformudur. Ülkeleri keşfedin, AI ile seyahat planlayın, yolculuklarınızı paylaşın ve diğer gezginlerle bağlantı kurun — hepsi tek güzel uygulamada.",
     "about.keyFeatures": "Ana Özellikler",
     "about.3dGlobe": "3D Küre", "about.aiTripPlanner": "AI Seyahat Planlayıcı",
     "about.socialTravel": "Sosyal Seyahat", "about.privacyFirst": "Öncelik Gizlilik",
@@ -987,8 +987,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "about.legalPrivacy": "Yasal ve Gizlilik", "about.privacyPolicy": "Gizlilik Politikası",
     "about.termsOfService": "Hizmet Şartları", "about.cookiePolicy": "Çerez Politikası",
     "about.contact": "İletişim", "about.emailSupport": "E-posta Destek", "about.helpSupport": "Yardım ve Destek",
-    "about.madeWithLove": "Keşifçiler için sevgiyle yapıldı", "about.copyright": "© 2026 SAFARIO Travel. Tüm hakları saklıdır.",
-    "planner.subtitle": "SAFARIO'ya nereye, ne kadar süre ve hangi havada gitmek istediğinizi söyleyin — saniyeler içinde tam bir rota alın.",
+    "about.madeWithLove": "Keşifçiler için sevgiyle yapıldı", "about.copyright": "© 2026 OXEN Travel. Tüm hakları saklıdır.",
+    "planner.subtitle": "OXEN'ya nereye, ne kadar süre ve hangi havada gitmek istediğinizi söyleyin — saniyeler içinde tam bir rota alın.",
     "planner.suggestionKyoto": "Kyoto'da çift için 5 rahatlatıcı gün, orta bütçe",
     "planner.suggestionIceland": "Bütçeyle İzlanda'da macera dolu bir hafta",
     "planner.suggestionVenice": "Venedik'te romantik uzun hafta sonu",
@@ -1013,7 +1013,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.back": "Назад", "common.loading": "Загрузка...",
     "common.error": "Что-то пошло не так", "common.save": "Сохранить", "common.cancel": "Отмена",
 
-    "settings.title": "Настройки Профиля", "settings.subtitle": "Настройте свой SAFARIO",
+    "settings.title": "Настройки Профиля", "settings.subtitle": "Настройте свой OXEN",
     "settings.account": "Аккаунт", "settings.privacy": "Приватность", "settings.security": "Безопасность",
     "settings.notifications": "Уведомления", "settings.appearance": "Внешний вид",
     "settings.offline": "Офлайн Режим", "settings.travel": "Настройки Путешествий",
@@ -1039,8 +1039,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "settings.exportHistory": "Экспорт Истории Путешествий",
     "settings.helpCenter": "Центр Помощи", "settings.contactSupport": "Связаться с Поддержкой",
     "settings.reportProblem": "Сообщить о Проблеме", "settings.sendFeedback": "Отправить Отзыв",
-    "settings.about": "О SAFARIO", "settings.logOut": "Выйти",
-    "settings.version": "SAFARIO v1.0.0 — Для исследователей",
+    "settings.about": "О OXEN", "settings.logOut": "Выйти",
+    "settings.version": "OXEN v1.0.0 — Для исследователей",
 
     "nav.services": "Туристические Услуги", "nav.premium": "Премиум Подписка",
     "nav.consulting": "Панель Консалтинга", "nav.statistics": "Статистика",
@@ -1056,8 +1056,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "modal.currency": "Валюта", "modal.language": "Язык", "modal.timezone": "Часовой Пояс",
     "modal.area": "Площадь", "modal.travelDescription": "Описание Путешествия", "modal.majorCities": "Основные Города",
     "modal.addToWishlist": "Добавить в Желания", "modal.inWishlist": "В Желаниях", "modal.close": "Закрыть", "modal.travelHere": "Путешествовать Сюда",
-    "about.title": "О SAFARIO", "about.subtitle": "Версия 1.0.0", "about.tagline": "Платформа путешествий с ИИ",
-    "about.description": "SAFARIO — премиальная платформа путешествий, позволяющая исследовать мир через интерактивный 3D глобус. Открывайте страны, планируйте поездки с ИИ, делитесь путешествиями и общайтесь с единомышленниками — всё в одном красивом приложении.",
+    "about.title": "О OXEN", "about.subtitle": "Версия 1.0.0", "about.tagline": "Платформа путешествий с ИИ",
+    "about.description": "OXEN — премиальная платформа путешествий, позволяющая исследовать мир через интерактивный 3D глобус. Открывайте страны, планируйте поездки с ИИ, делитесь путешествиями и общайтесь с единомышленниками — всё в одном красивом приложении.",
     "about.keyFeatures": "Ключевые Возможности",
     "about.3dGlobe": "3D Глобус", "about.aiTripPlanner": "ИИ-Планировщик Путешествий",
     "about.socialTravel": "Социальные Путешествия", "about.privacyFirst": "Приватность Прежде Всего",
@@ -1065,8 +1065,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "about.legalPrivacy": "Право и Конфиденциальность", "about.privacyPolicy": "Политика Конфиденциальности",
     "about.termsOfService": "Условия Использования", "about.cookiePolicy": "Политика Cookie",
     "about.contact": "Контакты", "about.emailSupport": "Поддержка по Email", "about.helpSupport": "Помощь и Поддержка",
-    "about.madeWithLove": "Создано с любовью для исследователей", "about.copyright": "© 2026 SAFARIO Travel. Все права защищены.",
-    "planner.subtitle": "Расскажите SAFARIO, куда, насколько долго и в каком настроении — получите полный маршрут за секунды.",
+    "about.madeWithLove": "Создано с любовью для исследователей", "about.copyright": "© 2026 OXEN Travel. Все права защищены.",
+    "planner.subtitle": "Расскажите OXEN, куда, насколько долго и в каком настроении — получите полный маршрут за секунды.",
     "planner.suggestionKyoto": "5 расслабляющих дней в Киото для пары, средний бюджет",
     "planner.suggestionIceland": "Неделя приключений в Исландии на бюджете",
     "planner.suggestionVenice": "Романтические выходные в Венеции",
@@ -1152,7 +1152,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     /* Support */
     "support.title": "Помощь и Поддержка",
     "support.search": "Поиск тем…",
-    "support.messagePlaceholder": "Напишите в поддержку SAFARIO…",
+    "support.messagePlaceholder": "Напишите в поддержку OXEN…",
     "support.editMessagePlaceholder": "Редактировать сообщение…",
     "support.today": "Сегодня",
     "support.yesterday": "Вчера",
@@ -1201,7 +1201,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "settings.changesWaiting": "Изменения ожидают синхронизации",
 
     /* Onboarding */
-    "onboarding.welcome": "Добро пожаловать в SAFARIO",
+    "onboarding.welcome": "Добро пожаловать в OXEN",
     "onboarding.tagline": "Ваш мир, переосмысленный.",
     "onboarding.step1": "Исследуйте",
     "onboarding.step1Desc": "Вращайте глобус и открывайте каждую страну.",
@@ -1246,7 +1246,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.back": "رجوع", "common.loading": "جار التحميل...",
     "common.error": "حدث خطأ ما", "common.save": "حفظ", "common.cancel": "إلغاء",
 
-    "settings.title": "إعدادات الملف الشخصي", "settings.subtitle": "خصص تجربة SAFARIO",
+    "settings.title": "إعدادات الملف الشخصي", "settings.subtitle": "خصص تجربة OXEN",
     "settings.account": "الحساب", "settings.privacy": "الخصوصية", "settings.security": "الأمان",
     "settings.notifications": "الإشعارات", "settings.appearance": "المظهر",
     "settings.offline": "وضع عدم الاتصال", "settings.travel": "إعدادات السفر",
@@ -1272,8 +1272,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "settings.exportHistory": "تصدير سجل السفر",
     "settings.helpCenter": "مركز المساعدة", "settings.contactSupport": "تواصل مع الدعم",
     "settings.reportProblem": "الإبلاغ عن مشكلة", "settings.sendFeedback": "إرسال ملاحظات",
-    "settings.about": "حول SAFARIO", "settings.logOut": "تسجيل الخروج",
-    "settings.version": "SAFARIO v1.0.0 — للمستكشفين",
+    "settings.about": "حول OXEN", "settings.logOut": "تسجيل الخروج",
+    "settings.version": "OXEN v1.0.0 — للمستكشفين",
 
     "nav.services": "خدمات السفر", "nav.premium": "العضوية المميزة",
     "nav.consulting": "لوحة الاستشارات", "nav.statistics": "الإحصائيات",
@@ -1289,8 +1289,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "modal.currency": "العملة", "modal.language": "اللغة", "modal.timezone": "المنطقة الزمنية",
     "modal.area": "المساحة", "modal.travelDescription": "وصف السفر", "modal.majorCities": "المدن الرئيسية",
     "modal.addToWishlist": "إضافة إلى قائمة الأمنيات", "modal.inWishlist": "في قائمة الأمنيات", "modal.close": "إغلاق", "modal.travelHere": "السفر إلى هنا",
-    "about.title": "حول SAFARIO", "about.subtitle": "الإصدار 1.0.0", "about.tagline": "منصة سفر مدعومة بالذكاء الاصطناعي",
-    "about.description": "SAFARIO هي منصة سفر متميزة تتيح لك استكشاف العالم من خلال كرة أرضية ثلاثية الأبعاد تفاعلية. اكتشف الدول، وخطط للرحلات بالذكاء الاصطناعي، وشارك رحلاتك، وتواصل مع المستكشفين الآخرين — كل ذلك في تطبيق جميل واحد.",
+    "about.title": "حول OXEN", "about.subtitle": "الإصدار 1.0.0", "about.tagline": "منصة سفر مدعومة بالذكاء الاصطناعي",
+    "about.description": "OXEN هي منصة سفر متميزة تتيح لك استكشاف العالم من خلال كرة أرضية ثلاثية الأبعاد تفاعلية. اكتشف الدول، وخطط للرحلات بالذكاء الاصطناعي، وشارك رحلاتك، وتواصل مع المستكشفين الآخرين — كل ذلك في تطبيق جميل واحد.",
     "about.keyFeatures": "الميزات الرئيسية",
     "about.3dGlobe": "كرة أرضية ثلاثية الأبعاد", "about.aiTripPlanner": "مخطط الرحلات بالذكاء الاصطناعي",
     "about.socialTravel": "السفر الاجتماعي", "about.privacyFirst": "الخصوصية أولاً",
@@ -1298,8 +1298,8 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "about.legalPrivacy": "قانوني وخصوصية", "about.privacyPolicy": "سياسة الخصوصية",
     "about.termsOfService": "شروط الخدمة", "about.cookiePolicy": "سياسة ملفات تعريف الارتباط",
     "about.contact": "اتصل", "about.emailSupport": "دعم البريد الإلكتروني", "about.helpSupport": "المساعدة والدعم",
-    "about.madeWithLove": "صنع بحب للمستكشفين", "about.copyright": "© 2026 SAFARIO Travel. جميع الحقوق محفوظة.",
-    "planner.subtitle": "أخبر SAFARIO إلى أين، ومدة الرحلة، وأسلوبك — واحصل على رحلة كاملة في ثوانٍ.",
+    "about.madeWithLove": "صنع بحب للمستكشفين", "about.copyright": "© 2026 OXEN Travel. جميع الحقوق محفوظة.",
+    "planner.subtitle": "أخبر OXEN إلى أين، ومدة الرحلة، وأسلوبك — واحصل على رحلة كاملة في ثوانٍ.",
     "planner.suggestionKyoto": "5 أيام مريحة في كيوتو لزوجين، بميزانية متوسطة",
     "planner.suggestionIceland": "أسبوع من المغامرة في أيسلندا بميزانية محدودة",
     "planner.suggestionVenice": "عطلة نهاية أسبوع رومانسية طويلة في البندقية",
@@ -1587,13 +1587,13 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "modal.continent": "Benua", "modal.capital": "Ibu Kota", "modal.population": "Populasi", "modal.currency": "Mata Uang", "modal.language": "Bahasa", "modal.timezone": "Zona Waktu", "modal.area": "Luas",
     "modal.travelDescription": "Deskripsi Perjalanan", "modal.majorCities": "Kota Besar",
     "modal.addToWishlist": "Tambah ke Wishlist", "modal.inWishlist": "Dalam Wishlist", "modal.close": "Tutup", "modal.travelHere": "Bepergian ke Sini",
-    "about.title": "Tentang SAFARIO", "about.subtitle": "Versi 1.0.0", "about.tagline": "Platform Perjalanan Berbasis AI",
-    "about.description": "SAFARIO adalah platform perjalanan premium yang memungkinkan Anda menjelajahi dunia melalui globe 3D interaktif. Temukan negara, rencanakan perjalanan dengan AI, bagikan perjalanan Anda, dan terhubung dengan penjelajah lain — semua dalam satu aplikasi yang indah.",
+    "about.title": "Tentang OXEN", "about.subtitle": "Versi 1.0.0", "about.tagline": "Platform Perjalanan Berbasis AI",
+    "about.description": "OXEN adalah platform perjalanan premium yang memungkinkan Anda menjelajahi dunia melalui globe 3D interaktif. Temukan negara, rencanakan perjalanan dengan AI, bagikan perjalanan Anda, dan terhubung dengan penjelajah lain — semua dalam satu aplikasi yang indah.",
     "about.keyFeatures": "Fitur Utama", "about.3dGlobe": "Globe 3D", "about.aiTripPlanner": "Perencana Perjalanan AI", "about.socialTravel": "Perjalanan Sosial", "about.privacyFirst": "Privasi Utama", "about.languages": "20+ Bahasa", "about.offlineMode": "Mode Luring",
     "about.legalPrivacy": "Hukum & Privasi", "about.privacyPolicy": "Kebijakan Privasi", "about.termsOfService": "Ketentuan Layanan", "about.cookiePolicy": "Kebijakan Cookie",
     "about.contact": "Kontak", "about.emailSupport": "Dukungan Email", "about.helpSupport": "Bantuan & Dukungan",
-    "about.madeWithLove": "Dibuat dengan cinta untuk penjelajah", "about.copyright": "© 2026 SAFARIO Travel. Hak cipta dilindungi.",
-    "planner.subtitle": "Beri tahu SAFARIO ke mana, berapa lama, dan suasana seperti apa — dapatkan itinerary lengkap dalam hitungan detik.",
+    "about.madeWithLove": "Dibuat dengan cinta untuk penjelajah", "about.copyright": "© 2026 OXEN Travel. Hak cipta dilindungi.",
+    "planner.subtitle": "Beri tahu OXEN ke mana, berapa lama, dan suasana seperti apa — dapatkan itinerary lengkap dalam hitungan detik.",
     "planner.suggestionKyoto": "5 hari santai di Kyoto untuk pasangan, anggaran menengah",
     "planner.suggestionIceland": "Seminggu petualangan di Islandia dengan anggaran terbatas",
     "planner.suggestionVenice": "Akhir pekan romantis yang panjang di Venesia",
@@ -1620,13 +1620,13 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "modal.continent": "Benua", "modal.capital": "Ibu Negara", "modal.population": "Populasi", "modal.currency": "Mata Wang", "modal.language": "Bahasa", "modal.timezone": "Zon Waktu", "modal.area": "Keluasan",
     "modal.travelDescription": "Penerangan Perjalanan", "modal.majorCities": "Bandar Utama",
     "modal.addToWishlist": "Tambah ke Senarai Hajat", "modal.inWishlist": "Dalam Senarai Hajat", "modal.close": "Tutup", "modal.travelHere": "Ke Sini",
-    "about.title": "Tentang SAFARIO", "about.subtitle": "Versi 1.0.0", "about.tagline": "Platform Perjalanan Berasaskan AI",
-    "about.description": "SAFARIO ialah platform perjalanan premium yang membolehkan anda meneroka dunia menerusi globe 3D interaktif. Terokai negara, rancang perjalanan dengan AI, kongsi perjalanan anda, dan berhubung dengan peneroka lain — semua dalam satu aplikasi yang cantik.",
+    "about.title": "Tentang OXEN", "about.subtitle": "Versi 1.0.0", "about.tagline": "Platform Perjalanan Berasaskan AI",
+    "about.description": "OXEN ialah platform perjalanan premium yang membolehkan anda meneroka dunia menerusi globe 3D interaktif. Terokai negara, rancang perjalanan dengan AI, kongsi perjalanan anda, dan berhubung dengan peneroka lain — semua dalam satu aplikasi yang cantik.",
     "about.keyFeatures": "Ciri Utama", "about.3dGlobe": "Globe 3D", "about.aiTripPlanner": "Perancang Perjalanan AI", "about.socialTravel": "Perjalanan Sosial", "about.privacyFirst": "Privasi Diutamakan", "about.languages": "20+ Bahasa", "about.offlineMode": "Mod Luar Talian",
     "about.legalPrivacy": "Undang-undang & Privasi", "about.privacyPolicy": "Dasar Privasi", "about.termsOfService": "Terma Perkhidmatan", "about.cookiePolicy": "Dasar Cookie",
     "about.contact": "Hubungi", "about.emailSupport": "Sokongan E-mel", "about.helpSupport": "Bantuan & Sokongan",
-    "about.madeWithLove": "Dibuat dengan kasih untuk peneroka", "about.copyright": "© 2026 SAFARIO Travel. Hak cipta terpelihara.",
-    "planner.subtitle": "Beritahu SAFARIO ke mana, berapa lama, dan suasana seperti apa — dapatkan jadual perjalanan lengkap dalam beberapa saat.",
+    "about.madeWithLove": "Dibuat dengan kasih untuk peneroka", "about.copyright": "© 2026 OXEN Travel. Hak cipta terpelihara.",
+    "planner.subtitle": "Beritahu OXEN ke mana, berapa lama, dan suasana seperti apa — dapatkan jadual perjalanan lengkap dalam beberapa saat.",
     "planner.suggestionKyoto": "5 hari santai di Kyoto untuk pasangan, bajet sederhana",
     "planner.suggestionIceland": "Seminggu pengembaraan di Iceland dengan bajet",
     "planner.suggestionVenice": "Hujung minggu romantis yang panjang di Venice",

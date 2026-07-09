@@ -97,7 +97,7 @@ const queryClient = new QueryClient({
 function RouteFallback() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center" aria-live="polite">
-      <div className="safario-skeleton-globe" aria-label="Loading" />
+      <div className="oxen-skeleton-globe" aria-label="Loading" />
     </div>
   );
 }

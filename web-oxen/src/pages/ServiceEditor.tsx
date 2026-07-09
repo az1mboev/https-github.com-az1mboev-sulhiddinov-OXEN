@@ -463,7 +463,7 @@ export default function ServiceEditor() {
   });
 
   useSEO({
-    title: isEditing ? "Edit Service | SAFARIO" : "Create Service | SAFARIO",
+    title: isEditing ? "Edit Service | OXEN" : "Create Service | OXEN",
     description: "Create or edit a travel consulting service.",
   });
 

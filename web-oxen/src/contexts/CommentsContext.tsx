@@ -20,7 +20,7 @@ interface CommentsContextValue {
   getCommentCount: (postId: string) => number;
 }
 
-const COMMENTS_KEY = "safario.travel.comments";
+const COMMENTS_KEY = "oxen.travel.comments";
 
 const CommentsContext = createContext<CommentsContextValue | null>(null);
 

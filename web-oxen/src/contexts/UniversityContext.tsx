@@ -5,9 +5,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 /*  Persists saved universities + visited list to localStorage        */
 /* ------------------------------------------------------------------ */
 
-const WISHLIST_KEY = "safario.uni.wishlist";
-const VISITED_KEY = "safario.uni.visited";
-const COMPARE_KEY = "safario.uni.compare";
+const WISHLIST_KEY = "oxen.uni.wishlist";
+const VISITED_KEY = "oxen.uni.visited";
+const COMPARE_KEY = "oxen.uni.compare";
 
 interface UniversityContextValue {
   wishlist: string[];

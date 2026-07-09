@@ -28,7 +28,7 @@ export const DEMO_USERS: DemoUser[] = [
     id: "guest-explorer",
     name: "Guest Explorer",
     username: "guest_explorer",
-    email: "explorer@safario.travel",
+    email: "explorer@oxen.travel",
     phone: "+1 415 555 0100",
     avatarUrl: "",
     bio: "Wanderlust-driven traveler exploring the world one country at a time. 47 countries and counting.",

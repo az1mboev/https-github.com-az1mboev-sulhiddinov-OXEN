@@ -134,7 +134,7 @@ export default function ServiceDetails() {
 
   // SEO from database
   useSEO({
-    title: service?.seo_title ?? service?.title ?? "Service | SAFARIO",
+    title: service?.seo_title ?? service?.title ?? "Service | OXEN",
     description: service?.seo_description ?? service?.description ?? "",
     keywords: service?.seo_keywords ?? "",
     image: service?.cover_image ?? undefined,

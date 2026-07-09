@@ -1,7 +1,7 @@
 {
-  "name": "SAFARIO",
-  "short_name": "SAFARIO",
-  "description": "SAFARIO — explore the world from space. Discover countries, plan trips with AI, and map your journey.",
+  "name": "OXEN",
+  "short_name": "OXEN",
+  "description": "OXEN — explore the world from space. Discover countries, plan trips with AI, and map your journey.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

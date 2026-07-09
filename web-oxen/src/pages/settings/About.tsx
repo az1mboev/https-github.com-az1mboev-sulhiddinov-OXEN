@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import SettingsPageShell, { Card, SectionLabel } from "@/components/SettingsPageShell";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const SAFARIO_LOGO = "/logo.png";
+const OXEN_LOGO = "/logo.png";
 
 export default function About() {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ export default function About() {
 
   return (
     <SettingsPageShell
-      title={t("about.title", "About SAFARIO")}
+      title={t("about.title", "About OXEN")}
       subtitle={t("about.subtitle", "Version 1.0.0")}
       icon={<Info className="h-4.5 w-4.5" />}
     >
@@ -28,10 +28,10 @@ export default function About() {
       >
         <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-400/30 via-amber-500/20 to-orange-500/30 p-[3px] shadow-lg shadow-amber-500/20">
           <div className="flex h-full w-full items-center justify-center rounded-3xl bg-card overflow-hidden">
-            <img src={SAFARIO_LOGO} alt="SAFARIO" className="h-full w-full object-cover" />
+            <img src={OXEN_LOGO} alt="OXEN" className="h-full w-full object-cover" />
           </div>
         </div>
-        <h1 className="mt-4 font-display text-2xl font-extrabold">SAFARIO</h1>
+        <h1 className="mt-4 font-display text-2xl font-extrabold">OXEN</h1>
         <p className="text-sm text-muted-foreground">{t("about.tagline", "AI-Powered Travel Platform")}</p>
         <div className="mt-2 flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-1">
           <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
@@ -42,7 +42,7 @@ export default function About() {
       {/* Description */}
       <div className="glass rounded-2xl border border-white/[0.06] p-5 text-center">
         <p className="text-sm text-muted-foreground leading-relaxed">
-          {t("about.description", "SAFARIO is a premium travel platform that lets you explore the world through an interactive 3D globe. Discover countries, plan trips with AI, share your journeys, and connect with fellow explorers — all in one beautifully designed app.")}
+          {t("about.description", "OXEN is a premium travel platform that lets you explore the world through an interactive 3D globe. Discover countries, plan trips with AI, share your journeys, and connect with fellow explorers — all in one beautifully designed app.")}
         </p>
       </div>
 
@@ -136,7 +136,7 @@ export default function About() {
           {t("about.madeWithLove", "Made with love for explorers")}
         </p>
         <p className="mt-1 text-[10px] text-muted-foreground/60">
-          {t("about.copyright", "© 2026 SAFARIO Travel. All rights reserved.")}
+          {t("about.copyright", "© 2026 OXEN Travel. All rights reserved.")}
         </p>
       </div>
     </SettingsPageShell>

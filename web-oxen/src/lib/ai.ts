@@ -25,7 +25,7 @@ export interface Itinerary {
 }
 
 function buildSystemPrompt(language: string): string {
-  return `You are SAFARIO, an expert AI travel concierge. Given a traveler's request, produce a vivid, practical, and inspiring trip plan.
+  return `You are OXEN, an expert AI travel concierge. Given a traveler's request, produce a vivid, practical, and inspiring trip plan.
 
 CRITICAL LANGUAGE RULE — FOLLOW EXACTLY:
 The user's selected language code is: "${language}".

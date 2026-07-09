@@ -39,7 +39,7 @@ export interface UniversityAIResponse {
 }
 
 function buildSystemPrompt(language: string): string {
-  return `You are SAFARIO University Advisor, an expert AI that recommends universities to students based on their preferences.
+  return `You are OXEN University Advisor, an expert AI that recommends universities to students based on their preferences.
 
 CRITICAL LANGUAGE RULE — FOLLOW EXACTLY:
 The user's selected language code is: "${language}".

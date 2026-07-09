@@ -52,7 +52,7 @@ export const DEFAULT_PROFILE: ExtendedProfile = {
   fullName: "Guest Explorer",
   username: "guest_explorer",
   bio: "Wanderlust-driven traveler exploring the world one country at a time.",
-  email: "explorer@safario.travel", 
+  email: "explorer@oxen.travel", 
   phone: "",
   dateOfBirth: "",
   gender: "prefer-not-say",
@@ -94,14 +94,14 @@ interface TravelContextValue {
 /*  localStorage helpers                                               */
 /* ------------------------------------------------------------------ */
 
-const WISHLIST_KEY = "safario.travel.wishlist";
-const VISITED_KEY = "safario.travel.visited";
-const FAVORITES_KEY = "safario.travel.favorites";
-const ITINERARY_KEY = "safario.travel.itineraries";
-const STORIES_KEY = "safario.travel.stories";
-const POSTS_KEY = "safario.travel.posts";
-const PROFILE_PHOTO_KEY = "safario.travel.profile-photo";
-const PROFILE_KEY = "safario.travel.extended-profile";
+const WISHLIST_KEY = "oxen.travel.wishlist";
+const VISITED_KEY = "oxen.travel.visited";
+const FAVORITES_KEY = "oxen.travel.favorites";
+const ITINERARY_KEY = "oxen.travel.itineraries";
+const STORIES_KEY = "oxen.travel.stories";
+const POSTS_KEY = "oxen.travel.posts";
+const PROFILE_PHOTO_KEY = "oxen.travel.profile-photo";
+const PROFILE_KEY = "oxen.travel.extended-profile";
 
 const TravelContext = createContext<TravelContextValue | null>(null);
 

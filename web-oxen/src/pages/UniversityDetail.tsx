@@ -384,7 +384,7 @@ export default function UniversityDetail() {
     if (navigator.share) {
       navigator.share({ title: university?.name, text: university?.shortDescription }).catch(() => {});
     } else {
-      navigator.clipboard?.writeText(`Check out ${university?.name} on SAFARIO!`);
+      navigator.clipboard?.writeText(`Check out ${university?.name} on OXEN!`);
       toast.success(t("uni.linkCopied", "Link copied to clipboard"));
     }
   }, [university, t]);

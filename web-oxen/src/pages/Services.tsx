@@ -28,7 +28,7 @@ export default function ServicesPage() {
   const [activeCategory, setActiveCategory] = useState("All");
 
   useSEO({
-    title: "Travel Services | SAFARIO",
+    title: "Travel Services | OXEN",
     description: "Discover premium travel consulting services — visa support, luxury trip planning, honeymoon packages, and more.",
     keywords: "travel services, travel consulting, visa services, luxury travel, honeymoon packages",
   });

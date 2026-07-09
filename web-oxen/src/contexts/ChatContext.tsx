@@ -43,7 +43,7 @@ interface ChatContextValue {
 /*  localStorage helpers                                               */
 /* ------------------------------------------------------------------ */
 
-const CHAT_KEY = "safario.chat.conversations";
+const CHAT_KEY = "oxen.chat.conversations";
 
 const ChatContext = createContext<ChatContextValue | null>(null);
 

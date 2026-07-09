@@ -21,7 +21,7 @@ import PostCreator from "@/components/PostCreator";
 import { COUNTRIES } from "@/data/countries";
 import { cn } from "@/lib/utils";
 
-const SAFARIO_LOGO = "/logo.png";
+const OXEN_LOGO = "/logo.png";
 
 /* ──────────────────────────────────────
    AnimatedCounter + CountUp (reusable)

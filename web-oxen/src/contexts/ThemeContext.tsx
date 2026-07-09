@@ -8,7 +8,7 @@ interface ThemeContextValue {
   toggleTheme: () => void;
 }
 
-const STORAGE_KEY = "safario.theme";
+const STORAGE_KEY = "oxen.theme";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 

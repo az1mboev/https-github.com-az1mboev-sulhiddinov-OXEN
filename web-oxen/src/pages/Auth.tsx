@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import TravelIllustration from "@/components/TravelIllustration";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const SAFARIO_LOGO = "/logo.png";
+const OXEN_LOGO = "/logo.png";
 
 export default function Auth() {
   const { t } = useLanguage();
@@ -42,12 +42,12 @@ export default function Auth() {
               className="mb-6 flex items-center gap-3"
             >
               <img
-                src={SAFARIO_LOGO}
-                alt="SAFARIO"
+                src={OXEN_LOGO}
+                alt="OXEN"
                 className="h-10 w-10 rounded-xl object-contain shadow-lg shadow-blue-500/20"
                 onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
               />
-              <span className="font-display text-lg font-bold tracking-wider text-white">SAFARIO</span>
+              <span className="font-display text-lg font-bold tracking-wider text-white">OXEN</span>
             </motion.div>
 
             <h1 className="font-display text-3xl font-bold tracking-tight text-white lg:text-4xl">
@@ -172,7 +172,7 @@ export default function Auth() {
             <p className="text-center font-display text-xl font-bold text-white lg:text-2xl">
               {t("auth.travelTheWorld", "Travel the world")}
             </p>
-            <p className="text-center text-sm text-blue-300">{t("auth.withSafario", "with SAFARIO")}</p>
+            <p className="text-center text-sm text-blue-300">{t("auth.withOxen", "with OXEN")}</p>
           </motion.div>
 
           {/* Feature cards */}

@@ -227,7 +227,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             <div className="relative z-10 flex items-center justify-between px-5 pt-5 pb-3">
               <div>
                 <h2 className="font-display text-lg font-bold">{t("settings.title", "Profile Settings")}</h2>
-                <p className="text-xs text-muted-foreground">{t("settings.subtitle", "Customize your SAFARIO experience")}</p>
+                <p className="text-xs text-muted-foreground">{t("settings.subtitle", "Customize your OXEN experience")}</p>
               </div>
               <button
                 onClick={onClose}
@@ -363,7 +363,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <SettingsRow icon={MessageCircle} label={t("settings.contactSupport", "Contact Support")} onClick={() => { onClose(); navigate("/support"); }} />
                 <SettingsRow icon={AlertTriangle} label={t("settings.reportProblem", "Report Problem")} onClick={() => { onClose(); navigate("/support"); }} />
                 <SettingsRow icon={MessageCircle} label={t("settings.sendFeedback", "Send Feedback")} onClick={() => { onClose(); navigate("/support"); }} />
-                <SettingsRow icon={Info} label={t("settings.about", "About SAFARIO")} onClick={() => { onClose(); navigate("/settings/about"); }} />
+                <SettingsRow icon={Info} label={t("settings.about", "About OXEN")} onClick={() => { onClose(); navigate("/settings/about"); }} />
               </div>
 
               {/* ── LOG OUT — hidden for guest users ── */}
@@ -380,7 +380,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               )}
 
               <p className="mt-5 text-center text-[11px] text-muted-foreground">
-                {t("settings.version", "SAFARIO v1.0.0 — Built for explorers")}
+                {t("settings.version", "OXEN v1.0.0 — Built for explorers")}
               </p>
             </div>
           </motion.div>

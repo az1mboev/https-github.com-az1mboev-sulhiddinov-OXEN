@@ -52,7 +52,7 @@ export default function ExportTravelHistory() {
     } else {
       // Simple text-based "PDF" (a text file as placeholder)
       content = [
-        "SAFARIO TRAVEL HISTORY REPORT",
+        "OXEN TRAVEL HISTORY REPORT",
         "============================",
         `Generated: ${new Date().toLocaleString()}`,
         "",
@@ -74,7 +74,7 @@ export default function ExportTravelHistory() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `safario-travel-history-${new Date().toISOString().split("T")[0]}.${ext}`;
+    a.download = `oxen-travel-history-${new Date().toISOString().split("T")[0]}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
 

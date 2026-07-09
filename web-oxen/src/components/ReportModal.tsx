@@ -87,7 +87,7 @@ export default function ReportModal({
                   <div>
                     <h2 className="font-display text-lg font-bold">Report {reportedPostId ? "Post" : "User"}</h2>
                     <p className="text-xs text-muted-foreground">
-                      {reportedPostId ? "Help us keep SAFARIO safe" : `Reporting @${reportedUserName}`}
+                      {reportedPostId ? "Help us keep OXEN safe" : `Reporting @${reportedUserName}`}
                     </p>
                   </div>
                 </div>
@@ -126,7 +126,7 @@ export default function ReportModal({
                   </motion.div>
                   <h3 className="font-display text-lg font-bold">Report Submitted</h3>
                   <p className="mt-1.5 max-w-xs text-sm text-muted-foreground">
-                    Our AI moderation system has analyzed your report and forwarded it to our team. Thank you for helping keep SAFARIO safe.
+                    Our AI moderation system has analyzed your report and forwarded it to our team. Thank you for helping keep OXEN safe.
                   </p>
                 </motion.div>
               ) : (

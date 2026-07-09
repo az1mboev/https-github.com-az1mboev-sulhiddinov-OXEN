@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 
-const SAFARIO_LOGO = "/logo.png";
+const OXEN_LOGO = "/logo.png";
 
 interface MenuItem {
   id: string;
@@ -168,11 +168,11 @@ export default function Sidebar() {
           <div className="flex-shrink-0 px-5 pt-10 pb-6">
             <div className="flex items-center gap-3">
               <img
-                src={SAFARIO_LOGO}
-                alt="SAFARIO"
+                src={OXEN_LOGO}
+                alt="OXEN"
                 className="h-10 w-10 rounded-xl object-contain shadow-lg"
               />
-              <span className="text-lg font-extrabold tracking-widest">SAFARIO</span>
+              <span className="text-lg font-extrabold tracking-widest">OXEN</span>
             </div>
 
             <motion.div
@@ -186,7 +186,7 @@ export default function Sidebar() {
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-foreground">{user?.name ?? t("auth.guest", "Guest Explorer")}</p>
-                <p className="truncate text-xs text-muted-foreground">{user?.email ?? "explorer@safario.travel"}</p>
+                <p className="truncate text-xs text-muted-foreground">{user?.email ?? "explorer@oxen.travel"}</p>
               </div>
             </motion.div>
           </div>
@@ -244,7 +244,7 @@ export default function Sidebar() {
           {/* Footer */}
           <div className="flex-shrink-0 px-5 pb-7 pt-3">
             <p className="text-center text-[11px] text-muted-foreground/50">
-              SAFARIO · {t("nav.tagline", "Explore the world")}
+              OXEN · {t("nav.tagline", "Explore the world")}
             </p>
           </div>
         </motion.aside>

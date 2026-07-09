@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* SAFARIO — dark cosmic travel aesthetic. All colors HSL. */
+/* OXEN — dark cosmic travel aesthetic. All colors HSL. */
 
 @layer base {
   :root,
@@ -966,7 +966,7 @@ html.dark, html.light {
 }
 
 /* ================================================================== */
-/*  SAFARIO — Global Optimization Layer                                  */
+/*  OXEN — Global Optimization Layer                                  */
 /*  Safe areas · standalone PWA · responsive · performance · skeletons */
 /* ================================================================== */
 
@@ -1083,15 +1083,15 @@ canvas {
 }
 
 /* --- Skeleton loading states --- */
-.safario-skeleton-globe {
+.oxen-skeleton-globe {
   width: 48px;
   height: 48px;
   border-radius: 50%;
   border: 3px solid hsl(225 38% 14%);
   border-top-color: hsl(38 92% 56%);
-  animation: safario-spin 0.8s linear infinite;
+  animation: oxen-spin 0.8s linear infinite;
 }
-@keyframes safario-spin {
+@keyframes oxen-spin {
   to { transform: rotate(360deg); }
 }
 
@@ -1128,7 +1128,7 @@ img[loading="lazy"]:not([data-loading]) {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  .safario-skeleton-globe { animation: none; border-top-color: hsl(38 92% 56%); }
+  .oxen-skeleton-globe { animation: none; border-top-color: hsl(38 92% 56%); }
 }
 
 /* --- Font rendering: crisp on all platforms --- */
