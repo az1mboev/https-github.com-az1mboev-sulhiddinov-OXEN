@@ -30,6 +30,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import DestinationModal from "@/components/DestinationModal";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import UniversityModal from "@/components/UniversityModal";
 import VideoPlayer from "@/components/VideoPlayer";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -123,11 +124,11 @@ function UniversityDiscoverCard({ uni, index }: { uni: University; index: number
       className="feed-card group relative w-[260px] shrink-0 cursor-pointer overflow-hidden rounded-3xl"
     >
       <div className="relative h-[340px] w-full overflow-hidden">
-        <img
+        <OptimizedImage
           src={uni.coverImage}
           alt={uni.name}
+          placeholderType="university"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
@@ -216,11 +217,11 @@ function UniversityPostCard({ post, index }: { post: UniversityPost; index: numb
       className="glass-strong group relative w-full overflow-hidden rounded-3xl"
     >
       <div className="relative aspect-square w-full overflow-hidden">
-        <img
+        <OptimizedImage
           src={post.coverUrl}
           alt={`${post.city}, ${post.country}`}
+          placeholderType="post"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
@@ -234,11 +235,11 @@ function UniversityPostCard({ post, index }: { post: UniversityPost; index: numb
         )}
 
         <div className="absolute left-0 right-0 top-0 flex items-center gap-2.5 p-4">
-          <img
+          <OptimizedImage
             src={post.avatarUrl}
             alt={post.username}
+            placeholderType="avatar"
             className="h-9 w-9 rounded-full border-2 border-white/30 object-cover"
-            loading="lazy"
           />
           <div className="flex-1 min-w-0">
             <p className="truncate text-sm font-bold text-white">{post.username}</p>
@@ -401,7 +402,7 @@ function UnifiedSearchOverlay({
                   </>
                 ) : (
                   <>
-                    <img src={result.uni.logo} alt={result.uni.name} className="h-10 w-10 rounded-lg object-cover" loading="lazy" />
+                    <OptimizedImage src={result.uni.logo} alt={result.uni.name} placeholderType="university" className="h-10 w-10 rounded-lg object-cover" />
                     <div className="flex-1 min-w-0">
                       <p className="truncate text-sm font-semibold text-white">{result.uni.name}</p>
                       <p className="truncate text-xs text-white/40">
@@ -680,7 +681,7 @@ function ComparePanel({
                 {unis.map((u) => (
                   <th key={u.id} className="min-w-[140px] p-3 text-center">
                     <div className="flex flex-col items-center gap-1">
-                      <img src={u.logo} alt={u.name} className="h-10 w-10 rounded-lg object-cover" loading="lazy" />
+                      <OptimizedImage src={u.logo} alt={u.name} placeholderType="university" className="h-10 w-10 rounded-lg object-cover" />
                       <span className="text-xs font-bold text-white">{u.name}</span>
                       <button
                         onClick={() => toggleCompare(u.id)}
@@ -905,7 +906,7 @@ function AIRecommendationSection() {
                 onClick={() => navigate(`/universities/${rec.id}`)}
                 className="glass-strong flex w-full items-center gap-3 rounded-2xl p-4 text-left transition hover:border-primary/30"
               >
-                <img src={uni.logo} alt={uni.name} className="h-12 w-12 rounded-xl object-cover" loading="lazy" />
+                <OptimizedImage src={uni.logo} alt={uni.name} placeholderType="university" className="h-12 w-12 rounded-xl object-cover" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="truncate text-sm font-bold text-white">{uni.name}</p>
@@ -1123,7 +1124,7 @@ export default function Universities() {
           className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-5 pt-6"
         >
           <div className="flex items-center gap-2">
-            <img src={SAFARIO_LOGO} alt="SAFARIO" className="h-9 w-9 rounded-xl object-contain shadow-lg" />
+            <img src={SAFARIO_LOGO} alt="SAFARIO" className="h-9 w-9 rounded-xl object-contain shadow-lg" loading="lazy" onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }} />
             <span className="font-display text-xl font-extrabold tracking-wide">SAFARIO</span>
           </div>
 
@@ -1410,11 +1411,11 @@ function CampusVideoCard({
         className="group relative w-[280px] shrink-0 overflow-hidden rounded-3xl"
       >
         <div className="relative h-[180px] w-full overflow-hidden">
-          <img
+          <OptimizedImage
             src={video.thumbnail}
             alt={video.title}
+            placeholderType="video"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           <div className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 backdrop-blur-md transition group-hover:scale-110">

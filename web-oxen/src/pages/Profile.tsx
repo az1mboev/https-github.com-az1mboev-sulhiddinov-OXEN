@@ -12,6 +12,7 @@ import { useTravel } from "@/contexts/TravelContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useChat } from "@/contexts/ChatContext";
 import { useToast } from "@/hooks/use-toast";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import SettingsPanel from "@/components/SettingsPanel";
 import ReportModal from "@/components/ReportModal";
 import StoryCreator from "@/components/StoryCreator";
@@ -107,9 +108,10 @@ function PostsGrid() {
               onMouseLeave={(e) => { (e.currentTarget as HTMLVideoElement).pause(); (e.currentTarget as HTMLVideoElement).currentTime = 0; }}
             />
           ) : (
-            <img
+            <OptimizedImage
               src={post.media[0].dataUrl}
               alt={post.caption}
+              placeholderType="post"
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           )}
@@ -438,7 +440,7 @@ export default function Profile() {
             >
               <div className="flex h-full w-full items-center justify-center rounded-full bg-card overflow-hidden">
                 {profilePhoto ? (
-                  <img src={profilePhoto} alt={user.name} className="h-full w-full object-cover" />
+                  <OptimizedImage src={profilePhoto} alt={user.name} placeholderType="avatar" className="h-full w-full object-cover" />
                 ) : (
                   <span className="font-display text-4xl font-extrabold text-foreground/70">{initials}</span>
                 )}

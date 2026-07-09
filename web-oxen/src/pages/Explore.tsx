@@ -3,6 +3,7 @@ import { Compass, TrendingUp, Globe2, Map, Sparkles, ArrowRight } from "lucide-r
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { OptimizedImage } from "@/components/OptimizedImage";
 import { DESTINATIONS } from "@/data/feedData";
 import { COUNTRIES } from "@/data/countries";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -41,11 +42,11 @@ function FeaturedCard({ dest, index }: { dest: typeof DESTINATIONS[0]; index: nu
       className="travel-card group relative w-[240px] shrink-0 overflow-hidden rounded-3xl text-left"
     >
       <div className="relative h-[320px] w-full overflow-hidden">
-        <img
+        <OptimizedImage
           src={dest.imageUrl}
           alt={`${dest.city}, ${dest.country}`}
+          placeholderType="post"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
         <span className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-lg backdrop-blur-md">

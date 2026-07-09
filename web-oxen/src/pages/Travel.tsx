@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 
+import { OptimizedImage } from "@/components/OptimizedImage";
 import VideoPlayer from "@/components/VideoPlayer";
 import { CATEGORIES, DESTINATIONS, getDestinationsByCategory, type TrendingDestination, type DestinationCategory } from "@/data/feedData";
 import { COUNTRIES } from "@/data/countries";
@@ -111,11 +112,11 @@ function DestinationCard({
     >
       {/* Cover image */}
       <div className="relative h-[380px] w-full overflow-hidden">
-        <img
+        <OptimizedImage
           src={dest.imageUrl}
           alt={`${dest.city}, ${dest.country}`}
+          placeholderType="post"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
         />
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />

@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 
 import { useReports, type Report, type ReportStatus, type RiskLevel } from "@/contexts/ReportContext";
 import { getUserById, DEMO_USERS } from "@/data/demoUsers";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import { cn } from "@/lib/utils";
 
 /* ── Status badge ── */
@@ -344,7 +345,7 @@ function ReportDetail({
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Reported By</p>
           <div className="flex items-center gap-2">
             {reporter?.avatarUrl ? (
-              <img src={reporter.avatarUrl} alt={reporterName} className="h-8 w-8 rounded-full object-cover" />
+              <OptimizedImage src={reporter.avatarUrl} alt={reporterName} placeholderType="avatar" className="h-8 w-8 rounded-full object-cover" />
             ) : (
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/15 text-xs font-bold text-blue-400">
                 {reporterName.charAt(0)}
@@ -357,7 +358,7 @@ function ReportDetail({
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Reported User</p>
           <div className="flex items-center gap-2">
             {reported?.avatarUrl ? (
-              <img src={reported.avatarUrl} alt={reportedName} className="h-8 w-8 rounded-full object-cover" />
+              <OptimizedImage src={reported.avatarUrl} alt={reportedName} placeholderType="avatar" className="h-8 w-8 rounded-full object-cover" />
             ) : (
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/15 text-xs font-bold text-red-400">
                 {reportedName.charAt(0)}

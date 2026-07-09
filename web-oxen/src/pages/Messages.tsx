@@ -10,6 +10,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useChat, type ChatMessage, CHAT_CURRENT_USER_ID } from "@/contexts/ChatContext";
 import { DEMO_USERS, getUserById } from "@/data/demoUsers";
 import { useTravel } from "@/contexts/TravelContext";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import { cn } from "@/lib/utils";
 
 const EMOJIS = ["😀", "😂", "😍", "🥰", "😎", "🤔", "😢", "😡", "👍", "👎", "❤️", "🔥", "✨", "🎉", "🚀", "🌍", "✈️", "🏝️", "📸", "🙌"];
@@ -54,7 +55,7 @@ function MessageBubble({ msg, isMe, index, onDelete }: MessageBubbleProps) {
       <div className={cn("max-w-[78%]", isMe ? "items-end" : "items-start")}>
         <div className={cn("relative px-4 py-2.5", isMe ? "chat-bubble-sent" : "chat-bubble-received")}>
           {msg.type === "image" ? (
-            <img src={msg.content} alt="Shared" className="rounded-lg max-w-full max-h-60 object-cover" />
+            <OptimizedImage src={msg.content} alt="Shared" placeholderType="post" className="rounded-lg max-w-full max-h-60 object-cover" />
           ) : msg.type === "video" ? (
             <video src={msg.content} controls className="rounded-lg max-w-full max-h-60" />
           ) : isDeleted ? (
@@ -234,7 +235,7 @@ export default function Messages() {
           </button>
           <div className="relative shrink-0">
             {activeUser.avatarUrl ? (
-              <img src={activeUser.avatarUrl} alt={activeUser.name} className="h-10 w-10 rounded-full object-cover" />
+              <OptimizedImage src={activeUser.avatarUrl} alt={activeUser.name} placeholderType="avatar" className="h-10 w-10 rounded-full object-cover" />
             ) : (
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-400/30 to-orange-500/30 text-sm font-bold">
                 {activeUser.name.charAt(0)}
@@ -466,7 +467,7 @@ export default function Messages() {
             >
               <div className="relative shrink-0">
                 {item.user.avatarUrl ? (
-                  <img src={item.user.avatarUrl} alt={item.user.name} className="h-12 w-12 rounded-full object-cover" />
+                  <OptimizedImage src={item.user.avatarUrl} alt={item.user.name} placeholderType="avatar" className="h-12 w-12 rounded-full object-cover" />
                 ) : (
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-400/30 to-orange-500/30 text-lg font-bold">
                     {item.user.name.charAt(0)}

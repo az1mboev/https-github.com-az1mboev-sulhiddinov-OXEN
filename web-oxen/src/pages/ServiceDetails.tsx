@@ -31,6 +31,7 @@ import {
   parseFAQItems,
   type ServiceReview,
 } from "@/lib/services";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import { RichTextRenderer } from "@/components/services/RichTextRenderer";
 import { GalleryGrid } from "@/components/services/GalleryGrid";
 import { VideoGrid } from "@/components/services/VideoEmbed";
@@ -213,9 +214,10 @@ export default function ServiceDetails() {
           {/* Cover image */}
           {service.cover_image && (
             <div className="travel-card relative h-[240px] overflow-hidden rounded-3xl sm:h-[320px]">
-              <img
+              <OptimizedImage
                 src={service.cover_image}
                 alt={service.title}
+                placeholderType="post"
                 className="h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
@@ -224,9 +226,10 @@ export default function ServiceDetails() {
               {service.consulting_companies && (
                 <div className="absolute bottom-4 left-4 flex items-center gap-2.5">
                   {service.consulting_companies.logo_url && (
-                    <img
+                    <OptimizedImage
                       src={service.consulting_companies.logo_url}
                       alt={service.consulting_companies.name}
+                      placeholderType="avatar"
                       className="h-10 w-10 rounded-xl border border-white/20 object-cover shadow-lg"
                     />
                   )}

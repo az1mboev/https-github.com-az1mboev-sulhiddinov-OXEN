@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import CommentsSheet from "@/components/CommentsSheet";
 import DestinationModal from "@/components/DestinationModal";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import ReportModal from "@/components/ReportModal";
 import TravelOptionsPanel from "@/components/TravelOptionsPanel";
 import VideoPlayer from "@/components/VideoPlayer";
@@ -94,11 +95,11 @@ function FeedPostCard({ post, index }: { post: FeedPost; index: number }) {
     >
       {/* Cover */}
       <div className="relative h-[340px] w-full overflow-hidden">
-        <img
+        <OptimizedImage
           src={post.coverUrl}
           alt={`${post.city}, ${post.country}`}
+          placeholderType="post"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
@@ -141,11 +142,11 @@ function FeedPostCard({ post, index }: { post: FeedPost; index: number }) {
 
         {/* User row */}
         <div className="absolute left-0 right-0 top-0 flex items-center gap-2.5 p-4">
-          <img
+          <OptimizedImage
             src={post.avatarUrl}
             alt={post.username}
+            placeholderType="avatar"
             className="h-9 w-9 rounded-full border-2 border-white/30 object-cover"
-            loading="lazy"
           />
           <div className="flex-1 min-w-0">
             <p className="truncate text-sm font-bold text-white">{post.username}</p>
@@ -421,6 +422,8 @@ export default function Index() {
               src={SAFARIO_LOGO}
               alt="SAFARIO"
               className="h-9 w-9 rounded-xl object-contain shadow-lg"
+              loading="lazy"
+              onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
             />
             <span className="font-display text-xl font-extrabold tracking-wide">SAFARIO</span>
           </div>

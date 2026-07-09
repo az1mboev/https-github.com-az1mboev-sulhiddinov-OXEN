@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUniversity } from "@/contexts/UniversityContext";
 import { getUniversity, type Program, type UniversityVideo } from "@/data/universities";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import VideoPlayer from "@/components/VideoPlayer";
 import { cn } from "@/lib/utils";
 
@@ -148,11 +149,11 @@ function VideoCard({ video, index }: { video: UniversityVideo; index: number }) 
         className="group relative overflow-hidden rounded-2xl"
       >
         <div className="relative h-[160px] w-full overflow-hidden">
-          <img
+          <OptimizedImage
             src={video.thumbnail}
             alt={video.title}
+            placeholderType="video"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
           <div className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 backdrop-blur-md transition group-hover:scale-110">
@@ -436,9 +437,10 @@ export default function UniversityDetail() {
     <div className="relative pb-8">
       {/* ── Hero Banner ─────────────────────────────────────────── */}
       <section className="relative h-[42vh] min-h-[280px] overflow-hidden">
-        <img
+        <OptimizedImage
           src={university.coverImage}
           alt={university.name}
+          placeholderType="university"
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
@@ -481,9 +483,10 @@ export default function UniversityDetail() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <img
+          <OptimizedImage
             src={university.logo}
             alt={university.name}
+            placeholderType="university"
             className="h-20 w-20 rounded-2xl object-cover shadow-2xl ring-2 ring-white/10"
           />
           <span className="mt-3 inline-block rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -571,7 +574,7 @@ export default function UniversityDetail() {
                   i === activeGalleryIdx ? "ring-2 ring-primary" : "opacity-60 hover:opacity-100",
                 )}
               >
-                <img src={img} alt={`Thumbnail ${i + 1}`} className="h-full w-full object-cover" loading="lazy" />
+                <OptimizedImage src={img} alt={`Thumbnail ${i + 1}`} placeholderType="university" className="h-full w-full object-cover" />
               </button>
             ))}
           </div>
@@ -598,11 +601,11 @@ export default function UniversityDetail() {
       <Section title={t("uni.location", "Location")} icon={MapPin}>
         <div className="glass overflow-hidden rounded-2xl">
           <div className="relative h-48 w-full">
-            <img
+            <OptimizedImage
               src={SAMPLE_MAP_TILE}
               alt={`Map of ${university.city}`}
+              placeholderType="generic"
               className="h-full w-full object-cover opacity-70"
-              loading="lazy"
             />
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary shadow-lg">
@@ -781,7 +784,7 @@ export default function UniversityDetail() {
                 className="glass rounded-2xl p-4"
               >
                 <div className="flex items-center gap-3">
-                  <img src={review.avatar} alt={review.author} className="h-10 w-10 rounded-full object-cover" loading="lazy" />
+                  <OptimizedImage src={review.avatar} alt={review.author} placeholderType="avatar" className="h-10 w-10 rounded-full object-cover" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold">{review.author}</p>
                     <p className="text-xs text-muted-foreground">{review.program} · {review.date}</p>
@@ -902,7 +905,7 @@ export default function UniversityDetail() {
                 onClick={() => setActiveGalleryIdx(i)}
                 className="group relative aspect-square overflow-hidden rounded-2xl"
               >
-                <img src={img} alt={`360 view ${i + 1}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                <OptimizedImage src={img} alt={`360 view ${i + 1}`} placeholderType="university" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <div className="absolute left-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">360°</div>
               </motion.button>

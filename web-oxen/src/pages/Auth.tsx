@@ -45,6 +45,7 @@ export default function Auth() {
                 src={SAFARIO_LOGO}
                 alt="SAFARIO"
                 className="h-10 w-10 rounded-xl object-contain shadow-lg shadow-blue-500/20"
+                onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
               />
               <span className="font-display text-lg font-bold tracking-wider text-white">SAFARIO</span>
             </motion.div>

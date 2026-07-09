@@ -6,8 +6,9 @@ import { X, MapPin, Plane, Heart, Globe2, Users, Coins, Languages, Clock, Ruler 
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTravel } from "@/contexts/TravelContext";
 import type { Country } from "@/data/countries";
-import { getCountryIso, getFlagUrl, getCountryArea, formatArea } from "@/data/countryMeta";
+import { getCountryIso, getCountryArea, formatArea } from "@/data/countryMeta";
 import { translateCountry } from "@/lib/countryLocale";
+import { FlagImage } from "@/components/FlagImage";
 
 /* ------------------------------------------------------------------ */
 /*  Types & helpers                                                    */
@@ -54,7 +55,6 @@ function formatPopulation(pop: number): string {
 export default function DestinationModal({ country, open, onClose, onShowOptions }: DestinationModalProps) {
   const { language, t } = useLanguage();
   const { isWishlisted, toggleWishlist } = useTravel();
-  const [flagError, setFlagError] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Track viewport for responsive panel positioning (mobile vs tablet/desktop)
@@ -76,17 +76,11 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  // Reset flag error state when country changes
-  useEffect(() => {
-    setFlagError(false);
-  }, [country?.id]);
-
   if (!country) return null;
 
   const localizedCountry = translateCountry(country, language);
 
   const isoCode = localizedCountry.isoCode ?? getCountryIso(localizedCountry.id);
-  const flagUrl = isoCode && !flagError ? getFlagUrl(isoCode) : null;
   const area = localizedCountry.area ?? getCountryArea(localizedCountry.id);
   const wishlisted = isWishlisted(localizedCountry.id);
 
@@ -184,23 +178,14 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
                   {/* Glass highlight overlay */}
                   <div className="pointer-events-none absolute inset-0 z-10 rounded-xl bg-gradient-to-b from-white/[0.07] via-transparent to-transparent" />
 
-                  {flagUrl && (
-                    <img
-                      src={flagUrl}
-                      alt={`Flag of ${localizedCountry.name}`}
-                      className="h-full w-full object-cover"
-                      onError={() => setFlagError(true)}
-                    />
-                  )}
-
-                  {/* Emoji fallback */}
-                  <span
-                    className="absolute inset-0 flex items-center justify-center text-5xl select-none"
-                    style={flagUrl ? { zIndex: -1, opacity: 0.3 } : {}}
-                    aria-hidden
-                  >
-                    {localizedCountry.flag}
-                  </span>
+                  <FlagImage
+                    isoCode={isoCode}
+                    emoji={localizedCountry.flag}
+                    alt={`Flag of ${localizedCountry.name}`}
+                    width={160}
+                    height={108}
+                    className="h-full w-full object-cover"
+                  />
                 </motion.div>
 
                 {/* ── Country name ─────────────────────────────────────── */}

@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUniversity } from "@/contexts/UniversityContext";
 import type { University } from "@/data/universities";
+import { OptimizedImage } from "@/components/OptimizedImage";
 
 /* ------------------------------------------------------------------ */
 /*  Types & helpers                                                    */
@@ -213,11 +214,11 @@ export default function UniversityModal({ university, open, onClose }: Universit
                   style={{ width: 160, height: 108 }}
                 >
                   <div className="pointer-events-none absolute inset-0 z-10 rounded-xl bg-gradient-to-b from-white/[0.07] via-transparent to-transparent" />
-                  <img
+                  <OptimizedImage
                     src={university.coverImage}
                     alt={university.name}
+                    placeholderType="university"
                     className="h-full w-full object-cover"
-                    loading="lazy"
                   />
                 </motion.div>
 
@@ -372,12 +373,12 @@ export default function UniversityModal({ university, open, onClose }: Universit
                   <p className="text-[10px] font-medium uppercase tracking-wider text-white/35 mb-2">{t("uni.gallery", "Gallery Preview")}</p>
                   <div className="flex gap-2 overflow-x-auto no-scrollbar">
                     {university.gallery.slice(0, 4).map((img, i) => (
-                      <img
+                      <OptimizedImage
                         key={i}
                         src={img}
                         alt={`${university.name} ${i + 1}`}
+                        placeholderType="university"
                         className="h-16 w-16 shrink-0 rounded-lg object-cover"
-                        loading="lazy"
                       />
                     ))}
                   </div>
