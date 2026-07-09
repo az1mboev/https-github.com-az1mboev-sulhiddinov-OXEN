@@ -855,49 +855,75 @@ function ZoomController({
   zoomTarget: target,
   controlsRef,
 }: {
-  zoomTarget: { lat: number; lng: number } | null;
+  zoomTarget: { lat: number; lng: number; distance?: number } | null;
   controlsRef: React.RefObject<any>;
 }) {
   const { camera } = useThree();
+  const REF_DIR = useMemo(() => new THREE.Vector3(0, 0, 1), []);
   const animRef = useRef({
     active: false,
     progress: 0,
-    startTarget: new THREE.Vector3(),
-    endTarget: new THREE.Vector3(),
-    startDistance: 5.4,
-    endDistance: 2.8,
+    startQuat: new THREE.Quaternion(),
+    endQuat: new THREE.Quaternion(),
+    startDist: 5.4,
+    endDist: 5.4,
   });
 
   useEffect(() => {
     if (!target || !controlsRef.current) return;
 
     const ctrl = controlsRef.current;
-    const endPos = latLngToVec3(target.lat, target.lng, RADIUS);
 
+    // ALWAYS keep the orbit target at the globe center — never move the pivot
+    ctrl.target.set(0, 0, 0);
+
+    // Direction of the target point from globe center
+    const targetDir = latLngToVec3(target.lat, target.lng, RADIUS).normalize();
+
+    // Current camera state
+    const currentPos = camera.position.clone();
+    const currentDist = currentPos.length();
+    const currentDir = currentPos.normalize();
+
+    // Target distance: preserve current zoom, or use provided distance (e.g. double-click zoom)
+    const endDist = target.distance ?? currentDist;
+
+    // Build quaternions that rotate REF_DIR → each direction, then slerp between them
     animRef.current = {
       active: true,
       progress: 0,
-      startTarget: ctrl.target.clone(),
-      endTarget: endPos.clone(),
-      startDistance: camera.position.distanceTo(ctrl.target),
-      endDistance: 2.8,
+      startQuat: new THREE.Quaternion().setFromUnitVectors(REF_DIR, currentDir),
+      endQuat: new THREE.Quaternion().setFromUnitVectors(REF_DIR, targetDir),
+      startDist: currentDist,
+      endDist,
     };
-  }, [target, controlsRef, camera]);
+  }, [target, controlsRef, camera, REF_DIR]);
 
   useFrame((_, delta) => {
     const a = animRef.current;
     if (!a.active || !controlsRef.current) return;
 
-    a.progress += delta * 2.2;
+    const ctrl = controlsRef.current;
+
+    // Disable auto-rotate during fly-to so it doesn't fight the animation.
+    // RotationController runs before this and re-enables it once we stop.
+    ctrl.autoRotate = false;
+
+    a.progress += delta * 1.8;
     const t = Math.min(a.progress, 1);
     const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
-    const ctrl = controlsRef.current;
-    ctrl.target.lerpVectors(a.startTarget, a.endTarget, eased);
+    // Slerp the camera direction around the globe center using quaternions
+    const resultQuat = a.startQuat.clone().slerp(a.endQuat, eased);
+    const dir = REF_DIR.clone().applyQuaternion(resultQuat);
 
-    const dir = camera.position.clone().sub(a.startTarget).normalize();
-    const dist = a.startDistance + (a.endDistance - a.startDistance) * eased;
-    camera.position.copy(ctrl.target).add(dir.multiplyScalar(dist));
+    // Lerp the distance (preserves zoom unless a target distance was specified)
+    const dist = a.startDist + (a.endDist - a.startDist) * eased;
+
+    camera.position.copy(dir.multiplyScalar(dist));
+
+    // Lock the orbit target to globe center — never orbit around a marker
+    ctrl.target.set(0, 0, 0);
     ctrl.update();
 
     if (t >= 1) {
@@ -939,7 +965,7 @@ function Scene({
   selectedCountry: Country | null;
   hoveredCountry: Country | null;
   onHoverCountry: (c: Country | null) => void;
-  zoomTarget: { lat: number; lng: number } | null;
+  zoomTarget: { lat: number; lng: number; distance?: number } | null;
   controlsRef: React.RefObject<any>;
   visitedIds: Set<string>;
   wishlistIds: Set<string>;
@@ -1037,7 +1063,7 @@ export default function Globe({
   onCountrySelect?: (c: Country) => void;
   onBackgroundTap?: () => void;
   selectedCountry: Country | null;
-  zoomTarget?: { lat: number; lng: number } | null;
+  zoomTarget?: { lat: number; lng: number; distance?: number } | null;
   visitedIds?: Set<string>;
   wishlistIds?: Set<string>;
   universityMode?: boolean;
@@ -1051,7 +1077,7 @@ export default function Globe({
 }) {
   const controlsRef = useRef<any>(null);
   const hoveredCountryRef = useRef<Country | null>(null);
-  const [internalZoomTarget, setInternalZoomTarget] = useState<{ lat: number; lng: number } | null>(null);
+  const [internalZoomTarget, setInternalZoomTarget] = useState<{ lat: number; lng: number; distance?: number } | null>(null);
   const [hoveredCountry, setHoveredCountry] = useState<Country | null>(null);
 
   // Manual rotation is locked until the user taps the "Click" button.
@@ -1070,7 +1096,7 @@ export default function Globe({
   const activeZoomTarget = zoomTarget ?? internalZoomTarget;
 
   const handleDoubleClick = useCallback((c: Country) => {
-    setInternalZoomTarget({ lat: c.lat, lng: c.lng });
+    setInternalZoomTarget({ lat: c.lat, lng: c.lng, distance: 2.8 });
   }, []);
 
   const handleHoverWithState = useCallback((c: Country | null) => {
