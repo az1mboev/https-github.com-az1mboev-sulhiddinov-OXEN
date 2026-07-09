@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Globe2, Compass, Plane, Briefcase, User, WifiOff, RefreshCw } from "lucide-react";
+import { Menu, Globe2, Compass, Plane, Briefcase, User, WifiOff, RefreshCw, GraduationCap } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import Sidebar from "@/components/Sidebar";
@@ -13,6 +13,7 @@ const TABS = [
   { to: "/", label: "nav.globe", icon: Globe2, end: true },
   { to: "/explore", label: "nav.explore", icon: Compass, end: false },
   { to: "/travel", label: "nav.travel", icon: Plane, end: false },
+  { to: "/universities", label: "nav.universities", icon: GraduationCap, end: false },
   { to: "/trips", label: "nav.trips", icon: Briefcase, end: false },
   { to: "/profile", label: "nav.profile", icon: User, end: false },
 ];

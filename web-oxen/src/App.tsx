@@ -18,6 +18,7 @@ import { SidebarProvider } from "./contexts/SidebarContext";
 import { SupportProvider } from "./contexts/SupportContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { TravelProvider } from "./contexts/TravelContext";
+import { UniversityProvider } from "./contexts/UniversityContext";
 
 /* ------------------------------------------------------------------ */
 /*  Code-splitting: each route becomes its own lazy bundle so the      */
@@ -44,6 +45,8 @@ const Services = lazy(() => import("./pages/Services"));
 const Support = lazy(() => import("./pages/Support"));
 const Travel = lazy(() => import("./pages/Travel"));
 const Trips = lazy(() => import("./pages/Trips"));
+const Universities = lazy(() => import("./pages/Universities"));
+const UniversityDetail = lazy(() => import("./pages/UniversityDetail"));
 
 // Settings sub-pages (code-split)
 const SettingsAbout = lazy(() => import("./pages/settings/About"));
@@ -105,14 +108,15 @@ const App = () => (
       <LanguageProvider>
         <AuthProvider>
           <TravelProvider>
-            <ChatProvider>
-              <ReportProvider>
-                <CommentsProvider>
-                  <OfflineProvider>
-                    <PreferencesProvider>
-                      <SupportProvider>
-                        <SidebarProvider>
-                          <TooltipProvider>
+            <UniversityProvider>
+              <ChatProvider>
+                <ReportProvider>
+                  <CommentsProvider>
+                    <OfflineProvider>
+                      <PreferencesProvider>
+                        <SupportProvider>
+                          <SidebarProvider>
+                            <TooltipProvider>
                           <Toaster />
                           <Sonner />
                           <BrowserRouter
@@ -130,6 +134,8 @@ const App = () => (
                                 />
                                 <Route path="/explore" element={<Explore />} />
                                 <Route path="/travel" element={<Travel />} />
+                                <Route path="/universities" element={<Universities />} />
+                                <Route path="/universities/:universityId" element={<UniversityDetail />} />
                                 <Route path="/trips" element={<Trips />} />
                                 <Route path="/planner" element={<Planner />} />
                                 <Route path="/dashboard" element={<Dashboard />} />
@@ -183,6 +189,7 @@ const App = () => (
                 </CommentsProvider>
               </ReportProvider>
             </ChatProvider>
+            </UniversityProvider>
           </TravelProvider>
         </AuthProvider>
       </LanguageProvider>
