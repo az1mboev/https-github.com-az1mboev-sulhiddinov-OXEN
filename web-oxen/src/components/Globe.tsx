@@ -317,10 +317,12 @@ const UNI_MARKER_YELLOW = new THREE.Color("#FFD700");
 const UNI_MARKER_GOLD = new THREE.Color("#FFB300");
 const UNI_MARKER_GREEN = new THREE.Color("#34C759");
 const UNI_MARKER_RED = new THREE.Color("#FF3B30");
+const MAX_UNI_INSTANCES = 3000;
 
 interface UniMarkerData {
   id: string;
   pos: THREE.Vector3;
+  dir: THREE.Vector3;
   lat: number;
   lng: number;
 }
@@ -343,163 +345,217 @@ function UniversityClusterMarkers({
   controlsRef: React.RefObject<any>;
 }) {
   const { camera } = useThree();
-  const pulseRefs = useRef<THREE.Mesh[]>([]);
-  const dotRefs = useRef<THREE.Mesh[]>([]);
-  const colorRefs = useRef<THREE.MeshBasicMaterial[]>([]);
-  const groupRef = useRef<THREE.Group>(null);
-  const visibleIndicesRef = useRef<number[]>([]);
+  const dotMeshRef = useRef<THREE.InstancedMesh>(null);
+  const haloMeshRef = useRef<THREE.InstancedMesh>(null);
+  const visibleMapRef = useRef<Int32Array>(new Int32Array(MAX_UNI_INSTANCES));
+  const lastCamPos = useRef(new THREE.Vector3(Infinity, Infinity, Infinity));
+  const needsColorUpdate = useRef(true);
 
+  // Reusable temp objects (avoid per-frame allocations)
+  const tmpMatrix = useMemo(() => new THREE.Matrix4(), []);
+  const tmpQuat = useMemo(() => new THREE.Quaternion(), []);
+  const tmpScale = useMemo(() => new THREE.Vector3(1, 1, 1), []);
+  const tmpPos = useMemo(() => new THREE.Vector3(), []);
+  const tmpColor = useMemo(() => new THREE.Color(), []);
+  const camDir = useMemo(() => new THREE.Vector3(), []);
+
+  // Precompute marker positions + normalized directions
   const markerData = useMemo<UniMarkerData[]>(() => {
     return universities.map((uni) => {
       const pos = latLngToVec3(uni.latitude, uni.longitude, RADIUS + UNI_MARKER_OFFSET);
-      return { id: uni.id, pos, lat: uni.latitude, lng: uni.longitude };
+      const dir = pos.clone().normalize();
+      return { id: uni.id, pos, dir, lat: uni.latitude, lng: uni.longitude };
     });
   }, [universities]);
 
-  const uniMap = useMemo(() => {
-    const m = new Map<string, University>();
-    universities.forEach((u) => m.set(u.id, u));
-    return m;
-  }, [universities]);
+  // Trigger color refresh when travel status changes
+  useEffect(() => {
+    needsColorUpdate.current = true;
+  }, [visitedIds, wishlistIds, selectedId]);
 
-  const getMarkerColor = useCallback(
-    (uniId: string): THREE.Color => {
-      if (visitedIds.has(uniId)) return UNI_MARKER_GREEN;
-      if (wishlistIds.has(uniId)) return UNI_MARKER_GOLD;
-      return UNI_MARKER_YELLOW;
-    },
-    [visitedIds, wishlistIds],
-  );
-
-  // Clustering: determine which markers to show based on camera distance
   useFrame(() => {
-    if (!controlsRef.current || !groupRef.current) return;
-    const dist = camera.position.distanceTo(controlsRef.current.target);
-    const zoomLevel = THREE.MathUtils.clamp((MAX_DISTANCE - dist) / (MAX_DISTANCE - MIN_DISTANCE), 0, 1);
+    const dotMesh = dotMeshRef.current;
+    const haloMesh = haloMeshRef.current;
+    if (!dotMesh || !haloMesh || !controlsRef.current) return;
 
-    // Cluster threshold: at low zoom, skip markers that are too close together
-    const clusterThreshold = THREE.MathUtils.lerp(25, 3, zoomLevel); // degrees
-    const visible = new Set<number>();
-    const lastShownLat: number[] = [];
-    const lastShownLng: number[] = [];
+    const ctrl = controlsRef.current;
+    const dist = camera.position.distanceTo(ctrl.target);
+    const zoomLevel = THREE.MathUtils.clamp(
+      (MAX_DISTANCE - dist) / (MAX_DISTANCE - MIN_DISTANCE),
+      0,
+      1,
+    );
 
-    for (let i = 0; i < markerData.length; i++) {
-      const md = markerData[i];
-      let tooClose = false;
-      for (let j = 0; j < lastShownLat.length; j++) {
-        const d = greatCircleDistDeg(
-          { lat: md.lat, lng: md.lng },
-          { lat: lastShownLat[j], lng: lastShownLng[j] },
-        );
-        if (d < clusterThreshold) {
-          tooClose = true;
-          break;
-        }
+    // Throttle: only recluster when camera moved or colors changed
+    const camMoved = camera.position.distanceToSquared(lastCamPos.current) > 0.0004;
+    const needsRecluster = camMoved || needsColorUpdate.current;
+    if (camMoved) lastCamPos.current.copy(camera.position);
+
+    // Camera direction (from globe center to camera, normalized)
+    camDir.copy(camera.position).normalize();
+
+    if (needsRecluster) {
+      // Cluster threshold in degrees — shrinks as user zooms in
+      const clusterThreshold = THREE.MathUtils.lerp(20, 1.5, zoomLevel);
+      const cullThreshold = -0.05; // show slightly more than a hemisphere
+
+      // O(n) grid clustering: numeric key = cellLat * 10000 + cellLng
+      const grid = new Map<number, number>();
+      let visibleCount = 0;
+      const markerCount = markerData.length;
+
+      for (let i = 0; i < markerCount && visibleCount < MAX_UNI_INSTANCES; i++) {
+        const md = markerData[i];
+
+        // Viewport cull: skip markers on the far side of the globe
+        const dot = md.dir.x * camDir.x + md.dir.y * camDir.y + md.dir.z * camDir.z;
+        if (dot < cullThreshold) continue;
+
+        // Grid clustering: only show one marker per cell
+        const cellLat = Math.floor(md.lat / clusterThreshold);
+        const cellLng = Math.floor(md.lng / clusterThreshold);
+        const cellKey = cellLat * 10000 + cellLng;
+
+        const isSelected = md.id === selectedId;
+        if (!isSelected && grid.has(cellKey)) continue;
+
+        grid.set(cellKey, visibleCount);
+        visibleMapRef.current[visibleCount] = i;
+        visibleCount++;
       }
-      if (!tooClose || md.id === selectedId) {
-        visible.add(i);
-        lastShownLat.push(md.lat);
-        lastShownLng.push(md.lng);
+
+      // Update dot instance matrices + colors
+      for (let v = 0; v < visibleCount; v++) {
+        const i = visibleMapRef.current[v];
+        const md = markerData[i];
+        if (!md) continue;
+        const isSelected = md.id === selectedId;
+        const baseColor = isSelected
+          ? UNI_MARKER_GOLD
+          : visitedIds.has(md.id)
+            ? UNI_MARKER_GREEN
+            : wishlistIds.has(md.id)
+              ? UNI_MARKER_GOLD
+              : UNI_MARKER_YELLOW;
+
+        // Dot: fixed scale, full color
+        tmpScale.setScalar(1);
+        tmpMatrix.compose(md.pos, tmpQuat, tmpScale);
+        dotMesh.setMatrixAt(v, tmpMatrix);
+        dotMesh.setColorAt(v, baseColor);
+
+        // Halo: base scale (pulse applied below)
+        tmpScale.setScalar(1);
+        tmpMatrix.compose(md.pos, tmpQuat, tmpScale);
+        haloMesh.setMatrixAt(v, tmpMatrix);
+        haloMesh.setColorAt(v, baseColor);
       }
+
+      // Hide unused instances by scaling to 0
+      tmpScale.setScalar(0);
+      tmpPos.set(0, 0, 0);
+      tmpMatrix.compose(tmpPos, tmpQuat, tmpScale);
+      const prevCount = Math.max(dotMesh.count, visibleCount);
+      for (let v = visibleCount; v < prevCount; v++) {
+        dotMesh.setMatrixAt(v, tmpMatrix);
+        haloMesh.setMatrixAt(v, tmpMatrix);
+      }
+
+      dotMesh.instanceMatrix.needsUpdate = true;
+      haloMesh.instanceMatrix.needsUpdate = true;
+      if (dotMesh.instanceColor) dotMesh.instanceColor.needsUpdate = true;
+      if (haloMesh.instanceColor) haloMesh.instanceColor.needsUpdate = true;
+
+      dotMesh.count = visibleCount;
+      haloMesh.count = visibleCount;
+      needsColorUpdate.current = false;
     }
 
-    // Only update DOM/three objects if the visible set changed
-    const newVisible = Array.from(visible).sort((a, b) => a - b);
-    const oldVisible = visibleIndicesRef.current;
-    if (newVisible.length !== oldVisible.length || newVisible.some((v, i) => v !== oldVisible[i])) {
-      visibleIndicesRef.current = newVisible;
-      groupRef.current.children.forEach((child, idx) => {
-        child.visible = visible.has(idx);
-      });
-    }
-
-    // Pulse animation for visible markers
+    // Pulse animation for halos — every frame, visible instances only
+    const count = dotMesh.count;
     const t = Date.now() * 0.003;
-    pulseRefs.current.forEach((mesh, i) => {
-      if (!mesh || !visible.has(i)) return;
-      const isSelected = markerData[i]?.id === selectedId;
+    for (let v = 0; v < count; v++) {
+      const i = visibleMapRef.current[v];
+      const md = markerData[i];
+      if (!md) continue;
+      const isSelected = md.id === selectedId;
       const phase = isSelected ? Date.now() * 0.006 : t + i * 0.15;
       const baseScale = isSelected ? 1.5 : 1;
       const amp = isSelected ? 0.35 : 0.25;
-      const s = baseScale + Math.sin(phase) * amp;
-      mesh.scale.setScalar(s);
-      (mesh.material as THREE.MeshBasicMaterial).opacity = isSelected
+      const pulseScale = baseScale + Math.sin(phase) * amp;
+
+      // Scale pulse
+      tmpScale.setScalar(pulseScale);
+      tmpMatrix.compose(md.pos, tmpQuat, tmpScale);
+      haloMesh.setMatrixAt(v, tmpMatrix);
+
+      // Brightness pulse (simulates per-instance opacity with additive blending)
+      const brightness = isSelected
         ? 0.4 + Math.sin(phase) * 0.2
         : 0.25 + Math.sin(phase) * 0.15;
-    });
+      const baseColor = isSelected
+        ? UNI_MARKER_GOLD
+        : visitedIds.has(md.id)
+          ? UNI_MARKER_GREEN
+          : wishlistIds.has(md.id)
+            ? UNI_MARKER_GOLD
+            : UNI_MARKER_YELLOW;
+      tmpColor.copy(baseColor).multiplyScalar(brightness);
+      haloMesh.setColorAt(v, tmpColor);
+    }
+    haloMesh.instanceMatrix.needsUpdate = true;
+    if (haloMesh.instanceColor) haloMesh.instanceColor.needsUpdate = true;
   });
 
-  // Update colors when status changes
-  useEffect(() => {
-    colorRefs.current.forEach((mat, i) => {
-      if (!mat) return;
-      const md = markerData[i];
-      if (!md) return;
-      const isSelected = md.id === selectedId;
-      mat.color.copy(isSelected ? UNI_MARKER_GOLD : getMarkerColor(md.id));
-    });
-    dotRefs.current.forEach((mesh, i) => {
-      if (!mesh) return;
-      const md = markerData[i];
-      if (!md) return;
-      const isSelected = md.id === selectedId;
-      const mat = mesh.material as THREE.MeshBasicMaterial;
-      mat.color.copy(isSelected ? UNI_MARKER_GOLD : getMarkerColor(md.id));
-    });
-  }, [visitedIds, wishlistIds, getMarkerColor, markerData, selectedId]);
-
+  // Raycast → instanceId → university lookup
   const handleClick = useCallback(
-    (uni: University) => (e: ThreeEvent<MouseEvent>) => {
+    (e: ThreeEvent<MouseEvent>) => {
       e.stopPropagation();
-      if (interactionEnabled) onMarkerClick(uni);
+      if (!interactionEnabled) return;
+      const instanceId = e.instanceId;
+      if (instanceId === undefined) return;
+      const uniIdx = visibleMapRef.current[instanceId];
+      if (uniIdx === undefined || uniIdx < 0) return;
+      const uni = universities[uniIdx];
+      if (uni) onMarkerClick(uni);
     },
-    [onMarkerClick, interactionEnabled],
+    [interactionEnabled, onMarkerClick, universities],
   );
 
   return (
-    <group ref={groupRef}>
-      {markerData.map(({ id, pos }, i) => {
-        const uni = uniMap.get(id);
-        if (!uni) return null;
-        const col = getMarkerColor(id);
-        const isSelected = selectedId === id;
-        return (
-          <group key={id} position={pos} visible={i < 50}>
-            {/* Pulsing halo */}
-            <mesh
-              ref={(m) => { if (m) pulseRefs.current[i] = m; }}
-              raycast={() => {}}
-              scale={isSelected ? 1.5 : 1}
-            >
-              <sphereGeometry args={[0.028, 16, 16]} />
-              <meshBasicMaterial
-                color={isSelected ? UNI_MARKER_GOLD : col}
-                transparent
-                opacity={0.3}
-                depthTest
-                depthWrite={false}
-                blending={THREE.AdditiveBlending}
-              />
-            </mesh>
-            {/* Solid dot */}
-            <mesh
-              ref={(m) => { if (m) dotRefs.current[i] = m; }}
-              onClick={handleClick(uni)}
-              onPointerOver={() => { if (interactionEnabled) document.body.style.cursor = "pointer"; }}
-              onPointerOut={() => { document.body.style.cursor = "auto"; }}
-            >
-              <sphereGeometry args={[0.015, 12, 12]} />
-              <meshBasicMaterial
-                ref={(m) => { if (m) colorRefs.current[i] = m as unknown as THREE.MeshBasicMaterial; }}
-                color={isSelected ? UNI_MARKER_GOLD : col}
-                transparent
-                opacity={0.9}
-                depthTest
-              />
-            </mesh>
-          </group>
-        );
-      })}
+    <group>
+      {/* Halo layer — additive blended, raycast disabled */}
+      <instancedMesh
+        ref={haloMeshRef}
+        args={[undefined as any, undefined as any, MAX_UNI_INSTANCES]}
+        raycast={() => {}}
+        frustumCulled={false}
+      >
+        <sphereGeometry args={[0.028, 10, 10]} />
+        <meshBasicMaterial
+          transparent
+          opacity={0.3}
+          depthTest
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </instancedMesh>
+      {/* Dot layer — clickable, per-instance color */}
+      <instancedMesh
+        ref={dotMeshRef}
+        args={[undefined as any, undefined as any, MAX_UNI_INSTANCES]}
+        onClick={handleClick}
+        onPointerOver={() => { if (interactionEnabled) document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { document.body.style.cursor = "auto"; }}
+        frustumCulled={false}
+      >
+        <sphereGeometry args={[0.015, 8, 8]} />
+        <meshBasicMaterial
+          transparent
+          opacity={0.9}
+          depthTest
+        />
+      </instancedMesh>
     </group>
   );
 }

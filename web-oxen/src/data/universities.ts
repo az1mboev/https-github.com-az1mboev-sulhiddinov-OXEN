@@ -1533,6 +1533,7 @@ const BASE_UNIVERSITIES: University[] = [
 
 /* Generate full University objects from compact seeds */
 import { UNIVERSITY_SEEDS, type UniSeed } from "@/data/uniList";
+import { WORLD_UNIVERSITY_SEEDS } from "@/data/uniWorld";
 
 const COVER_IMAGES = [
   "https://images.unsplash.com/photo-1562774011-d5a8a8c51e84?w=1200&h=600&fit=crop",
@@ -1613,18 +1614,29 @@ function generateFromSeed(seed: UniSeed, index: number): University {
   };
 }
 
-/* Merge detailed seed universities with generated ones from compact list */
+/* Merge detailed seed universities with generated ones from compact list + world dataset */
 const DETAILED_IDS = new Set(BASE_UNIVERSITIES.map((u) => u.id));
-const generatedUniversities = UNIVERSITY_SEEDS
-  .filter((seed) => !DETAILED_IDS.has(seed.id))
-  .map((seed, i) => generateFromSeed(seed, i + 100));
+
+// Combine compact seeds from uniList.ts + world seeds from uniWorld.ts, dedup by id
+const ALL_SEEDS: UniSeed[] = [...UNIVERSITY_SEEDS, ...WORLD_UNIVERSITY_SEEDS];
+const SEEN_IDS = new Set(DETAILED_IDS);
+const UNIQUE_SEEDS = ALL_SEEDS.filter((seed) => {
+  if (SEEN_IDS.has(seed.id)) return false;
+  SEEN_IDS.add(seed.id);
+  return true;
+});
+
+const generatedUniversities = UNIQUE_SEEDS.map((seed, i) => generateFromSeed(seed, i + 100));
 
 /* Export the combined list as UNIVERSITIES (back-compat with all existing imports) */
 export const UNIVERSITIES: University[] = [...BASE_UNIVERSITIES, ...generatedUniversities];
 export const ALL_UNIVERSITIES = UNIVERSITIES;
 
+/* Fast O(1) lookup map for getUniversity — critical with thousands of entries */
+const UNIVERSITY_MAP = new Map<string, University>(UNIVERSITIES.map((u) => [u.id, u]));
+
 export function getUniversity(id: string): University | undefined {
-  return UNIVERSITIES.find((u) => u.id === id);
+  return UNIVERSITY_MAP.get(id);
 }
 
 export function searchUniversities(query: string): University[] {
