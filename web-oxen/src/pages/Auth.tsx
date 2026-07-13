@@ -1,14 +1,41 @@
-import { motion } from "framer-motion";
-import { Globe, Mail, ArrowLeft, Sparkles } from "lucide-react";
-import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Globe, Mail, ArrowLeft, Sparkles, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import TravelIllustration from "@/components/TravelIllustration";
+import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const OXEN_LOGO = "/logo.png";
 
 export default function Auth() {
+  const { signInWithProvider, user, loading } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Redirect authenticated (non-guest) users to home
+  useEffect(() => {
+    if (user && !user.isGuest) {
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      await signInWithProvider("google");
+      // Browser redirects to Google — we never reach here on success
+    } catch (err) {
+      setGoogleLoading(false);
+      toast.error(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
+    }
+  };
+
+  const authBusy = loading || googleLoading;
+
   return (
     <div className="relative flex min-h-screen flex-col md:flex-row">
       {/* ── Background ── */}
@@ -25,7 +52,7 @@ export default function Auth() {
         <span className="hidden sm:inline">{t("auth.backToGlobe", "Back to Globe")}</span>
       </Link>
 
-      {/* ── Left Panel: Coming Soon ── */}
+      {/* ── Left Panel: Sign In ── */}
       <div className="relative z-10 flex w-full items-center justify-center px-6 py-12 md:w-1/2 md:px-12 lg:px-20">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -51,14 +78,14 @@ export default function Auth() {
             </motion.div>
 
             <h1 className="font-display text-3xl font-bold tracking-tight text-white lg:text-4xl">
-              {t("auth.comingSoon", "Authentication Coming Soon")}
+              {t("auth.signIn", "Sign in to OXEN")}
             </h1>
             <p className="mt-2 text-slate-400">
-              {t("auth.comingSoonDesc", "We're configuring Supabase to enable Google, Apple, and email sign-in. While you wait, explore the world freely as a guest.")}
+              {t("auth.signInDesc", "Choose your preferred sign-in method to start exploring the world.")}
             </p>
           </div>
 
-          {/* Coming soon card */}
+          {/* Auth card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -66,20 +93,54 @@ export default function Auth() {
             className="auth-card rounded-2xl p-6 lg:p-8"
           >
             <div className="space-y-5">
-              {/* Status indicator */}
-              <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-4">
-                <div className="flex h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]">
-                  <span className="absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full bg-amber-400/60" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-amber-300">{t("auth.configInProgress", "Configuration in Progress")}</p>
-                  <p className="mt-0.5 text-xs text-slate-400">
-                    {t("auth.configInProgressDesc", "Supabase setup is being finalized. Check back soon for full account access.")}
+              {/* Google — fully functional */}
+              <motion.button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={authBusy}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.35 }}
+                whileTap={{ scale: 0.98 }}
+                className="group flex w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-left transition-all hover:border-blue-500/30 hover:bg-blue-500/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] transition-colors group-hover:bg-blue-500/15">
+                  <AnimatePresence mode="wait">
+                    {googleLoading ? (
+                      <motion.span
+                        key="loader"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="google"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        <GoogleMark />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white">
+                    {t("auth.googleSignIn", "Google Sign-In")}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {t("auth.googleSignInDesc", "One-tap authentication with your Google account")}
                   </p>
                 </div>
-              </div>
+                <span className="ml-auto shrink-0 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-400">
+                  {t("auth.active", "Active")}
+                </span>
+              </motion.button>
 
-              {/* Feature cards */}
+              {/* Other providers — coming soon */}
               <div className="space-y-3">
                 {[
                   {
@@ -87,12 +148,6 @@ export default function Auth() {
                     title: t("auth.emailPassword", "Email & Password"),
                     desc: t("auth.emailPasswordDesc", "Classic sign-in with secure password storage"),
                     provider: "email",
-                  },
-                  {
-                    icon: GoogleMark,
-                    title: t("auth.googleSignIn", "Google Sign-In"),
-                    desc: t("auth.googleSignInDesc", "One-tap authentication with your Google account"),
-                    provider: "google",
                   },
                   {
                     icon: AppleMark,
@@ -105,7 +160,7 @@ export default function Auth() {
                     key={item.provider}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.35 + i * 0.08 }}
+                    transition={{ delay: 0.43 + i * 0.08 }}
                     className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3"
                   >
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-400">
@@ -151,7 +206,7 @@ export default function Auth() {
             className="mt-6 text-center text-xs text-slate-600"
           >
             <Sparkles className="inline h-3 w-3 text-amber-500" />{" "}
-            {t("auth.fullAuthNote", "Full authentication with Google, Apple, and email will be available after Supabase setup is complete.")}
+            {t("auth.fullAuthNote", "More sign-in options coming soon. Explore freely as a guest in the meantime.")}
           </motion.p>
         </motion.div>
       </div>
