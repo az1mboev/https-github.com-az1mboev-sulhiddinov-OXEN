@@ -1549,6 +1549,10 @@ function generateFromSeed(seed: UniSeed, index: number): University {
   const gallery = [cover, COVER_IMAGES[(index + 2) % COVER_IMAGES.length]];
   const logoUrl = "https://images.unsplash.com/photo-1562774011-d5a8a8c51e84?w=200&h=200&fit=crop";
 
+  // Generate a plausible website URL from the university name
+  const webSlug = seed.id.replace(/^w-/, "").replace(/-/g, "");
+  const website = `https://www.${webSlug}.edu`;
+
   return {
     id: seed.id,
     name: seed.name,
@@ -1571,9 +1575,9 @@ function generateFromSeed(seed: UniSeed, index: number): University {
     hasScholarship: seed.hasScholarship,
     deadline: seed.deadline,
     applicationFee: "$50-100",
-    website: `https://${seed.id}.edu`,
-    admissionLink: `https://${seed.id}.edu/admissions`,
-    officialApplicationLink: `https://${seed.id}.edu/apply`,
+    website,
+    admissionLink: `${website}/admissions`,
+    officialApplicationLink: `${website}/apply`,
     acceptanceRate: seed.acceptanceRate,
     campusSize: "Various campuses",
     studentsCount: seed.studentsCount,

@@ -191,10 +191,11 @@ function CapitalMarkers() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Status markers — small glowing dots at each country's lat/lng       */
+/*  Status markers — InstancedMesh version (2 draw calls for all)      */
 /*  Green = not visited, Yellow = wishlist, Red = visited              */
-/*  Clicking a marker selects the country and opens the info panel      */
 /* ------------------------------------------------------------------ */
+
+const MAX_STATUS_INSTANCES = 300;
 
 function StatusMarkers({
   visitedIds,
@@ -205,103 +206,153 @@ function StatusMarkers({
   wishlistIds: Set<string>;
   onMarkerClick: (country: Country) => void;
 }) {
-  const markersRef = useRef<THREE.Group>(null);
-  const pulseRefs = useRef<THREE.Mesh[]>([]);
-  const dotRefs = useRef<THREE.Mesh[]>([]);
-  const colorRefs = useRef<THREE.MeshBasicMaterial[]>([]);
+  const { camera } = useThree();
+  const dotMeshRef = useRef<THREE.InstancedMesh>(null);
+  const haloMeshRef = useRef<THREE.InstancedMesh>(null);
+  const lastCamPos = useRef(new THREE.Vector3(Infinity, Infinity, Infinity));
+  const needsUpdate = useRef(true);
 
-  // Build marker data once
+  const tmpMatrix = useMemo(() => new THREE.Matrix4(), []);
+  const tmpQuat = useMemo(() => new THREE.Quaternion(), []);
+  const tmpScale = useMemo(() => new THREE.Vector3(1, 1, 1), []);
+  const tmpColor = useMemo(() => new THREE.Color(), []);
+
+  // Precompute marker positions + directions
   const markerData = useMemo(() => {
     return COUNTRIES.map((country) => {
       const pos = latLngToVec3(country.lat, country.lng, RADIUS + MARKER_OFFSET);
-      return { country, pos };
+      const dir = pos.clone().normalize();
+      return { country, pos, dir };
     });
   }, []);
 
-  // Determine marker color for each country
-  const getMarkerColor = useCallback(
-    (countryId: string): THREE.Color => {
-      if (visitedIds.has(countryId)) return MARKER_RED;
-      if (wishlistIds.has(countryId)) return MARKER_YELLOW;
-      return MARKER_GREEN;
-    },
-    [visitedIds, wishlistIds],
-  );
-
-  // Update colors when travel status changes
   useEffect(() => {
-    colorRefs.current.forEach((mat, i) => {
-      if (!mat) return;
-      const col = getMarkerColor(markerData[i].country.id);
-      mat.color.copy(col);
-    });
-    dotRefs.current.forEach((mesh, i) => {
-      if (!mesh) return;
-      const mat = mesh.material as THREE.MeshBasicMaterial;
-      const col = getMarkerColor(markerData[i].country.id);
-      mat.color.copy(col);
-    });
-  }, [visitedIds, wishlistIds, getMarkerColor, markerData]);
+    needsUpdate.current = true;
+  }, [visitedIds, wishlistIds]);
 
   useFrame(() => {
+    const dotMesh = dotMeshRef.current;
+    const haloMesh = haloMeshRef.current;
+    if (!dotMesh || !haloMesh) return;
+
+    const camMoved = camera.position.distanceToSquared(lastCamPos.current) > 0.0004;
+    if (camMoved) lastCamPos.current.copy(camera.position);
+
+    // Recluster on camera move or color change
+    if (camMoved || needsUpdate.current) {
+      const camDir = camera.position.clone().normalize();
+      let visibleCount = 0;
+
+      for (let i = 0; i < markerData.length && visibleCount < MAX_STATUS_INSTANCES; i++) {
+        const md = markerData[i];
+        const dot = md.dir.x * camDir.x + md.dir.y * camDir.y + md.dir.z * camDir.z;
+        if (dot < -0.05) continue;
+
+        const col = visitedIds.has(md.country.id)
+          ? MARKER_RED
+          : wishlistIds.has(md.country.id)
+            ? MARKER_YELLOW
+            : MARKER_GREEN;
+
+        tmpScale.setScalar(1);
+        tmpMatrix.compose(md.pos, tmpQuat, tmpScale);
+        dotMesh.setMatrixAt(visibleCount, tmpMatrix);
+        dotMesh.setColorAt(visibleCount, col);
+
+        tmpScale.setScalar(1);
+        tmpMatrix.compose(md.pos, tmpQuat, tmpScale);
+        haloMesh.setMatrixAt(visibleCount, tmpMatrix);
+        haloMesh.setColorAt(visibleCount, col);
+
+        // Store country index in userData via instanceId mapping
+        (dotMesh as any)._countryMap = (dotMesh as any)._countryMap || new Int32Array(MAX_STATUS_INSTANCES).fill(-1);
+        (dotMesh as any)._countryMap[visibleCount] = i;
+
+        visibleCount++;
+      }
+
+      // Hide unused
+      tmpScale.setScalar(0);
+      tmpMatrix.compose(new THREE.Vector3(0, 0, 0), tmpQuat, tmpScale);
+      const prevCount = Math.max(dotMesh.count, visibleCount);
+      for (let v = visibleCount; v < prevCount; v++) {
+        dotMesh.setMatrixAt(v, tmpMatrix);
+        haloMesh.setMatrixAt(v, tmpMatrix);
+      }
+
+      dotMesh.instanceMatrix.needsUpdate = true;
+      haloMesh.instanceMatrix.needsUpdate = true;
+      if (dotMesh.instanceColor) dotMesh.instanceColor.needsUpdate = true;
+      if (haloMesh.instanceColor) haloMesh.instanceColor.needsUpdate = true;
+      dotMesh.count = visibleCount;
+      haloMesh.count = visibleCount;
+      needsUpdate.current = false;
+    }
+
+    // Pulse halos — every frame, visible only
+    const count = haloMesh.count;
     const t = Date.now() * 0.003;
-    pulseRefs.current.forEach((mesh, i) => {
-      if (!mesh) return;
+    for (let v = 0; v < count; v++) {
+      const countryMap = (haloMesh as any)._countryMap as Int32Array | undefined;
+      const i = countryMap ? countryMap[v] : v;
+      const md = markerData[i];
+      if (!md) continue;
       const phase = t + i * 0.15;
-      const s = 1 + Math.sin(phase) * 0.25;
-      mesh.scale.setScalar(s);
-      (mesh.material as THREE.MeshBasicMaterial).opacity = 0.25 + Math.sin(phase) * 0.15;
-    });
+      const pulseScale = 1 + Math.sin(phase) * 0.25;
+
+      tmpScale.setScalar(pulseScale);
+      tmpMatrix.compose(md.pos, tmpQuat, tmpScale);
+      haloMesh.setMatrixAt(v, tmpMatrix);
+
+      const col = visitedIds.has(md.country.id)
+        ? MARKER_RED
+        : wishlistIds.has(md.country.id)
+          ? MARKER_YELLOW
+          : MARKER_GREEN;
+      const brightness = 0.25 + Math.sin(phase) * 0.15;
+      tmpColor.copy(col).multiplyScalar(brightness);
+      haloMesh.setColorAt(v, tmpColor);
+    }
+    haloMesh.instanceMatrix.needsUpdate = true;
+    if (haloMesh.instanceColor) haloMesh.instanceColor.needsUpdate = true;
   });
 
   const handleClick = useCallback(
-    (country: Country) => (e: ThreeEvent<MouseEvent>) => {
+    (e: ThreeEvent<MouseEvent>) => {
       e.stopPropagation();
-      onMarkerClick(country);
+      const instanceId = e.instanceId;
+      if (instanceId === undefined || instanceId < 0) return;
+      const countryMap = (dotMeshRef.current as any)?._countryMap as Int32Array | undefined;
+      if (!countryMap) return;
+      const idx = countryMap[instanceId];
+      if (idx < 0 || idx >= markerData.length) return;
+      onMarkerClick(markerData[idx].country);
     },
-    [onMarkerClick],
+    [onMarkerClick, markerData],
   );
 
   return (
-    <group ref={markersRef}>
-      {markerData.map(({ country, pos }, i) => {
-        const col = getMarkerColor(country.id);
-        return (
-          <group key={country.id} position={pos}>
-            {/* Pulsing halo ring */}
-            <mesh
-              ref={(m) => { if (m) pulseRefs.current[i] = m; }}
-              raycast={() => {}}
-            >
-              <sphereGeometry args={[0.028, 16, 16]} />
-              <meshBasicMaterial
-                color={col}
-                transparent
-                opacity={0.3}
-                depthTest
-                depthWrite={false}
-                blending={THREE.AdditiveBlending}
-              />
-            </mesh>
-            {/* Solid dot */}
-            <mesh
-              ref={(m) => { if (m) dotRefs.current[i] = m; }}
-              onClick={handleClick(country)}
-              onPointerOver={() => { document.body.style.cursor = "pointer"; }}
-              onPointerOut={() => { document.body.style.cursor = "auto"; }}
-            >
-              <sphereGeometry args={[0.014, 12, 12]} />
-              <meshBasicMaterial
-                ref={(m) => { if (m) colorRefs.current[i] = m as unknown as THREE.MeshBasicMaterial; }}
-                color={col}
-                transparent
-                opacity={0.9}
-                depthTest
-              />
-            </mesh>
-          </group>
-        );
-      })}
+    <group>
+      <instancedMesh
+        ref={haloMeshRef}
+        args={[undefined as any, undefined as any, MAX_STATUS_INSTANCES]}
+        raycast={() => {}}
+        frustumCulled={false}
+      >
+        <sphereGeometry args={[0.028, 10, 10]} />
+        <meshBasicMaterial transparent opacity={0.3} depthTest depthWrite={false} blending={THREE.AdditiveBlending} />
+      </instancedMesh>
+      <instancedMesh
+        ref={dotMeshRef}
+        args={[undefined as any, undefined as any, MAX_STATUS_INSTANCES]}
+        onClick={handleClick}
+        onPointerOver={() => { document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { document.body.style.cursor = "auto"; }}
+        frustumCulled={false}
+      >
+        <sphereGeometry args={[0.014, 8, 8]} />
+        <meshBasicMaterial transparent opacity={0.9} depthTest />
+      </instancedMesh>
     </group>
   );
 }
@@ -347,9 +398,11 @@ function UniversityClusterMarkers({
   const { camera } = useThree();
   const dotMeshRef = useRef<THREE.InstancedMesh>(null);
   const haloMeshRef = useRef<THREE.InstancedMesh>(null);
-  const visibleMapRef = useRef<Int32Array>(new Int32Array(MAX_UNI_INSTANCES));
+  // Initialize with -1 so unset slots are distinguishable from valid index 0
+  const visibleMapRef = useRef<Int32Array>(new Int32Array(MAX_UNI_INSTANCES).fill(-1));
   const lastCamPos = useRef(new THREE.Vector3(Infinity, Infinity, Infinity));
   const needsColorUpdate = useRef(true);
+  const frameCount = useRef(0);
 
   // Reusable temp objects (avoid per-frame allocations)
   const tmpMatrix = useMemo(() => new THREE.Matrix4(), []);
@@ -368,10 +421,12 @@ function UniversityClusterMarkers({
     });
   }, [universities]);
 
-  // Trigger color refresh when travel status changes
+  // Trigger refresh when travel status or university list changes (e.g. filters applied)
   useEffect(() => {
     needsColorUpdate.current = true;
-  }, [visitedIds, wishlistIds, selectedId]);
+    // Reset visible map when universities array changes to prevent stale indices
+    visibleMapRef.current.fill(-1);
+  }, [visitedIds, wishlistIds, selectedId, universities]);
 
   useFrame(() => {
     const dotMesh = dotMeshRef.current;
@@ -403,6 +458,9 @@ function UniversityClusterMarkers({
       const grid = new Map<number, number>();
       let visibleCount = 0;
       const markerCount = markerData.length;
+
+      // Clear the map before reclustering so stale indices don't cause wrong lookups
+      visibleMapRef.current.fill(-1);
 
       for (let i = 0; i < markerCount && visibleCount < MAX_UNI_INSTANCES; i++) {
         const md = markerData[i];
@@ -471,40 +529,43 @@ function UniversityClusterMarkers({
       needsColorUpdate.current = false;
     }
 
-    // Pulse animation for halos — every frame, visible instances only
+    // Pulse animation for halos — every other frame to save CPU
+    frameCount.current++;
+    const shouldPulse = frameCount.current % 2 === 0;
     const count = dotMesh.count;
-    const t = Date.now() * 0.003;
-    for (let v = 0; v < count; v++) {
-      const i = visibleMapRef.current[v];
-      const md = markerData[i];
-      if (!md) continue;
-      const isSelected = md.id === selectedId;
-      const phase = isSelected ? Date.now() * 0.006 : t + i * 0.15;
-      const baseScale = isSelected ? 1.5 : 1;
-      const amp = isSelected ? 0.35 : 0.25;
-      const pulseScale = baseScale + Math.sin(phase) * amp;
+    if (shouldPulse) {
+      const t = Date.now() * 0.003;
+      for (let v = 0; v < count; v++) {
+        const i = visibleMapRef.current[v];
+        if (i < 0) continue;
+        const md = markerData[i];
+        if (!md) continue;
+        const isSelected = md.id === selectedId;
+        const phase = isSelected ? Date.now() * 0.006 : t + i * 0.15;
+        const baseScale = isSelected ? 1.5 : 1;
+        const amp = isSelected ? 0.35 : 0.25;
+        const pulseScale = baseScale + Math.sin(phase) * amp;
 
-      // Scale pulse
-      tmpScale.setScalar(pulseScale);
-      tmpMatrix.compose(md.pos, tmpQuat, tmpScale);
-      haloMesh.setMatrixAt(v, tmpMatrix);
+        tmpScale.setScalar(pulseScale);
+        tmpMatrix.compose(md.pos, tmpQuat, tmpScale);
+        haloMesh.setMatrixAt(v, tmpMatrix);
 
-      // Brightness pulse (simulates per-instance opacity with additive blending)
-      const brightness = isSelected
-        ? 0.4 + Math.sin(phase) * 0.2
-        : 0.25 + Math.sin(phase) * 0.15;
-      const baseColor = isSelected
-        ? UNI_MARKER_GOLD
-        : visitedIds.has(md.id)
-          ? UNI_MARKER_GREEN
-          : wishlistIds.has(md.id)
-            ? UNI_MARKER_GOLD
-            : UNI_MARKER_YELLOW;
-      tmpColor.copy(baseColor).multiplyScalar(brightness);
-      haloMesh.setColorAt(v, tmpColor);
+        const brightness = isSelected
+          ? 0.4 + Math.sin(phase) * 0.2
+          : 0.25 + Math.sin(phase) * 0.15;
+        const baseColor = isSelected
+          ? UNI_MARKER_GOLD
+          : visitedIds.has(md.id)
+            ? UNI_MARKER_GREEN
+            : wishlistIds.has(md.id)
+              ? UNI_MARKER_GOLD
+              : UNI_MARKER_YELLOW;
+        tmpColor.copy(baseColor).multiplyScalar(brightness);
+        haloMesh.setColorAt(v, tmpColor);
+      }
+      haloMesh.instanceMatrix.needsUpdate = true;
+      if (haloMesh.instanceColor) haloMesh.instanceColor.needsUpdate = true;
     }
-    haloMesh.instanceMatrix.needsUpdate = true;
-    if (haloMesh.instanceColor) haloMesh.instanceColor.needsUpdate = true;
   });
 
   // Raycast → instanceId → university lookup
@@ -513,11 +574,13 @@ function UniversityClusterMarkers({
       e.stopPropagation();
       if (!interactionEnabled) return;
       const instanceId = e.instanceId;
-      if (instanceId === undefined) return;
+      if (instanceId === undefined || instanceId < 0) return;
       const uniIdx = visibleMapRef.current[instanceId];
-      if (uniIdx === undefined || uniIdx < 0) return;
+      // Int32Array returns 0 for unset, but we initialized with -1
+      if (uniIdx < 0 || uniIdx >= universities.length) return;
       const uni = universities[uniIdx];
-      if (uni) onMarkerClick(uni);
+      if (!uni || !uni.id) return;
+      onMarkerClick(uni);
     },
     [interactionEnabled, onMarkerClick, universities],
   );
@@ -686,7 +749,7 @@ function CloudsLayer() {
 
   return (
     <mesh ref={cloudsRef} scale={1.01}>
-      <sphereGeometry args={[RADIUS, 64, 64]} />
+      <sphereGeometry args={[RADIUS, 32, 32]} />
       <meshStandardMaterial
         map={texture}
         transparent
@@ -825,7 +888,7 @@ function EarthSphere({
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "auto")}
       >
-        <sphereGeometry args={[RADIUS, 128, 128]} />
+        <sphereGeometry args={[RADIUS, 64, 64]} />
         <meshStandardMaterial map={texture} roughness={0.65} metalness={0.03} />
       </mesh>
 
@@ -834,12 +897,12 @@ function EarthSphere({
 
       {/* Inner atmosphere */}
       <mesh scale={1.025}>
-        <sphereGeometry args={[RADIUS, 64, 64]} />
+        <sphereGeometry args={[RADIUS, 32, 32]} />
         <meshBasicMaterial color="#6eb4f0" transparent opacity={0.09} side={THREE.BackSide} />
       </mesh>
       {/* Outer atmosphere */}
       <mesh scale={1.12}>
-        <sphereGeometry args={[RADIUS, 48, 48]} />
+        <sphereGeometry args={[RADIUS, 24, 24]} />
         <meshBasicMaterial color="#4a90d9" transparent opacity={0.05} side={THREE.BackSide} />
       </mesh>
 
@@ -1169,8 +1232,8 @@ export default function Globe({
     <div className="relative h-full w-full">
       <Canvas
         camera={{ position: [0, 0.5, 5.4], fov: 40, near: 0.01, far: 200 }}
-        dpr={[1, 2]}
-        gl={{ antialias: true, alpha: true }}
+        dpr={[1, 1.75]}
+        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       >
         <Suspense fallback={null}>
           <Scene

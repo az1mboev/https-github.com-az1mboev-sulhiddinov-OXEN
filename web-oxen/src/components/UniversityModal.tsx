@@ -18,6 +18,7 @@ import {
   Share2,
   CheckCircle2,
   Clock,
+  BookOpen,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -206,6 +207,7 @@ export default function UniversityModal({ university, open, onClose }: Universit
               <div className="relative flex shrink-0 flex-col items-center px-6 pt-3 pb-5">
                 <div className="pointer-events-none absolute top-6 h-28 w-52 rounded-full bg-blue-500/10 blur-3xl" />
 
+                {/* University logo — circular badge overlapping cover image */}
                 <motion.div
                   initial={{ opacity: 0, scale: 1.08 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -220,6 +222,15 @@ export default function UniversityModal({ university, open, onClose }: Universit
                     placeholderType="university"
                     className="h-full w-full object-cover"
                   />
+                  {/* Logo badge */}
+                  <div className="absolute -bottom-4 -right-4 z-20 h-14 w-14 overflow-hidden rounded-full border-2 border-[#14161f] bg-[#14161f] shadow-lg">
+                    <OptimizedImage
+                      src={university.logo}
+                      alt={`${university.name} logo`}
+                      placeholderType="university"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
                 </motion.div>
 
                 <motion.h2
@@ -362,6 +373,33 @@ export default function UniversityModal({ university, open, onClose }: Universit
                 </div>
               </motion.div>
 
+              {/* Degree levels available */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.34, ...rowSpring }}
+                className="px-6 pb-4"
+              >
+                <p className="text-[10px] font-medium uppercase tracking-wider text-white/35 mb-2">{t("uni.degreeLevels", "Degree Levels")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {university.bachelorPrograms.length > 0 && (
+                    <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-400">
+                      {t("uni.bachelor", "Bachelor")}
+                    </span>
+                  )}
+                  {university.masterPrograms.length > 0 && (
+                    <span className="rounded-lg border border-purple-500/20 bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-400">
+                      {t("uni.master", "Master")}
+                    </span>
+                  )}
+                  {university.phdPrograms.length > 0 && (
+                    <span className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-400">
+                      {t("uni.phd", "PhD")}
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+
               {/* Gallery preview */}
               {university.gallery.length > 0 && (
                 <motion.div
@@ -399,6 +437,13 @@ export default function UniversityModal({ university, open, onClose }: Universit
               >
                 <GraduationCap className="h-4 w-4" />
                 {t("uni.applyNow", "Apply Now")}
+              </button>
+              <button
+                onClick={() => navigate(`/universities/${university.id}`)}
+                className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/[0.08] hover:text-white active:scale-[0.98]"
+              >
+                <BookOpen className="h-4 w-4" />
+                {t("uni.viewDetails", "View Details")}
               </button>
               <div className="flex gap-2.5">
                 <button
