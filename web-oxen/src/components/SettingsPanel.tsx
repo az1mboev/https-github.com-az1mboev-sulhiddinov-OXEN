@@ -18,6 +18,7 @@ import { useOffline } from "@/contexts/OfflineContext";
 import { usePreferences, CURRENCIES } from "@/contexts/PreferencesContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import LogoutDialog from "@/components/LogoutDialog";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -138,7 +139,7 @@ function ToggleRow({
 export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const { theme, setTheme } = useTheme();
   type Theme = "dark" | "light";
@@ -184,12 +185,11 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     };
   }, [isOpen, onClose]);
 
-  const handleSignOut = useCallback(async () => {
-    await signOut();
-    onClose();
-    toast({ title: t("settings.signedOut", "Signed out"), description: t("settings.signOutDesc", "See you on the next adventure.") });
-    navigate("/");
-  }, [signOut, onClose, toast, navigate, t]);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState<boolean>(false);
+
+  const handleSignOut = useCallback(() => {
+    setLogoutDialogOpen(true);
+  }, []);
 
   if (!user) return null;
 
@@ -386,6 +386,10 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </motion.div>
         </>
       )}
+
+      {/* Logout confirmation dialog — rendered outside the panel so it
+          stays visible even if the panel animates closed. */}
+      <LogoutDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen} />
     </AnimatePresence>
   );
 }

@@ -181,9 +181,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     setLoading(true);
     try {
-      await supabase.auth.signOut();
+      // 1. Tell Supabase to revoke the session server-side.
+      //    { scope: "global" } ensures ALL sessions (this device + others)
+      //    are invalidated, not just the current one.
+      await supabase.auth.signOut({ scope: "global" });
+
+      // 2. Clear React state so the user becomes Guest Explorer immediately.
       setSession(null);
       setProfile(null);
+
+      // 3. Purge any lingering auth / OAuth state from browser storage.
+      //    supabase-js stores under keys like `sb-<ref>-auth-token`.
+      //    We also remove common OAuth intermediate keys.
+      if (typeof window !== "undefined") {
+        try {
+          // Remove all Supabase auth keys from localStorage
+          const localStorageKeys = Object.keys(localStorage);
+          for (const key of localStorageKeys) {
+            if (key.startsWith("sb-") || key.includes("supabase") || key.includes("oauth") || key.includes("auth-token")) {
+              localStorage.removeItem(key);
+            }
+          }
+
+          // Remove from sessionStorage as well
+          const sessionStorageKeys = Object.keys(sessionStorage);
+          for (const key of sessionStorageKeys) {
+            if (key.startsWith("sb-") || key.includes("supabase") || key.includes("oauth") || key.includes("auth-token")) {
+              sessionStorage.removeItem(key);
+            }
+          }
+        } catch {
+          // Storage access may be restricted — ignore
+        }
+      }
     } finally {
       setLoading(false);
     }

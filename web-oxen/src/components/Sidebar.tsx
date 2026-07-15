@@ -12,12 +12,13 @@ import {
   X,
   BriefcaseBusiness,
 } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebar } from "@/contexts/SidebarContext";
+import LogoutDialog from "@/components/LogoutDialog";
 
 const OXEN_LOGO = "/logo.png";
 
@@ -64,7 +65,7 @@ const menuItemVariants = {
 
 export default function Sidebar() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { isOpen, close } = useSidebar();
   const { t } = useLanguage();
   const dragControls = useDragControls();
@@ -109,11 +110,12 @@ export default function Sidebar() {
     [close, navigate],
   );
 
-  const handleSignOut = useCallback(async () => {
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState<boolean>(false);
+
+  const handleSignOut = useCallback(() => {
     close();
-    await signOut();
-    navigate("/");
-  }, [close, signOut, navigate]);
+    setLogoutDialogOpen(true);
+  }, [close]);
 
   const initials = user
     ? user.name
@@ -249,6 +251,8 @@ export default function Sidebar() {
           </div>
         </motion.aside>
       )}
+
+      <LogoutDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen} />
     </AnimatePresence>
   );
 }
