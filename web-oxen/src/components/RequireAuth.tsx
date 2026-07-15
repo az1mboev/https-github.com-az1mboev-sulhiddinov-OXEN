@@ -1,0 +1,30 @@
+import { Navigate, useLocation } from "react-router-dom";
+
+import { useAuth } from "@/contexts/AuthContext";
+
+/**
+ * Wraps a protected route. If the user is a guest (not signed in),
+ * redirects to /auth with the original location stored in `redirect`
+ * so the Auth page can send them back after successful sign-in.
+ */
+export default function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user, ready } = useAuth();
+  const location = useLocation();
+
+  // Wait for session restore before deciding
+  if (!ready) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center" aria-live="polite">
+        <div className="oxen-skeleton-globe" aria-label="Loading" />
+      </div>
+    );
+  }
+
+  // Guest user → redirect to /auth with return target
+  if (!user || user.isGuest) {
+    const redirect = location.pathname + location.search;
+    return <Navigate to={`/auth?redirect=${encodeURIComponent(redirect)}`} replace />;
+  }
+
+  return <>{children}</>;
+}

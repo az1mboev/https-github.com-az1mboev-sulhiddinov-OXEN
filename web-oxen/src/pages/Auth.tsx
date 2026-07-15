@@ -1,40 +1,125 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Globe, Mail, ArrowLeft, Sparkles, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { Loader2, Mail, Lock, UserRound, Eye, EyeOff, ArrowLeft, Globe, Phone, Sparkles } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 
 import TravelIllustration from "@/components/TravelIllustration";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/use-toast";
+
+type Mode = "signin" | "signup";
 
 const OXEN_LOGO = "/logo.png";
 
 export default function Auth() {
-  const { signInWithProvider, user, loading } = useAuth();
-  const { t } = useLanguage();
   const navigate = useNavigate();
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const location = useLocation();
+  const { toast } = useToast();
+  const { t } = useLanguage();
+  const { user, ready, loading, signIn, signUp, signInWithProvider } = useAuth();
 
-  // Redirect authenticated (non-guest) users to home
+  // Determine initial mode from URL or default to signup
+  const searchParams = new URLSearchParams(location.search);
+  const initialMode: Mode = searchParams.get("mode") === "signin" ? "signin" : "signup";
+  const redirectTarget: string = searchParams.get("redirect") || "/profile";
+
+  const [mode, setMode] = useState<Mode>(initialMode);
+  const [name, setName] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [localLoading, setLocalLoading] = useState<string | null>(null);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // If already signed in (non-guest), redirect to the page they came from
   useEffect(() => {
-    if (user && !user.isGuest) {
-      navigate("/", { replace: true });
+    if (ready && user && !user.isGuest) {
+      navigate(redirectTarget, { replace: true });
     }
-  }, [user, navigate]);
+  }, [ready, user, navigate, redirectTarget]);
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
+  const switchMode = useCallback((newMode: Mode) => {
+    setMode(newMode);
+    setName("");
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setOauthError(null);
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (mode === "signup") {
+      if (!name.trim()) {
+        toast({ title: "Name required", description: "Please enter your full name.", variant: "destructive" });
+        return;
+      }
+      if (password.length < 8) {
+        toast({ title: "Password too short", description: "Password must be at least 8 characters.", variant: "destructive" });
+        return;
+      }
+      if (password !== confirmPassword) {
+        toast({ title: "Passwords don't match", description: "Please make sure both passwords match.", variant: "destructive" });
+        return;
+      }
+    }
+
+    setLocalLoading("email");
     try {
-      await signInWithProvider("google");
-      // Browser redirects to Google — we never reach here on success
+      const result = mode === "signin"
+        ? await signIn(email, password)
+        : await signUp(name, email, password);
+
+      if (result.error) {
+        toast({
+          title: mode === "signin" ? "Sign in failed" : "Registration failed",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({ title: "Welcome to OXEN", description: "The world is yours to explore." });
+      navigate(redirectTarget, { replace: true });
     } catch (err) {
-      setGoogleLoading(false);
-      toast.error(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
+      toast({
+        title: mode === "signin" ? "Sign in failed" : "Registration failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLocalLoading(null);
     }
   };
 
-  const authBusy = loading || googleLoading;
+  const handleGoogle = async () => {
+    setLocalLoading("google");
+    setOauthError(null);
+    try {
+      await signInWithProvider("google");
+      // Browser redirects to Google — onAuthStateChange picks up
+      // the session when the user returns. We never reach here on success.
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Google sign-in failed. Please try again.";
+      setOauthError(message);
+      toast({ title: "Sign in failed", description: message, variant: "destructive" });
+      setLocalLoading(null);
+    }
+  };
+
+  // Show loading state while checking existing session
+  if (ready && user && !user.isGuest) return null; // redirect above handles this
+
+  const isLoading = !ready || loading || localLoading !== null;
 
   return (
     <div className="relative flex min-h-screen flex-col md:flex-row">
@@ -52,22 +137,18 @@ export default function Auth() {
         <span className="hidden sm:inline">{t("auth.backToGlobe", "Back to Globe")}</span>
       </Link>
 
-      {/* ── Left Panel: Sign In ── */}
+      {/* ── Left Panel: Form ── */}
       <div className="relative z-10 flex w-full items-center justify-center px-6 py-12 md:w-1/2 md:px-12 lg:px-20">
         <motion.div
+          key={mode}
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
           className="w-full max-w-md"
         >
           {/* Logo + heading */}
           <div className="mb-8">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 22 }}
-              className="mb-6 flex items-center gap-3"
-            >
+            <div className="mb-6 flex items-center gap-3">
               <img
                 src={OXEN_LOGO}
                 alt="OXEN"
@@ -75,139 +156,267 @@ export default function Auth() {
                 onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
               />
               <span className="font-display text-lg font-bold tracking-wider text-white">OXEN</span>
-            </motion.div>
+            </div>
 
-            <h1 className="font-display text-3xl font-bold tracking-tight text-white lg:text-4xl">
-              {t("auth.signIn", "Sign in to OXEN")}
-            </h1>
-            <p className="mt-2 text-slate-400">
-              {t("auth.signInDesc", "Choose your preferred sign-in method to start exploring the world.")}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={mode + "-heading"}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.25 }}
+              >
+                <h1 className="font-display text-3xl font-bold tracking-tight text-white lg:text-4xl">
+                  {mode === "signup" ? "Create Your Account" : "Welcome Back"}
+                </h1>
+                <p className="mt-2 text-slate-400">
+                  {mode === "signup"
+                    ? "Start your journey around the world."
+                    : "Continue your exploration of the world."}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Form card */}
+          <div className="auth-card rounded-2xl p-6 lg:p-8">
+            {/* OAuth error banner */}
+            {oauthError && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+              >
+                <p className="font-medium">Authentication Error</p>
+                <p className="mt-1 text-red-400">{oauthError}</p>
+                <p className="mt-2 text-xs text-red-400/70">
+                  Make sure the Google OAuth provider is configured in your Supabase dashboard.
+                </p>
+              </motion.div>
+            )}
+
+            {/* Google — fully functional */}
+            <div className="space-y-3">
+              <motion.button
+                type="button"
+                onClick={handleGoogle}
+                disabled={isLoading}
+                whileTap={{ scale: 0.98 }}
+                className="auth-btn-provider flex w-full items-center justify-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {localLoading === "google" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <GoogleMark />
+                )}
+                {t("auth.google", "Continue with Google")}
+              </motion.button>
+
+              {/* Apple — coming soon */}
+              <div className="auth-btn-provider flex w-full items-center justify-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white opacity-60">
+                <AppleMark />
+                {t("auth.apple", "Continue with Apple")}
+                <span className="ml-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-400">
+                  {t("auth.soon", "Soon")}
+                </span>
+              </div>
+
+              {/* Phone — coming soon */}
+              <div className="auth-btn-provider flex w-full items-center justify-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white opacity-60">
+                <Phone className="h-4 w-4" />
+                Continue with Phone
+                <span className="ml-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-400">
+                  {t("auth.soon", "Soon")}
+                </span>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="my-6 flex items-center gap-3 text-xs font-medium text-slate-500">
+              <div className="h-px flex-1 bg-white/[0.08]" />
+              OR
+              <div className="h-px flex-1 bg-white/[0.08]" />
+            </div>
+
+            {/* Email form */}
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+              {mode === "signup" && (
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                    Full Name
+                  </label>
+                  <div
+                    className={`flex items-center gap-3 rounded-xl border bg-white/[0.03] px-4 py-3 transition-all duration-200 ${
+                      focusedField === "name"
+                        ? "border-blue-500/50 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
+                        : "border-white/[0.08]"
+                    }`}
+                  >
+                    <UserRound className="h-4 w-4 shrink-0 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="John Doe"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      onFocus={() => setFocusedField("name")}
+                      onBlur={() => setFocusedField(null)}
+                      className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                  Email Address
+                </label>
+                <div
+                  className={`flex items-center gap-3 rounded-xl border bg-white/[0.03] px-4 py-3 transition-all duration-200 ${
+                    focusedField === "email"
+                      ? "border-blue-500/50 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
+                      : "border-white/[0.08]"
+                  }`}
+                >
+                  <Mail className="h-4 w-4 shrink-0 text-slate-500" />
+                  <input
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onFocus={() => setFocusedField("email")}
+                    onBlur={() => setFocusedField(null)}
+                    className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                  Password
+                </label>
+                <div
+                  className={`flex items-center gap-3 rounded-xl border bg-white/[0.03] px-4 py-3 transition-all duration-200 ${
+                    focusedField === "password"
+                      ? "border-blue-500/50 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
+                      : "border-white/[0.08]"
+                  }`}
+                >
+                  <Lock className="h-4 w-4 shrink-0 text-slate-500" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onFocus={() => setFocusedField("password")}
+                    onBlur={() => setFocusedField(null)}
+                    className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {mode === "signup" && (
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                    Confirm Password
+                  </label>
+                  <div
+                    className={`flex items-center gap-3 rounded-xl border bg-white/[0.03] px-4 py-3 transition-all duration-200 ${
+                      focusedField === "confirm"
+                        ? "border-blue-500/50 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
+                        : "border-white/[0.08]"
+                    }`}
+                  >
+                    <Lock className="h-4 w-4 shrink-0 text-slate-500" />
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onFocus={() => setFocusedField("confirm")}
+                      onBlur={() => setFocusedField(null)}
+                      className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Submit button */}
+              <motion.button
+                type="submit"
+                disabled={isLoading}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                className="auth-btn-primary relative mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl py-3.5 text-sm font-bold text-white disabled:opacity-60"
+              >
+                {localLoading === "email" ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {mode === "signup" ? "Creating account..." : "Signing in..."}
+                  </>
+                ) : mode === "signup" ? (
+                  "Create Account"
+                ) : (
+                  "Sign In"
+                )}
+              </motion.button>
+            </form>
+
+            {/* Bottom switch */}
+            <p className="mt-6 text-center text-sm text-slate-400">
+              {mode === "signup" ? "Already have an account?" : "New to OXEN?"}{" "}
+              <button
+                type="button"
+                onClick={() => switchMode(mode === "signup" ? "signin" : "signup")}
+                className="font-semibold text-blue-400 transition-colors hover:text-blue-300"
+              >
+                {mode === "signup" ? "Sign In" : "Create one"}
+              </button>
             </p>
           </div>
 
-          {/* Auth card */}
+          {/* Guest continue */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="auth-card rounded-2xl p-6 lg:p-8"
+            transition={{ delay: 0.6 }}
+            className="mt-6"
           >
-            <div className="space-y-5">
-              {/* Google — fully functional */}
-              <motion.button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={authBusy}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.35 }}
-                whileTap={{ scale: 0.98 }}
-                className="group flex w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-left transition-all hover:border-blue-500/30 hover:bg-blue-500/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] transition-colors group-hover:bg-blue-500/15">
-                  <AnimatePresence mode="wait">
-                    {googleLoading ? (
-                      <motion.span
-                        key="loader"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                      >
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                      </motion.span>
-                    ) : (
-                      <motion.span
-                        key="google"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                      >
-                        <GoogleMark />
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">
-                    {t("auth.googleSignIn", "Google Sign-In")}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {t("auth.googleSignInDesc", "One-tap authentication with your Google account")}
-                  </p>
-                </div>
-                <span className="ml-auto shrink-0 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-400">
-                  {t("auth.active", "Active")}
-                </span>
-              </motion.button>
-
-              {/* Other providers — coming soon */}
-              <div className="space-y-3">
-                {[
-                  {
-                    icon: Mail,
-                    title: t("auth.emailPassword", "Email & Password"),
-                    desc: t("auth.emailPasswordDesc", "Classic sign-in with secure password storage"),
-                    provider: "email",
-                  },
-                  {
-                    icon: AppleMark,
-                    title: t("auth.appleSignIn", "Apple Sign-In"),
-                    desc: t("auth.appleSignInDesc", "Private, secure sign-in with Face ID / Touch ID"),
-                    provider: "apple",
-                  },
-                ].map((item, i) => (
-                  <motion.div
-                    key={item.provider}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.43 + i * 0.08 }}
-                    className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3"
-                  >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-400">
-                      <item.icon />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-white">{item.title}</p>
-                      <p className="text-xs text-slate-500">{item.desc}</p>
-                    </div>
-                    <span className="ml-auto shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-400">
-                      {t("auth.soon", "Soon")}
-                    </span>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Explore button */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="pt-2"
-              >
-                <Link
-                  to="/"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:from-blue-500 hover:to-blue-600 hover:shadow-blue-500/30 active:scale-[0.98]"
-                >
-                  <Globe className="h-4 w-4" />
-                  {t("auth.continueAsGuest", "Continue as Guest Explorer")}
-                </Link>
-                <p className="mt-3 text-center text-xs text-slate-500">
-                  {t("auth.guestDesc", "No account needed — explore 200+ countries, plan trips with AI, and discover the world.")}
-                </p>
-              </motion.div>
-            </div>
+            <Link
+              to="/"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:from-blue-500 hover:to-blue-600 hover:shadow-blue-500/30 active:scale-[0.98]"
+            >
+              <Globe className="h-4 w-4" />
+              {t("auth.continueAsGuest", "Continue as Guest Explorer")}
+            </Link>
+            <p className="mt-3 text-center text-xs text-slate-500">
+              <Sparkles className="inline h-3 w-3 text-amber-500" />{" "}
+              {t("auth.guestDesc", "No account needed — explore 200+ countries, plan trips with AI, and discover the world.")}
+            </p>
           </motion.div>
-
-          {/* Bottom note */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="mt-6 text-center text-xs text-slate-600"
-          >
-            <Sparkles className="inline h-3 w-3 text-amber-500" />{" "}
-            {t("auth.fullAuthNote", "More sign-in options coming soon. Explore freely as a guest in the meantime.")}
-          </motion.p>
         </motion.div>
       </div>
 

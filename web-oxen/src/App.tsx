@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import Layout from "./components/Layout";
+import RequireAuth from "./components/RequireAuth";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ChatProvider } from "./contexts/ChatContext";
 import { CommentsProvider } from "./contexts/CommentsContext";
@@ -138,43 +139,43 @@ const App = () => (
                                 <Route path="/universities/:universityId" element={<UniversityDetail />} />
                                 <Route path="/trips" element={<Trips />} />
                                 <Route path="/planner" element={<Planner />} />
-                                <Route path="/dashboard" element={<Dashboard />} />
+                                <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
                                 <Route path="/services" element={<Services />} />
                                 <Route path="/services/:serviceId" element={<ServiceDetails />} />
                                 <Route
                                   path="/dashboard/consulting"
-                                  element={<ConsultingDashboard />}
+                                  element={<RequireAuth><ConsultingDashboard /></RequireAuth>}
                                 />
                                 <Route
                                   path="/dashboard/services/new"
-                                  element={<ServiceEditor />}
+                                  element={<RequireAuth><ServiceEditor /></RequireAuth>}
                                 />
                                 <Route
                                   path="/dashboard/services/edit/:serviceId"
-                                  element={<ServiceEditor />}
+                                  element={<RequireAuth><ServiceEditor /></RequireAuth>}
                                 />
-                                <Route path="/profile" element={<Profile />} />
-                                <Route path="/profile/edit" element={<EditProfile />} />
+                                <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+                                <Route path="/profile/edit" element={<RequireAuth><EditProfile /></RequireAuth>} />
                                 <Route path="/support" element={<Support />} />
-                                <Route path="/messages" element={<Messages />} />
-                                <Route path="/admin" element={<Admin />} />
+                                <Route path="/messages" element={<RequireAuth><Messages /></RequireAuth>} />
+                                <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
 
                                 {/* Settings sub-pages */}
-                                <Route path="/settings/change-password" element={<SettingsChangePassword />} />
-                                <Route path="/settings/two-factor" element={<SettingsTwoFactor />} />
-                                <Route path="/settings/active-devices" element={<SettingsActiveDevices />} />
-                                <Route path="/settings/login-activity" element={<SettingsLoginActivity />} />
-                                <Route path="/settings/biometrics" element={<SettingsBiometrics />} />
-                                <Route path="/settings/currency" element={<SettingsCurrency />} />
-                                <Route path="/settings/timezone" element={<SettingsTimeZone />} />
-                                <Route path="/settings/distance-unit" element={<SettingsDistanceUnit />} />
-                                <Route path="/settings/language" element={<SettingsLanguage />} />
-                                <Route path="/settings/connection" element={<SettingsConnection />} />
-                                <Route path="/settings/clear-cache" element={<SettingsClearCache />} />
-                                <Route path="/settings/download-data" element={<SettingsDownloadData />} />
-                                <Route path="/settings/export-history" element={<SettingsExportHistory />} />
-                                <Route path="/settings/blocked-users" element={<SettingsBlockedUsers />} />
-                                <Route path="/settings/about" element={<SettingsAbout />} />
+                                <Route path="/settings/change-password" element={<RequireAuth><SettingsChangePassword /></RequireAuth>} />
+                                <Route path="/settings/two-factor" element={<RequireAuth><SettingsTwoFactor /></RequireAuth>} />
+                                <Route path="/settings/active-devices" element={<RequireAuth><SettingsActiveDevices /></RequireAuth>} />
+                                <Route path="/settings/login-activity" element={<RequireAuth><SettingsLoginActivity /></RequireAuth>} />
+                                <Route path="/settings/biometrics" element={<RequireAuth><SettingsBiometrics /></RequireAuth>} />
+                                <Route path="/settings/currency" element={<RequireAuth><SettingsCurrency /></RequireAuth>} />
+                                <Route path="/settings/timezone" element={<RequireAuth><SettingsTimeZone /></RequireAuth>} />
+                                <Route path="/settings/distance-unit" element={<RequireAuth><SettingsDistanceUnit /></RequireAuth>} />
+                                <Route path="/settings/language" element={<RequireAuth><SettingsLanguage /></RequireAuth>} />
+                                <Route path="/settings/connection" element={<RequireAuth><SettingsConnection /></RequireAuth>} />
+                                <Route path="/settings/clear-cache" element={<RequireAuth><SettingsClearCache /></RequireAuth>} />
+                                <Route path="/settings/download-data" element={<RequireAuth><SettingsDownloadData /></RequireAuth>} />
+                                <Route path="/settings/export-history" element={<RequireAuth><SettingsExportHistory /></RequireAuth>} />
+                                <Route path="/settings/blocked-users" element={<RequireAuth><SettingsBlockedUsers /></RequireAuth>} />
+                                <Route path="/settings/about" element={<RequireAuth><SettingsAbout /></RequireAuth>} />
                               </Route>
                               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                               <Route path="*" element={<NotFound />} />
