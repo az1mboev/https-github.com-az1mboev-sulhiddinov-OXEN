@@ -80,7 +80,6 @@ function isApiRequest(url) {
   return (
     url.hostname.includes("supabase.co") ||
     url.hostname.includes("rork.app") ||
-    url.hostname.includes("rork.live") ||
     url.hostname.includes("googleapis.com") ||
     url.hostname.includes("gstatic.com")
   );
