@@ -2,16 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, ensureProfile, onAuthStateChange, type Profile } from "@/lib/supabase";
 
-/**
- * Production OAuth redirect destination.
- * Hardcoded to the published domain so the redirect_uri sent to Supabase
- * (and then to Google) is always correct, regardless of whether the app
- * is running in the Rork editor preview or on the live production URL.
- * `window.location.origin` is intentionally NOT used — the editor preview
- * domain differs from production and would cause redirect_uri_mismatch.
- */
-const OAUTH_REDIRECT_TO = "https://azimboyevshuxrux-mvp1.rork.app/auth";
-
 export interface AuthUser {
   id: string;
   email: string;
@@ -168,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
-            redirectTo: OAUTH_REDIRECT_TO,
+            redirectTo: `${window.location.origin}/auth`,
             queryParams: provider === "google" ? { access_type: "offline", prompt: "consent" } : undefined,
           },
         });
