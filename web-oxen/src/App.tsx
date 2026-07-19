@@ -32,6 +32,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const City = lazy(() => import("./pages/City"));
 const ConsultingDashboard = lazy(() => import("./pages/ConsultingDashboard"));
+const ConsultingSetupSuccess = lazy(() => import("./pages/consulting/SetupSuccess"));
 const Country = lazy(() => import("./pages/Country"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
@@ -128,6 +129,7 @@ const App = () => (
                               <Routes>
                               <Route path="/auth" element={<Auth />} />
                               <Route path="/consulting/checkout" element={<Checkout />} />
+                              <Route path="/consulting/setup-success" element={<ConsultingSetupSuccess />} />
                               <Route element={<Layout />}>
                                 <Route path="/" element={<Index />} />
                                 <Route path="/country/:countryId" element={<Country />} />
@@ -146,6 +148,10 @@ const App = () => (
                                 <Route path="/services/:serviceId" element={<ServiceDetails />} />
                                 <Route
                                   path="/dashboard/consulting"
+                                  element={<RequireAuth><ConsultingDashboard /></RequireAuth>}
+                                />
+                                <Route
+                                  path="/consulting/dashboard"
                                   element={<RequireAuth><ConsultingDashboard /></RequireAuth>}
                                 />
                                 <Route
