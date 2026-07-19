@@ -23,11 +23,13 @@ import {
   Search,
   ChevronLeft,
   Sparkles,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConsulting } from "@/contexts/ConsultingContext";
 import LogoutDialog from "@/components/LogoutDialog";
+import { getPlan } from "@/lib/consulting";
 
 interface NavItem {
   to: string;
@@ -67,13 +69,23 @@ export function DashboardShell({ title, subtitle, actions, children }: Dashboard
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { company, member, isTestMode } = useConsulting();
+  const { company, member, isTestMode, subscriptionPlan, subscriptionEndDate, subscriptionAccess } = useConsulting();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
   const companyName = company?.name ?? "Consulting Dashboard";
   const logoUrl = company?.logo_url ?? null;
+  const plan = subscriptionPlan ? getPlan(subscriptionPlan) : null;
+
+  const formatEndDate = (iso: string | null): string => {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    } catch {
+      return "—";
+    }
+  };
 
   const go = (item: NavItem) => {
     navigate(item.to);
@@ -82,21 +94,53 @@ export function DashboardShell({ title, subtitle, actions, children }: Dashboard
 
   const SidebarContent = (
     <div className="flex h-full flex-col">
-      {/* Brand */}
-      <div className="flex items-center gap-2.5 px-4 py-5">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/15 text-primary">
-          {logoUrl ? (
-            <img src={logoUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <Sparkles className="h-5 w-5" />
-          )}
-        </span>
-        <div className={cn("min-w-0", collapsed && "hidden")}>
-          <p className="truncate font-display text-sm font-bold text-foreground">OXEN</p>
-          <p className="truncate text-[10px] uppercase tracking-widest text-muted-foreground">
-            Consulting
-          </p>
+      {/* Brand + subscription block */}
+      <div className="border-b border-white/[0.06] px-4 py-4">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/15 text-primary">
+            {logoUrl ? (
+              <img src={logoUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <Sparkles className="h-5 w-5" />
+            )}
+          </span>
+          <div className={cn("min-w-0", collapsed && "hidden")}>
+            <p className="truncate font-display text-sm font-bold text-foreground">{companyName}</p>
+            <p className="truncate text-[10px] uppercase tracking-widest text-muted-foreground">
+              OXEN Consulting
+            </p>
+          </div>
         </div>
+        {/* Subscription info */}
+        {!collapsed && (
+          <div className="mt-3 space-y-1.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Plan</span>
+              <span className="text-[11px] font-bold text-foreground">{plan?.name ?? "—"}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                <CalendarClock className="h-2.5 w-2.5" /> Expires
+              </span>
+              <span className="text-[11px] font-semibold text-foreground">{formatEndDate(subscriptionEndDate)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</span>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider",
+                  subscriptionAccess === "active"
+                    ? "bg-emerald-500/15 text-emerald-400"
+                    : subscriptionAccess === "expired"
+                      ? "bg-amber-500/15 text-amber-400"
+                      : "bg-white/[0.06] text-muted-foreground",
+                )}
+              >
+                {subscriptionAccess === "active" ? "Active" : subscriptionAccess === "expired" ? "Expired" : "None"}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Nav */}

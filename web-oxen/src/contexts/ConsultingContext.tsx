@@ -9,10 +9,13 @@ import {
   updateMemberStatus as apiUpdateMemberStatus,
   removeMember as apiRemoveMember,
   logActivity as apiLogActivity,
+  computeEndDate,
   type ConsultingCompany,
   type ConsultingMember,
   type MemberRole,
   type MemberStatus,
+  type SubscriptionPlan,
+  type SubscriptionStatus,
 } from "@/lib/consulting";
 import {
   testUpdateMemberRole,
@@ -23,13 +26,15 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 
 /* ============================================================
-   ConsultingContext — current company, membership, RBAC.
+   ConsultingContext — current company, membership, RBAC,
+   and subscription-gated access.
 
    Test-mode fallback: when the Supabase consulting tables are not
    yet applied (or the user has no member row), we synthesize a
    company + member from the localStorage onboarding snapshot
-   written by the Checkout flow. This keeps the dashboard usable
-   in test mode without crashing.
+   written by the Checkout flow. The subscription status is tracked
+   in a separate localStorage key so the expired → renew flow can
+   be simulated end-to-end without a database.
 
    Exposed via useConsulting() + useConsultingRole().
    ============================================================ */
@@ -62,6 +67,29 @@ interface OnboardingSnapshot {
 
 const ONBOARDING_KEY = "oxen.consulting.onboarding";
 
+/** Test-mode subscription state (separate from onboarding so renewals update it). */
+interface TestSubscriptionState {
+  status: SubscriptionStatus;
+  plan: SubscriptionPlan;
+  startDate: string;
+  endDate: string;
+  amount: number;
+  cardBrand: string;
+  cardLast4: string;
+  cardMasked: string;
+  /** History of subscription payments for the Billing page. */
+  history: Array<{
+    id: string;
+    date: string;
+    plan: SubscriptionPlan;
+    amount: number;
+    cardMasked: string;
+    type: "subscription" | "renewal";
+  }>;
+}
+
+const TEST_SUB_KEY = "oxen.consulting.test.subscription";
+
 function readOnboarding(): OnboardingSnapshot | null {
   try {
     const raw = localStorage.getItem(ONBOARDING_KEY);
@@ -71,14 +99,38 @@ function readOnboarding(): OnboardingSnapshot | null {
   }
 }
 
+function readTestSubscription(): TestSubscriptionState | null {
+  try {
+    const raw = localStorage.getItem(TEST_SUB_KEY);
+    return raw ? (JSON.parse(raw) as TestSubscriptionState) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTestSubscription(state: TestSubscriptionState): void {
+  try {
+    localStorage.setItem(TEST_SUB_KEY, JSON.stringify(state));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Normalized subscription access status. Only "active" grants dashboard access. */
+export type SubscriptionAccess = "active" | "expired" | "none";
+
 /** Synthesize a ConsultingCompany + ConsultingMember from the onboarding snapshot. */
 function synthesizeFromSnapshot(
   userId: string,
   snap: OnboardingSnapshot,
+  sub: TestSubscriptionState | null,
 ): { company: ConsultingCompany; member: ConsultingMember } {
   const now = new Date().toISOString();
   const companyId = `test-company-${userId}`;
   const memberId = `test-member-${userId}`;
+  const startDate = sub?.startDate ?? snap.createdAt;
+  const endDate = sub?.endDate ?? computeEndDate(new Date(snap.createdAt), snap.plan).toISOString();
+  const status: SubscriptionStatus = sub?.status ?? "active";
   return {
     company: {
       id: companyId,
@@ -106,10 +158,10 @@ function synthesizeFromSnapshot(
       is_published: false,
       is_verified: false,
       verification_status: "pending",
-      subscription_status: "active",
+      subscription_status: status,
       subscription_plan: snap.plan,
-      subscription_start_date: snap.createdAt,
-      subscription_end_date: null,
+      subscription_start_date: startDate,
+      subscription_end_date: endDate,
       created_at: snap.createdAt,
       updated_at: now,
     },
@@ -127,6 +179,36 @@ function synthesizeFromSnapshot(
   };
 }
 
+/** Derive normalized access status from a company row + current time. */
+function deriveAccessStatus(
+  company: ConsultingCompany | null,
+  testSub: TestSubscriptionState | null,
+): SubscriptionAccess {
+  if (!company) return "none";
+  // Test-mode override (simulated expiration)
+  if (testSub) {
+    if (testSub.status === "expired") return "expired";
+    if (testSub.status === "active") {
+      const end = new Date(testSub.endDate).getTime();
+      if (end < Date.now()) return "expired";
+      return "active";
+    }
+    if (testSub.status === "cancelled" || testSub.status === "suspended") return "expired";
+  }
+  const status = company.subscription_status;
+  if (!status || status === "none") return "none";
+  if (status === "active" || status === "trial") {
+    // Also check end date hasn't passed
+    if (company.subscription_end_date) {
+      const end = new Date(company.subscription_end_date).getTime();
+      if (end < Date.now()) return "expired";
+    }
+    return "active";
+  }
+  // past_due, expired, cancelled, suspended → blocked
+  return "expired";
+}
+
 interface ConsultingContextValue {
   company: ConsultingCompany | null;
   member: ConsultingMember | null;
@@ -134,10 +216,20 @@ interface ConsultingContextValue {
   loading: boolean;
   /** True if running off the localStorage test-mode snapshot (Supabase tables not ready). */
   isTestMode: boolean;
-  /** True if the current user is an active member of a consulting company. */
+  /** True if the current user is an active member of a consulting company (regardless of subscription). */
   isMember: boolean;
   /** True if owner or administrator. */
   isAdmin: boolean;
+  /** Normalized subscription access: "active" | "expired" | "none". */
+  subscriptionAccess: SubscriptionAccess;
+  /** True only when subscription is active and dashboard is fully accessible. */
+  hasActiveSubscription: boolean;
+  /** True when user has a company but subscription expired (renewal screen shown). */
+  hasExpiredSubscription: boolean;
+  /** ISO end date of the current subscription, or null. */
+  subscriptionEndDate: string | null;
+  /** Current subscription plan, or null. */
+  subscriptionPlan: SubscriptionPlan | null;
   /** Permission check helper. Use '*' for full-access roles. */
   can: (permission: string) => boolean;
   /** Refresh company + membership. */
@@ -155,6 +247,16 @@ interface ConsultingContextValue {
     entityId?: string | null,
     metadata?: Record<string, unknown> | null,
   ) => Promise<boolean>;
+  /** Renew the subscription for the current company (preserves company id). Test mode writes to localStorage. */
+  renewSubscription: (input: {
+    plan: SubscriptionPlan;
+    amount: number;
+    cardBrand: string;
+    cardLast4: string;
+    cardMasked: string;
+  }) => Promise<boolean>;
+  /** Test-mode helper: force the current subscription into "expired" state (for testing the renewal flow). */
+  simulateExpiration: () => void;
 }
 
 function useConsultingState() {
@@ -187,10 +289,13 @@ function useConsultingState() {
   const snapshot = useMemo(() => (isEnabled ? readOnboarding() : null), [isEnabled]);
   const useFallback = isEnabled && !membership && !company && !!snapshot;
 
+  // Read test subscription state (re-read on each render via state below)
+  const testSub = useMemo(() => (useFallback ? readTestSubscription() : null), [useFallback]);
+
   const synthesized = useMemo(() => {
     if (!useFallback || !snapshot || !user) return null;
-    return synthesizeFromSnapshot(user.id, snapshot);
-  }, [useFallback, snapshot, user]);
+    return synthesizeFromSnapshot(user.id, snapshot, testSub);
+  }, [useFallback, snapshot, user, testSub]);
 
   const effectiveCompany = company ?? synthesized?.company ?? null;
   const effectiveMember = membership ?? synthesized?.member ?? null;
@@ -201,6 +306,15 @@ function useConsultingState() {
   const role = effectiveMember?.role ?? null;
   const isMember = !!effectiveMember;
   const isAdmin = role === "owner" || role === "administrator";
+
+  const subscriptionAccess = useMemo(
+    () => deriveAccessStatus(effectiveCompany, isTestMode ? testSub : null),
+    [effectiveCompany, isTestMode, testSub],
+  );
+  const hasActiveSubscription = subscriptionAccess === "active";
+  const hasExpiredSubscription = subscriptionAccess === "expired";
+  const subscriptionEndDate = effectiveCompany?.subscription_end_date ?? null;
+  const subscriptionPlan = effectiveCompany?.subscription_plan ?? null;
 
   const can = useCallback(
     (permission: string): boolean => {
@@ -261,7 +375,7 @@ function useConsultingState() {
   const changeMemberRole = useCallback(
     async (memberId: string, newRole: MemberRole): Promise<boolean> => {
       if (isTestMode) {
-        const ok = !!testUpdateMemberRole(company?.id ?? "", memberId, newRole);
+        const ok = !!testUpdateMemberRole(effectiveCompany?.id ?? "", memberId, newRole);
         if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
         return ok;
       }
@@ -269,13 +383,13 @@ function useConsultingState() {
       if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
       return ok;
     },
-    [queryClient, isTestMode, company],
+    [queryClient, isTestMode, effectiveCompany],
   );
 
   const changeMemberStatus = useCallback(
     async (memberId: string, status: MemberStatus): Promise<boolean> => {
       if (isTestMode) {
-        const ok = !!testUpdateMemberStatus(company?.id ?? "", memberId, status);
+        const ok = !!testUpdateMemberStatus(effectiveCompany?.id ?? "", memberId, status);
         if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
         return ok;
       }
@@ -283,13 +397,13 @@ function useConsultingState() {
       if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
       return ok;
     },
-    [queryClient, isTestMode, company],
+    [queryClient, isTestMode, effectiveCompany],
   );
 
   const removeMember = useCallback(
     async (memberId: string): Promise<boolean> => {
       if (isTestMode) {
-        const ok = testRemoveMember(company?.id ?? "", memberId);
+        const ok = testRemoveMember(effectiveCompany?.id ?? "", memberId);
         if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
         return ok;
       }
@@ -297,7 +411,7 @@ function useConsultingState() {
       if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
       return ok;
     },
-    [queryClient, isTestMode, company],
+    [queryClient, isTestMode, effectiveCompany],
   );
 
   const logActivity = useCallback(
@@ -307,7 +421,7 @@ function useConsultingState() {
       entityId?: string | null,
       metadata?: Record<string, unknown> | null,
     ): Promise<boolean> => {
-      const cid = company?.id;
+      const cid = effectiveCompany?.id;
       if (!cid) return false;
       if (isTestMode) {
         testLogActivity(cid, effectiveMember?.user_id ?? null, action, entityType, entityId, metadata);
@@ -318,8 +432,112 @@ function useConsultingState() {
       if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-activity"] });
       return ok;
     },
-    [company, effectiveMember, isTestMode, queryClient],
+    [effectiveCompany, effectiveMember, isTestMode, queryClient],
   );
+
+  const renewSubscription = useCallback(
+    async (input: {
+      plan: SubscriptionPlan;
+      amount: number;
+      cardBrand: string;
+      cardLast4: string;
+      cardMasked: string;
+    }): Promise<boolean> => {
+      const cid = effectiveCompany?.id;
+      if (!cid) return false;
+      const now = new Date();
+      const startDate = now.toISOString();
+      const endDate = computeEndDate(now, input.plan).toISOString();
+
+      if (isTestMode) {
+        const existing = readTestSubscription();
+        const historyEntry = {
+          id: `txn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          date: startDate,
+          plan: input.plan,
+          amount: input.amount,
+          cardMasked: input.cardMasked,
+          type: (existing ? "renewal" : "subscription") as "subscription" | "renewal",
+        };
+        const next: TestSubscriptionState = {
+          status: "active",
+          plan: input.plan,
+          startDate,
+          endDate,
+          amount: input.amount,
+          cardBrand: input.cardBrand,
+          cardLast4: input.cardLast4,
+          cardMasked: input.cardMasked,
+          history: [...(existing?.history ?? []), historyEntry],
+        };
+        writeTestSubscription(next);
+        queryClient.invalidateQueries({ queryKey: ["consulting-company"] });
+        return true;
+      }
+
+      // Real mode: update company subscription fields + insert a new subscription row.
+      // (Supabase calls go here once tables are applied; preserve company id.)
+      // For now this mirrors the createConsultingAccount subscription insert pattern.
+      try {
+        const { supabase } = await import("@/lib/supabase");
+        await supabase
+          .from("consulting_companies")
+          .update({
+            subscription_status: "active",
+            subscription_plan: input.plan,
+            subscription_start_date: startDate,
+            subscription_end_date: endDate,
+            updated_at: now.toISOString(),
+          })
+          .eq("id", cid);
+        await supabase.from("consulting_subscriptions").insert({
+          consulting_company_id: cid,
+          plan: input.plan,
+          status: "active",
+          start_date: startDate,
+          end_date: endDate,
+          auto_renewal: true,
+          amount: input.amount,
+          currency: "USD",
+          card_brand: input.cardBrand,
+          card_last4: input.cardLast4,
+          created_by: effectiveMember?.user_id ?? null,
+        });
+        queryClient.invalidateQueries({ queryKey: ["consulting-company"] });
+        return true;
+      } catch (err) {
+        console.error("renewSubscription error:", err);
+        return false;
+      }
+    },
+    [effectiveCompany, effectiveMember, isTestMode, queryClient],
+  );
+
+  const simulateExpiration = useCallback(() => {
+    if (!isTestMode) return;
+    const existing = readTestSubscription();
+    if (!existing) {
+      // Build one from the onboarding snapshot if missing.
+      const snap = readOnboarding();
+      if (!snap) return;
+      const start = new Date(snap.createdAt);
+      const end = computeEndDate(start, snap.plan);
+      writeTestSubscription({
+        status: "expired",
+        plan: snap.plan,
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        amount: snap.price,
+        cardBrand: snap.card.brand,
+        cardLast4: snap.card.last4,
+        cardMasked: snap.card.masked,
+        history: [],
+      });
+    } else {
+      writeTestSubscription({ ...existing, status: "expired" });
+    }
+    queryClient.invalidateQueries({ queryKey: ["consulting-company"] });
+  }, [isTestMode, queryClient]);
 
   return useMemo<ConsultingContextValue>(
     () => ({
@@ -330,14 +548,26 @@ function useConsultingState() {
       isTestMode,
       isMember,
       isAdmin,
+      subscriptionAccess,
+      hasActiveSubscription,
+      hasExpiredSubscription,
+      subscriptionEndDate,
+      subscriptionPlan,
       can,
       refresh,
       changeMemberRole,
       changeMemberStatus,
       removeMember,
       logActivity,
+      renewSubscription,
+      simulateExpiration,
     }),
-    [effectiveCompany, effectiveMember, role, loading, isTestMode, isMember, isAdmin, can, refresh, changeMemberRole, changeMemberStatus, removeMember, logActivity],
+    [
+      effectiveCompany, effectiveMember, role, loading, isTestMode, isMember, isAdmin,
+      subscriptionAccess, hasActiveSubscription, hasExpiredSubscription, subscriptionEndDate,
+      subscriptionPlan, can, refresh, changeMemberRole, changeMemberStatus, removeMember,
+      logActivity, renewSubscription, simulateExpiration,
+    ],
   );
 }
 
@@ -347,6 +577,6 @@ export { ConsultingProvider, useConsulting };
 
 /** RBAC helper hook — convenience around useConsulting().can(). */
 export function useConsultingRole() {
-  const { role, isAdmin, isMember, can } = useConsulting();
-  return { role, isAdmin, isMember, can };
+  const { role, isAdmin, isMember, can, hasActiveSubscription, subscriptionAccess } = useConsulting();
+  return { role, isAdmin, isMember, can, hasActiveSubscription, subscriptionAccess };
 }

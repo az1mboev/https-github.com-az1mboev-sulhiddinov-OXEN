@@ -35,6 +35,10 @@ const Checkout = lazy(() => import("./pages/Checkout"));
 const City = lazy(() => import("./pages/City"));
 const ConsultingDashboard = lazy(() => import("./pages/ConsultingDashboard"));
 const ConsultingSetupSuccess = lazy(() => import("./pages/consulting/SetupSuccess"));
+const ConsultingPlans = lazy(() => import("./pages/consulting/Plans"));
+const ConsultingSubscriptionExpired = lazy(() => import("./pages/consulting/SubscriptionExpired"));
+const ConsultingRenew = lazy(() => import("./pages/consulting/Renew"));
+const ConsultingBilling = lazy(() => import("./pages/consulting/Billing"));
 const ConsultingDashboardHome = lazy(() => import("./pages/consulting/DashboardHome"));
 const ConsultingCompanyProfile = lazy(() => import("./pages/consulting/CompanyProfile"));
 const ConsultingPublicCompanyProfile = lazy(() => import("./pages/consulting/PublicCompanyProfile"));
@@ -159,8 +163,42 @@ const App = () => (
                             <Suspense fallback={<RouteFallback />}>
                               <Routes>
                               <Route path="/auth" element={<Auth />} />
+                              <Route path="/consulting/plans" element={<ConsultingPlans />} />
                               <Route path="/consulting/checkout" element={<Checkout />} />
                               <Route path="/consulting/setup-success" element={<ConsultingSetupSuccess />} />
+                              {/* Subscription-expired screen — only consulting members with expired subs can see this */}
+                              <Route
+                                path="/consulting/expired"
+                                element={
+                                  <RequireAuth>
+                                    <RequireConsultingMember allowExpired>
+                                      <ConsultingSubscriptionExpired />
+                                    </RequireConsultingMember>
+                                  </RequireAuth>
+                                }
+                              />
+                              {/* Renew — accessible when expired */}
+                              <Route
+                                path="/consulting/renew"
+                                element={
+                                  <RequireAuth>
+                                    <RequireConsultingMember allowExpired>
+                                      <ConsultingRenew />
+                                    </RequireConsultingMember>
+                                  </RequireAuth>
+                                }
+                              />
+                              {/* Billing — accessible both when active and when expired */}
+                              <Route
+                                path="/consulting/billing"
+                                element={
+                                  <RequireAuth>
+                                    <RequireConsultingMember allowExpired>
+                                      <ConsultingBilling />
+                                    </RequireConsultingMember>
+                                  </RequireAuth>
+                                }
+                              />
                               {/* Public company profile — visible only when published */}
                               <Route path="/consulting/company/:companyId" element={<ConsultingPublicCompanyProfile />} />
                               <Route element={<Layout />}>
@@ -206,9 +244,9 @@ const App = () => (
                                 <Route path="/consulting/activity" element={<RequireAuth><RequireConsultingMember><ConsultingActivityLog /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/reviews" element={<RequireAuth><RequireConsultingMember><ConsultingReviewsComingSoon /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/company-profile" element={<RequireAuth><RequireConsultingMember><ConsultingCompanyProfile /></RequireConsultingMember></RequireAuth>} />
-                                <Route path="/consulting/subscription" element={<RequireAuth><RequireConsultingMember><ConsultingSubscriptionComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/subscription" element={<RequireAuth><RequireConsultingMember allowExpired><ConsultingSubscriptionComingSoon /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/settings" element={<RequireAuth><RequireConsultingMember><ConsultingSettingsComingSoon /></RequireConsultingMember></RequireAuth>} />
-                                <Route path="/consulting/support" element={<RequireAuth><RequireConsultingMember><ConsultingSupportComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/support" element={<RequireAuth><RequireConsultingMember allowExpired><ConsultingSupportComingSoon /></RequireConsultingMember></RequireAuth>} />
                                 <Route
                                   path="/dashboard/services/new"
                                   element={<RequireAuth><ServiceEditor /></RequireAuth>}

@@ -10,14 +10,14 @@ import {
   ArrowRight,
   LifeBuoy,
   HelpCircle,
+  LayoutDashboard,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { CONSULTING_PLANS, type SubscriptionPlan } from "@/lib/consulting";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConsulting } from "@/contexts/ConsultingContext";
 import { useSEO } from "@/hooks/use-seo";
-import { toast } from "@/hooks/use-toast";
 import { Accordion } from "@/components/consulting/Field";
 
 const springIn = {
@@ -73,110 +73,130 @@ const FAQ = [
   },
 ];
 
+const PLAN_SUMMARY = [
+  { name: "Monthly", price: "$150", duration: "1 month" },
+  { name: "Quarterly", price: "$400", duration: "3 months", badge: "Most Popular" },
+  { name: "Annual", price: "$1,700", duration: "12 months", badge: "Best Value" },
+];
+
 export default function Explore() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [agreedTerms, setAgreedTerms] = useState(false);
+  const { isMember, hasActiveSubscription, hasExpiredSubscription, company } = useConsulting();
 
   useSEO({
-    title: "Consulting Business | OXEN",
+    title: "Premium Consulting | OXEN",
     description:
-      "Grow your consulting business with OXEN. Create a consulting company profile and manage your services through OXEN.",
+      "Grow your consulting business with OXEN. Subscribe to Premium Consulting and unlock a full consulting workspace.",
   });
 
-  const handleSelectPlan = useCallback(
-    (plan: SubscriptionPlan) => {
-      if (user?.isGuest) {
-        navigate(`/auth?redirect=${encodeURIComponent(`/consulting/checkout?plan=${plan}`)}`);
-        return;
-      }
-      if (!agreedTerms) {
-        toast({
-          title: "Please accept the Terms & Conditions first",
-          variant: "destructive",
-        });
-        document.getElementById("terms-checkbox")?.focus();
-        return;
-      }
-      navigate(`/consulting/checkout?plan=${plan}`);
-    },
-    [user, agreedTerms, navigate],
-  );
+  const handleBuy = useCallback(() => {
+    if (user?.isGuest) {
+      navigate(`/auth?redirect=${encodeURIComponent("/consulting/plans")}`);
+      return;
+    }
+    navigate("/consulting/plans");
+  }, [user, navigate]);
 
   const handleContactSupport = useCallback(() => {
     navigate("/support");
   }, [navigate]);
 
-  const renewalInfo = useMemo(
-    () =>
-      CONSULTING_PLANS.map((p) => {
-        const date = new Date();
-        date.setMonth(date.getMonth() + p.months);
-        return { id: p.id, renewalDate: date.toLocaleDateString() };
-      }),
-    [],
-  );
+  // If the user is already an active consulting member, show a "Go to Dashboard" CTA instead.
+  const showGoToDashboard = isMember && (hasActiveSubscription || hasExpiredSubscription);
 
   return (
     <div className="mx-auto max-w-6xl px-5 pt-16 pb-10">
-      {/* Hero */}
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={springIn} className="mb-8">
-        <div className="mb-3 flex items-center gap-2">
-          <Briefcase className="h-5 w-5 text-primary" strokeWidth={2.2} />
-          <span className="text-xs font-bold uppercase tracking-widest text-primary">Consulting Business</span>
+      {/* Hero — single primary CTA */}
+      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={springIn} className="mb-10 text-center">
+        <div className="mb-4 flex items-center justify-center gap-2">
+          <Briefcase className="h-6 w-6 text-primary" strokeWidth={2.2} />
+          <span className="text-xs font-bold uppercase tracking-widest text-primary">Premium Consulting</span>
         </div>
-        <h1 className="font-display text-3xl font-extrabold leading-tight sm:text-4xl">
+        <h1 className="font-display text-3xl font-extrabold leading-tight sm:text-5xl">
           Grow Your Consulting Business
           <br />
           <span className="text-gold-gradient">with OXEN</span>
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Create a consulting company profile and manage your services through OXEN.
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          Create a consulting company profile, publish service packages, manage clients and employees, and track your
+          revenue — all in one premium workspace. Subscribe to unlock the full consulting dashboard.
         </p>
 
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => handleSelectPlan("quarterly")}
-            className="gold-gradient flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20"
-          >
-            <Sparkles className="h-4 w-4" />
-            Buy Consulting Subscription
-          </motion.button>
+        {/* Primary CTA — one large centered button */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springIn, delay: 0.15 }}
+          className="mt-8 flex flex-col items-center gap-3"
+        >
+          {showGoToDashboard ? (
+            <>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => navigate("/consulting/dashboard")}
+                className="gold-gradient inline-flex items-center gap-2 rounded-full px-8 py-4 text-base font-bold text-primary-foreground shadow-xl shadow-primary/25"
+              >
+                <LayoutDashboard className="h-5 w-5" />
+                Go to Consulting Dashboard
+              </motion.button>
+              {hasExpiredSubscription && (
+                <p className="text-xs font-semibold text-amber-400">
+                  Your subscription has expired —{" "}
+                  <button onClick={() => navigate("/consulting/renew")} className="underline hover:opacity-80">
+                    Renew now
+                  </button>{" "}
+                  to restore full access.
+                </p>
+              )}
+              {hasActiveSubscription && company && (
+                <p className="text-xs text-muted-foreground">
+                  Signed in as <span className="font-semibold text-foreground">{company.name}</span>
+                </p>
+              )}
+            </>
+          ) : (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleBuy}
+              className="gold-gradient inline-flex items-center gap-2 rounded-full px-8 py-4 text-base font-bold text-primary-foreground shadow-xl shadow-primary/25"
+            >
+              <Sparkles className="h-5 w-5" />
+              Buy Premium Consulting
+            </motion.button>
+          )}
           <button
             onClick={handleContactSupport}
-            className="glass flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-foreground transition hover:border-primary/30"
+            className="glass inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-foreground transition hover:border-primary/30"
           >
             <LifeBuoy className="h-4 w-4 text-primary" />
             Contact OXEN Support
           </button>
-        </div>
+        </motion.div>
       </motion.div>
 
-      {/* Plans */}
-      <section className="mb-12">
+      {/* Plan summary (read-only preview; full selection on /consulting/plans) */}
+      <section className="mb-14">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={springIn}
-          className="mb-5 flex items-center gap-2"
+          className="mb-5 flex items-center justify-center gap-2"
         >
-          <h2 className="font-display text-xl font-bold sm:text-2xl">Choose your plan</h2>
+          <h2 className="font-display text-xl font-bold sm:text-2xl">Subscription plans</h2>
         </motion.div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {CONSULTING_PLANS.map((plan, i) => {
-            const renewal = renewalInfo.find((r) => r.id === plan.id);
+          {PLAN_SUMMARY.map((plan, i) => {
             const featured = !!plan.badge;
             return (
               <motion.div
-                key={plan.id}
+                key={plan.name}
                 initial={{ opacity: 0, y: 20, scale: 0.96 }}
                 whileInView={{ opacity: 1, y: 0, scale: 1 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ delay: i * 0.08, ...cardSpring }}
-                whileTap={{ scale: 0.98 }}
                 className={
                   featured
                     ? "relative flex flex-col rounded-3xl border border-primary/40 bg-primary/[0.04] p-6 shadow-xl shadow-primary/10"
@@ -190,86 +210,37 @@ export default function Explore() {
                 )}
                 <div className="mb-3">
                   <h3 className="font-display text-lg font-bold text-foreground">{plan.name}</h3>
-                  <p className="text-xs text-muted-foreground">{plan.months} month{plan.months > 1 ? "s" : ""}</p>
+                  <p className="text-xs text-muted-foreground">{plan.duration}</p>
                 </div>
                 <div className="mb-1 flex items-end gap-1.5">
-                  <span className="font-display text-4xl font-extrabold text-foreground">
-                    ${plan.price.toLocaleString()}
-                  </span>
+                  <span className="font-display text-4xl font-extrabold text-foreground">{plan.price}</span>
                   <span className="mb-1.5 text-xs text-muted-foreground">USD</span>
                 </div>
-                {plan.savingsLabel && (
-                  <span className="mb-3 inline-flex w-fit items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                    {plan.savingsLabel}
-                  </span>
-                )}
-
-                <ul className="mb-5 mt-1 space-y-2">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={3} />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mb-4 mt-auto space-y-1.5 border-t border-white/[0.06] pt-3 text-[10px] text-muted-foreground">
-                  <p>
-                    <span className="font-semibold text-foreground/70">Renews:</span>{" "}
-                    {renewal?.renewalDate} · auto-renewal on
-                  </p>
-                  <p>
-                    <span className="font-semibold text-foreground/70">Cancel:</span> anytime from your dashboard
-                  </p>
-                </div>
-
                 <button
-                  onClick={() => handleSelectPlan(plan.id)}
+                  onClick={handleBuy}
                   className={
                     featured
-                      ? "gold-gradient flex items-center justify-center gap-1.5 rounded-2xl py-3 text-sm font-bold text-primary-foreground transition active:scale-95"
-                      : "flex items-center justify-center gap-1.5 rounded-2xl bg-white/[0.06] py-3 text-sm font-bold text-foreground transition hover:bg-white/[0.1] active:scale-95"
+                      ? "gold-gradient mt-4 flex items-center justify-center gap-1.5 rounded-2xl py-3 text-sm font-bold text-primary-foreground transition active:scale-95"
+                      : "mt-4 flex items-center justify-center gap-1.5 rounded-2xl bg-white/[0.06] py-3 text-sm font-bold text-foreground transition hover:bg-white/[0.1] active:scale-95"
                   }
                 >
-                  Select Plan
+                  View plan
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               </motion.div>
             );
           })}
         </div>
-
-        {/* Terms checkbox */}
-        <motion.label
-          id="terms-checkbox"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="mt-5 flex cursor-pointer items-start gap-2.5 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4"
-        >
-          <input
-            type="checkbox"
-            checked={agreedTerms}
-            onChange={(e) => setAgreedTerms(e.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
-          />
-          <span className="text-xs text-muted-foreground">
-            I agree to the OXEN Consulting{" "}
-            <span className="font-semibold text-primary">Terms & Conditions</span>, including the subscription
-            auto-renewal policy, platform commission on package sales, and acceptable use guidelines. I understand I
-            can cancel anytime and my data is preserved in read-only mode after expiry.
-          </span>
-        </motion.label>
       </section>
 
-      {/* Features overview */}
-      <section className="mb-12">
+      {/* Benefits */}
+      <section className="mb-14">
         <motion.h2
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={springIn}
-          className="mb-5 font-display text-xl font-bold sm:text-2xl"
+          className="mb-5 text-center font-display text-xl font-bold sm:text-2xl"
         >
           Everything you need to run your consulting business
         </motion.h2>
@@ -302,7 +273,7 @@ export default function Explore() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={springIn}
-        className="mb-12"
+        className="mb-14"
       >
         <div className="flex items-center gap-4 rounded-3xl border border-emerald-500/20 bg-emerald-500/[0.04] p-6">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
@@ -320,13 +291,13 @@ export default function Explore() {
       </motion.section>
 
       {/* FAQ */}
-      <section className="mb-12">
+      <section className="mb-14">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={springIn}
-          className="mb-5 flex items-center gap-2"
+          className="mb-5 flex items-center justify-center gap-2"
         >
           <HelpCircle className="h-5 w-5 text-primary" strokeWidth={2.2} />
           <h2 className="font-display text-xl font-bold sm:text-2xl">Frequently asked questions</h2>
@@ -342,13 +313,23 @@ export default function Explore() {
         transition={springIn}
         className="mb-4 text-center"
       >
-        <button
-          onClick={() => handleSelectPlan("quarterly")}
-          className="gold-gradient mx-auto flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold text-primary-foreground shadow-xl shadow-primary/20 transition active:scale-95"
-        >
-          <Sparkles className="h-4 w-4" />
-          Get started today
-        </button>
+        {showGoToDashboard ? (
+          <button
+            onClick={() => navigate("/consulting/dashboard")}
+            className="gold-gradient mx-auto inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold text-primary-foreground shadow-xl shadow-primary/20 transition active:scale-95"
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Open my consulting dashboard
+          </button>
+        ) : (
+          <button
+            onClick={handleBuy}
+            className="gold-gradient mx-auto inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold text-primary-foreground shadow-xl shadow-primary/20 transition active:scale-95"
+          >
+            <Sparkles className="h-4 w-4" />
+            Get started today
+          </button>
+        )}
         <button
           onClick={handleContactSupport}
           className="mt-3 text-xs font-semibold text-primary transition hover:opacity-80"

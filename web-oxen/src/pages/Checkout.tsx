@@ -19,6 +19,8 @@ import {
 
 import {
   CONSULTING_PLANS,
+  computeEndDate,
+  createConsultingAccount,
   getPlan,
   type SubscriptionPlan,
 } from "@/lib/consulting";
@@ -34,6 +36,7 @@ import {
   type TokenizedCard,
 } from "@/lib/payment";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConsulting } from "@/contexts/ConsultingContext";
 import { useSEO } from "@/hooks/use-seo";
 import { toast } from "@/hooks/use-toast";
 import { Field, SelectField } from "@/components/consulting/Field";
@@ -76,6 +79,9 @@ interface CardForm {
   number: string;
   exp: string;
   cvv: string;
+  billingAddress: string;
+  billingCity: string;
+  billingPostal: string;
 }
 
 const EMPTY_COMPANY: CompanyForm = {
@@ -94,7 +100,15 @@ const EMPTY_COMPANY: CompanyForm = {
   logoDataUrl: null,
 };
 
-const EMPTY_CARD: CardForm = { cardholder: "", number: "", exp: "", cvv: "" };
+const EMPTY_CARD: CardForm = {
+  cardholder: "",
+  number: "",
+  exp: "",
+  cvv: "",
+  billingAddress: "",
+  billingCity: "",
+  billingPostal: "",
+};
 
 // ── Helpers ─────────────────────────────────────────────────
 function formatCardNumber(raw: string): string {
@@ -255,6 +269,8 @@ export default function Checkout() {
     if (digits.length < 13) return setCardError("Enter a valid card number.");
     if (!card.exp.includes("/") || card.exp.length < 5) return setCardError("Enter expiration as MM/YY.");
     if (card.cvv.replace(/\D/g, "").length < 3) return setCardError("Enter a valid CVV.");
+    if (!card.billingAddress.trim()) return setCardError("Billing address is required.");
+    if (!card.billingCity.trim()) return setCardError("Billing city is required.");
 
     setTokenizing(true);
     try {
@@ -264,7 +280,7 @@ export default function Checkout() {
         exp: card.exp,
         cvv: card.cvv,
         billingCountry: company.country,
-        billingAddress: company.address,
+        billingAddress: card.billingAddress,
       });
       setTokenized(tok);
 
@@ -317,7 +333,8 @@ export default function Checkout() {
     }
   }, [otpSession, otpCode]);
 
-  // ── Step 4: confirm → save test-mode data → redirect ──────
+  // ── Step 4: confirm → create account → redirect ───────────
+  const { renewSubscription } = useConsulting();
   const handleConfirm = useCallback(async () => {
     if (!agreedFinal || !tokenized) return;
     if (user?.isGuest) {
@@ -326,10 +343,54 @@ export default function Checkout() {
     }
     setConfirming(true);
     try {
-      // TEST MODE: persist onboarding snapshot to localStorage so the
-      // success page + future dashboard setup can read it without
-      // requiring the Supabase consulting tables to exist yet.
-      // No Supabase writes are attempted here — Phase 2 is checkout-only.
+      const startDate = new Date();
+      const endDate = computeEndDate(startDate, planId);
+
+      // Try real account creation first. If Supabase tables aren't applied yet,
+      // fall back to test-mode (localStorage snapshot) so the dashboard still works.
+      let realCreated = false;
+      try {
+        const result = await createConsultingAccount({
+          ownerId: user!.id,
+          company: {
+            owner_id: user!.id,
+            name: company.name,
+            legal_name: company.legalName,
+            country: company.country,
+            city: company.city,
+            address: company.address,
+            logo_url: company.logoDataUrl,
+            description: company.description,
+            contact_email: company.email,
+            contact_phone: company.phone,
+            website: company.website || undefined,
+            manager_full_name: company.managerFullName,
+            manager_phone: company.managerPhone,
+            manager_email: company.managerEmail,
+          },
+          subscription: {
+            consulting_company_id: "",
+            plan: planId,
+            status: "active",
+            start_date: startDate.toISOString(),
+            end_date: endDate.toISOString(),
+            amount: plan.price,
+            payment_method_id: tokenized.paymentMethodId,
+            payment_customer_id: tokenized.customerId,
+            card_brand: tokenized.brand,
+            card_last4: tokenized.last4,
+            card_exp_month: tokenized.expMonth,
+            card_exp_year: tokenized.expYear,
+            created_by: user!.id,
+          },
+        });
+        realCreated = !!result.company;
+      } catch (err) {
+        console.warn("createConsultingAccount failed, falling back to test mode:", err);
+      }
+
+      // Always persist the onboarding snapshot (used by both the success page
+      // and the test-mode fallback in ConsultingContext when real creation fails).
       const snapshot = {
         plan: planId,
         planName: plan.name,
@@ -359,16 +420,54 @@ export default function Checkout() {
           paymentMethodId: tokenized.paymentMethodId,
           customerId: tokenized.customerId,
         },
-        createdAt: new Date().toISOString(),
-        testMode: true,
+        createdAt: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        testMode: !realCreated,
       };
       localStorage.setItem("oxen.consulting.onboarding", JSON.stringify(snapshot));
+
+      // Also seed the test-mode subscription state so simulateExpiration works.
+      if (!realCreated) {
+        try {
+          localStorage.setItem(
+            "oxen.consulting.test.subscription",
+            JSON.stringify({
+              status: "active",
+              plan: planId,
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+              amount: plan.price,
+              cardBrand: tokenized.brand,
+              cardLast4: tokenized.last4,
+              cardMasked: tokenized.masked,
+              history: [
+                {
+                  id: `txn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                  date: startDate.toISOString(),
+                  plan: planId,
+                  amount: plan.price,
+                  cardMasked: tokenized.masked,
+                  type: "subscription",
+                },
+              ],
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+
+      toast({
+        title: realCreated
+          ? "Your consulting company account has been activated successfully."
+          : "Test-mode onboarding saved. Dashboard is ready.",
+      });
 
       navigate("/consulting/setup-success");
     } finally {
       setConfirming(false);
     }
-  }, [agreedFinal, tokenized, user, planId, plan, company, navigate]);
+  }, [agreedFinal, tokenized, user, planId, plan, company, navigate, renewSubscription]);
 
   // ── Logo upload ───────────────────────────────────────────
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -664,6 +763,44 @@ export default function Checkout() {
                 </div>
               </div>
 
+              {/* Billing address */}
+              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <p className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground/70">
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                  Billing address
+                </p>
+                <div className="grid gap-3">
+                  <Field
+                    label="Street address"
+                    value={card.billingAddress}
+                    onChange={(v) => setCard((c) => ({ ...c, billingAddress: v }))}
+                    placeholder="123 Main Street"
+                    required
+                    autoComplete="address-line1"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field
+                      label="City"
+                      value={card.billingCity}
+                      onChange={(v) => setCard((c) => ({ ...c, billingCity: v }))}
+                      placeholder="Tashkent"
+                      required
+                      autoComplete="address-level2"
+                    />
+                    <Field
+                      label="Postal code"
+                      value={card.billingPostal}
+                      onChange={(v) => setCard((c) => ({ ...c, billingPostal: v }))}
+                      placeholder="100000"
+                      autoComplete="postal-code"
+                    />
+                  </div>
+                  <div className="rounded-xl bg-white/[0.03] px-3 py-2 text-[11px] text-muted-foreground">
+                    Country: <span className="font-semibold text-foreground/70">{company.country || "—"}</span>
+                  </div>
+                </div>
+              </div>
+
               {cardError && (
                 <p className="flex items-center gap-1.5 text-xs text-destructive">
                   <AlertCircle className="h-3.5 w-3.5" />
@@ -862,9 +999,14 @@ export default function Checkout() {
                 </div>
               )}
 
-              {/* Total */}
+              {/* Total + duration */}
               <div className="flex items-center justify-between rounded-2xl border border-primary/30 bg-primary/[0.04] p-4">
-                <span className="text-sm font-semibold text-foreground">Total due today</span>
+                <div>
+                  <span className="block text-sm font-semibold text-foreground">Total due today</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {plan.months} month{plan.months > 1 ? "s" : ""} subscription
+                  </span>
+                </div>
                 <span className="font-display text-2xl font-extrabold text-primary">
                   ${plan.price.toLocaleString()}
                   <span className="ml-1 text-sm font-medium text-muted-foreground">USD</span>
