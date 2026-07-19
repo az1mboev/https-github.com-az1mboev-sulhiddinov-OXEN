@@ -7,8 +7,6 @@ import {
   FileStack,
   Package,
   UserCog,
-  CheckSquare,
-  MessageSquare,
   Newspaper,
   CreditCard,
   BarChart3,
@@ -34,25 +32,26 @@ interface NavItem {
   to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  phase2?: boolean;
+  /** Routes not built yet — clicking shows the "next phase" page (still navigable). */
+  comingNext?: boolean;
 }
 
+// All 14 items are enabled (navigable). `comingNext` items route to a polished
+// "This module will be available in the next phase." page — no broken buttons.
 const NAV_ITEMS: NavItem[] = [
   { to: "/consulting/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/consulting/clients", label: "Clients", icon: Users },
-  { to: "/consulting/applications", label: "Applications", icon: FileStack },
-  { to: "/consulting/packages", label: "Service Packages", icon: Package },
-  { to: "/consulting/employees", label: "Employees", icon: UserCog },
-  { to: "/consulting/tasks", label: "Tasks", icon: CheckSquare, phase2: true },
-  { to: "/consulting/messages", label: "Messages", icon: MessageSquare, phase2: true },
-  { to: "/consulting/posts", label: "Posts", icon: Newspaper, phase2: true },
-  { to: "/consulting/payments", label: "Payments", icon: CreditCard, phase2: true },
-  { to: "/consulting/analytics", label: "Analytics", icon: BarChart3, phase2: true },
-  { to: "/consulting/reviews", label: "Reviews", icon: Star, phase2: true },
-  { to: "/consulting/company-profile", label: "Company Profile", icon: Building2, phase2: true },
-  { to: "/consulting/subscription", label: "Subscription", icon: SubscriptionIcon, phase2: true },
-  { to: "/consulting/settings", label: "Settings", icon: SettingsIcon, phase2: true },
-  { to: "/consulting/support", label: "Help & Support", icon: LifeBuoy, phase2: true },
+  { to: "/consulting/clients", label: "Clients", icon: Users, comingNext: true },
+  { to: "/consulting/applications", label: "Applications", icon: FileStack, comingNext: true },
+  { to: "/consulting/packages", label: "Service Packages", icon: Package, comingNext: true },
+  { to: "/consulting/employees", label: "Employees", icon: UserCog, comingNext: true },
+  { to: "/consulting/posts", label: "Posts", icon: Newspaper, comingNext: true },
+  { to: "/consulting/payments", label: "Payments", icon: CreditCard, comingNext: true },
+  { to: "/consulting/analytics", label: "Analytics", icon: BarChart3, comingNext: true },
+  { to: "/consulting/reviews", label: "Reviews", icon: Star, comingNext: true },
+  { to: "/consulting/company-profile", label: "Company Profile", icon: Building2 },
+  { to: "/consulting/subscription", label: "Subscription", icon: SubscriptionIcon, comingNext: true },
+  { to: "/consulting/settings", label: "Settings", icon: SettingsIcon, comingNext: true },
+  { to: "/consulting/support", label: "Help & Support", icon: LifeBuoy, comingNext: true },
 ];
 
 interface DashboardShellProps {
@@ -66,19 +65,29 @@ export function DashboardShell({ title, subtitle, actions, children }: Dashboard
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { company, member } = useConsulting();
+  const { company, member, isTestMode } = useConsulting();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
   const companyName = company?.name ?? "Consulting Dashboard";
+  const logoUrl = company?.logo_url ?? null;
+
+  const go = (item: NavItem) => {
+    navigate(item.to);
+    setMobileOpen(false);
+  };
 
   const SidebarContent = (
     <div className="flex h-full flex-col">
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-4 py-5">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-          <Sparkles className="h-5 w-5" />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/15 text-primary">
+          {logoUrl ? (
+            <img src={logoUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <Sparkles className="h-5 w-5" />
+          )}
         </span>
         <div className={cn("min-w-0", collapsed && "hidden")}>
           <p className="truncate font-display text-sm font-bold text-foreground">OXEN</p>
@@ -97,24 +106,18 @@ export function DashboardShell({ title, subtitle, actions, children }: Dashboard
             return (
               <li key={item.to}>
                 <button
-                  onClick={() => {
-                    if (item.phase2) return;
-                    navigate(item.to);
-                    setMobileOpen(false);
-                  }}
-                  disabled={item.phase2}
-                  title={item.phase2 ? `${item.label} — coming in Phase 2` : item.label}
+                  onClick={() => go(item)}
+                  title={item.label}
                   className={cn(
                     "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all",
                     active
                       ? "bg-primary/15 text-primary font-semibold"
                       : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
-                    item.phase2 && "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground",
                   )}
                 >
                   <Icon className="h-[18px] w-[18px] shrink-0" />
                   <span className={cn("truncate", collapsed && "hidden")}>{item.label}</span>
-                  {item.phase2 && !collapsed && (
+                  {item.comingNext && !collapsed && (
                     <span className="ml-auto rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Soon
                     </span>
@@ -125,6 +128,13 @@ export function DashboardShell({ title, subtitle, actions, children }: Dashboard
           })}
         </ul>
       </nav>
+
+      {/* Test-mode badge */}
+      {isTestMode && !collapsed && (
+        <div className="mx-3 mb-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.06] px-2.5 py-1.5 text-center text-[10px] font-semibold text-amber-200/90">
+          Test Mode — DB not connected
+        </div>
+      )}
 
       {/* User + logout */}
       <div className="border-t border-white/[0.06] p-3">
@@ -221,6 +231,14 @@ export function DashboardShell({ title, subtitle, actions, children }: Dashboard
           </button>
 
           <div className="flex min-w-0 flex-1 items-center gap-3">
+            {/* Company logo + name */}
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/15">
+              {logoUrl ? (
+                <img src={logoUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <Building2 className="h-4 w-4 text-primary" />
+              )}
+            </div>
             <div className="min-w-0">
               <h1 className="truncate font-display text-base font-bold text-foreground lg:text-lg">
                 {companyName}

@@ -8,9 +8,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import Layout from "./components/Layout";
 import RequireAuth from "./components/RequireAuth";
+import RequireConsultingMember from "./components/RequireConsultingMember";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ChatProvider } from "./contexts/ChatContext";
 import { CommentsProvider } from "./contexts/CommentsContext";
+import { ConsultingProvider } from "./contexts/ConsultingContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { OfflineProvider } from "./contexts/OfflineContext";
 import { PreferencesProvider } from "./contexts/PreferencesContext";
@@ -33,6 +35,42 @@ const Checkout = lazy(() => import("./pages/Checkout"));
 const City = lazy(() => import("./pages/City"));
 const ConsultingDashboard = lazy(() => import("./pages/ConsultingDashboard"));
 const ConsultingSetupSuccess = lazy(() => import("./pages/consulting/SetupSuccess"));
+const ConsultingDashboardHome = lazy(() => import("./pages/consulting/DashboardHome"));
+const ConsultingCompanyProfile = lazy(() => import("./pages/consulting/CompanyProfile"));
+const ConsultingPublicCompanyProfile = lazy(() => import("./pages/consulting/PublicCompanyProfile"));
+const ConsultingClientsComingSoon = lazy(() =>
+  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.ClientsComingSoon })),
+);
+const ConsultingApplicationsComingSoon = lazy(() =>
+  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.ApplicationsComingSoon })),
+);
+const ConsultingPackagesComingSoon = lazy(() =>
+  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.PackagesComingSoon })),
+);
+const ConsultingEmployeesComingSoon = lazy(() =>
+  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.EmployeesComingSoon })),
+);
+const ConsultingPostsComingSoon = lazy(() =>
+  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.PostsComingSoon })),
+);
+const ConsultingPaymentsComingSoon = lazy(() =>
+  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.PaymentsComingSoon })),
+);
+const ConsultingAnalyticsComingSoon = lazy(() =>
+  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.AnalyticsComingSoon })),
+);
+const ConsultingReviewsComingSoon = lazy(() =>
+  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.ReviewsComingSoon })),
+);
+const ConsultingSubscriptionComingSoon = lazy(() =>
+  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.SubscriptionComingSoon })),
+);
+const ConsultingSettingsComingSoon = lazy(() =>
+  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.SettingsComingSoon })),
+);
+const ConsultingSupportComingSoon = lazy(() =>
+  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.SupportComingSoon })),
+);
 const Country = lazy(() => import("./pages/Country"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
@@ -125,11 +163,14 @@ const App = () => (
                           <BrowserRouter
                             future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
                           >
+                            <ConsultingProvider>
                             <Suspense fallback={<RouteFallback />}>
                               <Routes>
                               <Route path="/auth" element={<Auth />} />
                               <Route path="/consulting/checkout" element={<Checkout />} />
                               <Route path="/consulting/setup-success" element={<ConsultingSetupSuccess />} />
+                              {/* Public company profile — visible only when published */}
+                              <Route path="/consulting/company/:companyId" element={<ConsultingPublicCompanyProfile />} />
                               <Route element={<Layout />}>
                                 <Route path="/" element={<Index />} />
                                 <Route path="/country/:countryId" element={<Country />} />
@@ -152,8 +193,27 @@ const App = () => (
                                 />
                                 <Route
                                   path="/consulting/dashboard"
-                                  element={<RequireAuth><ConsultingDashboard /></RequireAuth>}
+                                  element={
+                                    <RequireAuth>
+                                      <RequireConsultingMember>
+                                        <ConsultingDashboardHome />
+                                      </RequireConsultingMember>
+                                    </RequireAuth>
+                                  }
                                 />
+                                {/* Consulting dashboard sections — all navigable; unfinished ones show a polished "next phase" page */}
+                                <Route path="/consulting/clients" element={<RequireAuth><RequireConsultingMember><ConsultingClientsComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/applications" element={<RequireAuth><RequireConsultingMember><ConsultingApplicationsComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/packages" element={<RequireAuth><RequireConsultingMember><ConsultingPackagesComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/employees" element={<RequireAuth><RequireConsultingMember><ConsultingEmployeesComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/posts" element={<RequireAuth><RequireConsultingMember><ConsultingPostsComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/payments" element={<RequireAuth><RequireConsultingMember><ConsultingPaymentsComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/analytics" element={<RequireAuth><RequireConsultingMember><ConsultingAnalyticsComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/reviews" element={<RequireAuth><RequireConsultingMember><ConsultingReviewsComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/company-profile" element={<RequireAuth><RequireConsultingMember><ConsultingCompanyProfile /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/subscription" element={<RequireAuth><RequireConsultingMember><ConsultingSubscriptionComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/settings" element={<RequireAuth><RequireConsultingMember><ConsultingSettingsComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/support" element={<RequireAuth><RequireConsultingMember><ConsultingSupportComingSoon /></RequireConsultingMember></RequireAuth>} />
                                 <Route
                                   path="/dashboard/services/new"
                                   element={<RequireAuth><ServiceEditor /></RequireAuth>}
@@ -190,6 +250,7 @@ const App = () => (
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                           </Suspense>
+                            </ConsultingProvider>
                         </BrowserRouter>
                           </TooltipProvider>
                         </SidebarProvider>

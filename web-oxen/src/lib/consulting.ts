@@ -164,6 +164,10 @@ export interface ConsultingCompany {
   manager_full_name: string | null;
   manager_phone: string | null;
   manager_email: string | null;
+  /** License / accreditation info (free text). Column added by migration 0002. */
+  license_info: string | null;
+  /** Whether the public company profile is published. Column added by migration 0002. */
+  is_published: boolean;
   is_verified: boolean;
   verification_status: VerificationStatus;
   subscription_status: SubscriptionStatus | "none";
@@ -403,6 +407,68 @@ export async function fetchMyMembership(
     .maybeSingle();
   if (error) console.error("fetchMyMembership error:", error);
   return data as unknown as ConsultingMember | null;
+}
+
+// ── Company profile update + public fetch ────────────────────
+
+export interface CompanyProfileUpdate {
+  name?: string;
+  description?: string | null;
+  country?: string | null;
+  city?: string | null;
+  address?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  website?: string | null;
+  working_hours?: string | null;
+  supported_languages?: string[] | null;
+  destination_countries?: string[] | null;
+  years_experience?: number;
+  license_info?: string | null;
+  logo_url?: string | null;
+  cover_image_url?: string | null;
+  is_published?: boolean;
+}
+
+/** Update the current user's consulting company profile. RLS requires admin/owner. */
+export async function updateCompanyProfile(
+  companyId: string,
+  patch: CompanyProfileUpdate,
+): Promise<{ company: ConsultingCompany | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from("consulting_companies")
+    .update({
+      ...patch,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", companyId)
+    .select("*")
+    .maybeSingle();
+  if (error) {
+    console.error("updateCompanyProfile error:", error);
+    return { company: null, error: error.message };
+  }
+  return { company: data as unknown as ConsultingCompany, error: null };
+}
+
+/** Public fetch of a published consulting company by id. RLS allows public read only when verified/published. */
+export async function fetchPublicConsultingCompany(
+  companyId: string,
+): Promise<ConsultingCompany | null> {
+  const { data, error } = await supabase
+    .from("consulting_companies")
+    .select("*")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (error) {
+    console.error("fetchPublicConsultingCompany error:", error);
+    return null;
+  }
+  const company = data as unknown as ConsultingCompany | null;
+  // Only return if published (or verified, which implies publicly readable per RLS).
+  if (!company) return null;
+  if (!company.is_published && company.verification_status !== "verified") return null;
+  return company;
 }
 
 // ── Onboarding (Checkout) ───────────────────────────────────
