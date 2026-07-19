@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import createContextHook from "@nkzw/create-context-hook";
 
 import {
@@ -42,7 +41,6 @@ interface ConsultingContextValue {
 function useConsultingState() {
   const { user, ready: authReady } = useAuth();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   const isEnabled = !!user && !user.isGuest && authReady;
 
@@ -119,9 +117,6 @@ function useConsultingState() {
     },
     [queryClient],
   );
-
-  // Keep navigate referenced to avoid unused warnings; used by routes via RequireConsultingMember
-  void navigate;
 
   return useMemo<ConsultingContextValue>(
     () => ({
