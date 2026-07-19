@@ -7,6 +7,13 @@ import type {
   ConsultingApplicationHistory,
   ConsultingPackage,
   ConsultingPackageMedia,
+  ConsultingActivityLog,
+  ConsultingMember,
+  ConsultingInvitation,
+  EmployeeStats,
+  AnalyticsStats,
+  MemberRole,
+  MemberStatus,
   ClientApplicationStatus,
   ApplicationStatus,
   PaymentStatus,
@@ -579,4 +586,371 @@ export function testFetchApplicationHistory(companyId: string, applicationId: st
   return readArr<ConsultingApplicationHistory>(key(companyId, "applicationHistory"))
     .filter((h) => h.application_id === applicationId)
     .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+}
+
+/* ============================================================
+   Phase 5 — Members, invitations, activity logs, analytics
+   ============================================================ */
+
+// ── Members (employees) ─────────────────────────────────────
+
+export function testFetchMembers(companyId: string): ConsultingMember[] {
+  const rows = readArr<ConsultingMember>(key(companyId, "members"));
+  return rows.sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+}
+
+export function testFetchMember(companyId: string, memberId: string): ConsultingMember | null {
+  return readArr<ConsultingMember>(key(companyId, "members")).find((m) => m.id === memberId) ?? null;
+}
+
+export interface TestMemberInput {
+  user_id?: string | null;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  avatar_url?: string | null;
+  role: MemberRole;
+  status?: MemberStatus;
+}
+
+/** Add a test-mode member row. If `user_id` is omitted, a synthetic id is generated. */
+export function testAddMember(
+  companyId: string,
+  input: TestMemberInput,
+  invitedBy: string,
+): ConsultingMember {
+  const k = key(companyId, "members");
+  const rows = readArr<ConsultingMember>(k);
+  const now = nowIso();
+  const id = uid("member");
+  const userId = input.user_id ?? `test-user-${Math.random().toString(36).slice(2, 10)}`;
+  const member: ConsultingMember = {
+    id,
+    consulting_company_id: companyId,
+    user_id: userId,
+    role: input.role,
+    status: input.status ?? "active",
+    invited_by: invitedBy,
+    last_active_at: now,
+    created_at: now,
+    updated_at: now,
+    profile: {
+      name: input.full_name,
+      email: input.email,
+      avatar_url: input.avatar_url ?? null,
+    },
+  } satisfies ConsultingMember;
+  rows.push(member);
+  writeArr(k, rows);
+  return member;
+}
+
+export function testUpdateMemberRole(
+  companyId: string,
+  memberId: string,
+  role: MemberRole,
+): ConsultingMember | null {
+  const k = key(companyId, "members");
+  const rows = readArr<ConsultingMember>(k);
+  const idx = rows.findIndex((r) => r.id === memberId);
+  if (idx === -1) return null;
+  rows[idx] = { ...rows[idx], role, updated_at: nowIso() };
+  writeArr(k, rows);
+  return rows[idx];
+}
+
+export function testUpdateMemberStatus(
+  companyId: string,
+  memberId: string,
+  status: MemberStatus,
+): ConsultingMember | null {
+  const k = key(companyId, "members");
+  const rows = readArr<ConsultingMember>(k);
+  const idx = rows.findIndex((r) => r.id === memberId);
+  if (idx === -1) return null;
+  rows[idx] = { ...rows[idx], status, updated_at: nowIso() };
+  writeArr(k, rows);
+  return rows[idx];
+}
+
+export function testRemoveMember(companyId: string, memberId: string): boolean {
+  return !!testUpdateMemberStatus(companyId, memberId, "removed");
+}
+
+// ── Invitations ─────────────────────────────────────────────
+
+export function testFetchInvitations(companyId: string): ConsultingInvitation[] {
+  const rows = readArr<ConsultingInvitation>(key(companyId, "invitations"));
+  return rows.filter((r) => r.status === "pending").sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+}
+
+export function testCreateInvitation(
+  companyId: string,
+  email: string,
+  role: MemberRole,
+  invitedBy: string,
+  fullName?: string,
+): { invitation: ConsultingInvitation; member: ConsultingMember } {
+  const k = key(companyId, "invitations");
+  const rows = readArr<ConsultingInvitation>(k);
+  const now = nowIso();
+  const id = uid("invite");
+  const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const invitation: ConsultingInvitation = {
+    id,
+    consulting_company_id: companyId,
+    email: email.toLowerCase().trim(),
+    role,
+    token,
+    status: "pending",
+    invited_by: invitedBy,
+    created_at: now,
+    updated_at: now,
+  };
+  rows.push(invitation);
+  writeArr(k, rows);
+  // Also create a member row with `invited` status (so employees page can render immediately).
+  const member = testAddMember(
+    companyId,
+    { full_name: fullName ?? email.split("@")[0], email, role, status: "invited" },
+    invitedBy,
+  );
+  return { invitation, member };
+}
+
+export function testRevokeInvitation(companyId: string, invitationId: string): boolean {
+  const k = key(companyId, "invitations");
+  const rows = readArr<ConsultingInvitation>(k);
+  const idx = rows.findIndex((r) => r.id === invitationId);
+  if (idx === -1) return false;
+  rows[idx] = { ...rows[idx], status: "revoked", updated_at: nowIso() };
+  writeArr(k, rows);
+  return true;
+}
+
+// ── Assign client to employee (test mode) ───────────────────
+
+export function testAssignClientToEmployee(
+  companyId: string,
+  clientId: string,
+  employeeId: string | null,
+): boolean {
+  const k = key(companyId, "clients");
+  const rows = readArr<ConsultingClient>(k);
+  const idx = rows.findIndex((r) => r.id === clientId);
+  if (idx === -1) return false;
+  rows[idx] = {
+    ...rows[idx],
+    assigned_employee_id: employeeId,
+    last_activity_at: nowIso(),
+    updated_at: nowIso(),
+  };
+  writeArr(k, rows);
+  return true;
+}
+
+// ── Activity log ────────────────────────────────────────────
+
+export function testLogActivity(
+  companyId: string,
+  actorId: string | null,
+  action: string,
+  entityType?: string | null,
+  entityId?: string | null,
+  metadata?: Record<string, unknown> | null,
+): ConsultingActivityLog {
+  const k = key(companyId, "activityLogs");
+  const rows = readArr<ConsultingActivityLog>(k);
+  const now = nowIso();
+  const id = uid("activity");
+  // Look up actor name from members
+  const members = testFetchMembers(companyId);
+  const actor = actorId ? members.find((m) => m.user_id === actorId) : null;
+  const log: ConsultingActivityLog = {
+    id,
+    consulting_company_id: companyId,
+    actor_id: actorId,
+    action,
+    entity_type: entityType ?? null,
+    entity_id: entityId ?? null,
+    metadata: (metadata ?? {}) as unknown as Json,
+    created_at: now,
+    actor: actor?.profile ?? { name: "System", avatar_url: null },
+  };
+  rows.push(log);
+  writeArr(k, rows);
+  return log;
+}
+
+export function testFetchActivityLogs(
+  companyId: string,
+  opts: { action?: string; actorId?: string; limit?: number } = {},
+): ConsultingActivityLog[] {
+  let rows = readArr<ConsultingActivityLog>(key(companyId, "activityLogs"));
+  // Re-attach actor profile in case it was updated since the log was written.
+  const members = testFetchMembers(companyId);
+  rows = rows.map((l) => ({
+    ...l,
+    actor: l.actor ?? members.find((m) => m.user_id === l.actor_id)?.profile ?? null,
+  }));
+  if (opts.action) rows = rows.filter((r) => r.action === opts.action);
+  if (opts.actorId) rows = rows.filter((r) => r.actor_id === opts.actorId);
+  const sorted = rows.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  return opts.limit ? sorted.slice(0, opts.limit) : sorted;
+}
+
+// ── Employee stats (computed from clients + payments) ───────
+
+export function testFetchEmployeeStats(companyId: string): EmployeeStats[] {
+  const members = testFetchMembers(companyId).filter((m) => m.status !== "removed");
+  const clients = readArr<ConsultingClient>(key(companyId, "clients"));
+  return members.map((m) => {
+    const myClients = clients.filter((c) => c.assigned_employee_id === m.user_id);
+    const totalClients = myClients.length;
+    const activeClients = myClients.filter((c) => !c.is_archived).length;
+    const successful = myClients.filter((c) => c.final_result === "success").length;
+    const unsuccessful = myClients.filter((c) => c.final_result === "unsuccessful").length;
+    const decided = successful + unsuccessful;
+    const successRate = decided === 0 ? 0 : Math.round((successful / decided) * 1000) / 10;
+    // Test mode: revenue is 0 (no test-mode payments). Real mode computes from payments.
+    return {
+      member_id: m.id,
+      consulting_company_id: companyId,
+      user_id: m.user_id,
+      role: m.role,
+      status: m.status,
+      active_clients: activeClients,
+      total_clients: totalClients,
+      successful_clients: successful,
+      unsuccessful_clients: unsuccessful,
+      revenue_generated: 0,
+      success_rate: successRate,
+      last_active_at: m.last_active_at,
+      created_at: m.created_at,
+      profile: m.profile,
+    };
+  });
+}
+
+// ── Analytics stats (test mode computes from local clients) ─
+
+export function testFetchAnalyticsStats(
+  companyId: string,
+  range?: { start: string; end: string },
+): AnalyticsStats {
+  const clients = readArr<ConsultingClient>(key(companyId, "clients")).filter((c) => !c.is_archived);
+  const totalClients = clients.length;
+  const newClientsPeriod = range
+    ? clients.filter((c) => c.created_at >= range.start && c.created_at < range.end).length
+    : 0;
+  const successfulClients = clients.filter((c) => c.final_result === "success").length;
+  const unsuccessfulClients = clients.filter((c) => c.final_result === "unsuccessful").length;
+  const pendingClients = clients.filter((c) => c.final_result === "pending").length;
+  const activeApplications = readArr<ConsultingApplication>(key(companyId, "applications")).filter(
+    (a) => ["new", "documents", "processing", "submitted"].includes(a.status),
+  ).length;
+  const decided = successfulClients + unsuccessfulClients;
+  const successRate = decided === 0 ? 0 : Math.round((successfulClients / decided) * 1000) / 10;
+  return {
+    totalClients,
+    newClientsPeriod,
+    activeApplications,
+    successfulClients,
+    unsuccessfulClients,
+    pendingClients,
+    monthlyRevenue: 0,
+    annualRevenue: 0,
+    totalRevenue: 0,
+    successRate,
+  };
+}
+
+export function testFetchAnalyticsMonthlySeries(
+  companyId: string,
+  months = 6,
+): { label: string; clients: number; revenue: number; success: number; unsuccessful: number }[] {
+  const clients = readArr<ConsultingClient>(key(companyId, "clients"));
+  const out: { label: string; clients: number; revenue: number; success: number; unsuccessful: number }[] = [];
+  const now = new Date();
+  for (let i = months - 1; i >= 0; i--) {
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    const label = start.toLocaleDateString("en-US", { month: "short" });
+    const monthClients = clients.filter(
+      (c) => c.created_at >= start.toISOString() && c.created_at < end.toISOString(),
+    );
+    out.push({
+      label,
+      clients: monthClients.length,
+      revenue: 0,
+      success: monthClients.filter((c) => c.final_result === "success").length,
+      unsuccessful: monthClients.filter((c) => c.final_result === "unsuccessful").length,
+    });
+  }
+  return out;
+}
+
+export function testFetchFinalResultDistribution(
+  companyId: string,
+): { label: string; count: number; color: string }[] {
+  const clients = readArr<ConsultingClient>(key(companyId, "clients"));
+  return [
+    { label: "Success", count: clients.filter((c) => c.final_result === "success").length, color: "#10b981" },
+    { label: "Unsuccessful", count: clients.filter((c) => c.final_result === "unsuccessful").length, color: "#ef4444" },
+    { label: "Pending", count: clients.filter((c) => c.final_result === "pending").length, color: "#f59e0b" },
+  ];
+}
+
+export function testFetchClientsByDestination(
+  companyId: string,
+): { label: string; count: number }[] {
+  const clients = readArr<ConsultingClient>(key(companyId, "clients")).filter((c) => !c.is_archived);
+  const buckets = new Map<string, number>();
+  for (const c of clients) {
+    const label = c.destination_country ?? "Unspecified";
+    buckets.set(label, (buckets.get(label) ?? 0) + 1);
+  }
+  return Array.from(buckets.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export function testFetchEmployeePerformance(
+  companyId: string,
+): { label: string; clients: number; successful: number }[] {
+  return testFetchEmployeeStats(companyId)
+    .map((s) => ({
+      label: s.profile?.name ?? "Member",
+      clients: s.total_clients,
+      successful: s.successful_clients,
+    }))
+    .sort((a, b) => b.clients - a.clients)
+    .slice(0, 8);
+}
+
+export function testFetchClientsByPackage(
+  companyId: string,
+): { label: string; count: number }[] {
+  const clients = readArr<ConsultingClient>(key(companyId, "clients")).filter((c) => !c.is_archived);
+  const packages = readArr<ConsultingPackage>(key(companyId, "packages"));
+  const buckets = new Map<string, number>();
+  for (const c of clients) {
+    const pkg = packages.find((p) => p.id === c.service_id);
+    const label = pkg?.service?.title ?? "Unassigned";
+    buckets.set(label, (buckets.get(label) ?? 0) + 1);
+  }
+  return Array.from(buckets.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export function testFetchApplicationStatusDistribution(
+  companyId: string,
+): { status: ApplicationStatus; count: number }[] {
+  const apps = readArr<ConsultingApplication>(key(companyId, "applications"));
+  const buckets = new Map<ApplicationStatus, number>();
+  for (const a of apps) {
+    buckets.set(a.status, (buckets.get(a.status) ?? 0) + 1);
+  }
+  return Array.from(buckets.entries()).map(([status, count]) => ({ status, count }));
 }

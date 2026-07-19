@@ -7,11 +7,19 @@ import {
   fetchMyMembership,
   updateMemberRole as apiUpdateMemberRole,
   updateMemberStatus as apiUpdateMemberStatus,
+  removeMember as apiRemoveMember,
+  logActivity as apiLogActivity,
   type ConsultingCompany,
   type ConsultingMember,
   type MemberRole,
   type MemberStatus,
 } from "@/lib/consulting";
+import {
+  testUpdateMemberRole,
+  testUpdateMemberStatus,
+  testRemoveMember,
+  testLogActivity,
+} from "@/lib/consulting-test-mode";
 import { useAuth } from "@/contexts/AuthContext";
 
 /* ============================================================
@@ -138,6 +146,15 @@ interface ConsultingContextValue {
   changeMemberRole: (memberId: string, role: MemberRole) => Promise<boolean>;
   /** Change a member's status (admin only). */
   changeMemberStatus: (memberId: string, status: MemberStatus) => Promise<boolean>;
+  /** Remove a member (set status='removed'). Admin only. */
+  removeMember: (memberId: string) => Promise<boolean>;
+  /** Append an activity log entry. */
+  logActivity: (
+    action: string,
+    entityType?: string | null,
+    entityId?: string | null,
+    metadata?: Record<string, unknown> | null,
+  ) => Promise<boolean>;
 }
 
 function useConsultingState() {
@@ -189,21 +206,49 @@ function useConsultingState() {
     (permission: string): boolean => {
       if (!role) return false;
       if (role === "owner" || role === "administrator") return true;
-      if (role === "read_only") return permission.endsWith(":read") || permission === "*:read";
-      if (permission === "*") return false;
+      // Full permission map per role. "*" = all permissions.
       const map: Record<MemberRole, string[]> = {
         owner: ["*"],
         administrator: ["*"],
-        manager: ["clients:write", "clients:read", "applications:write", "applications:read", "tasks:write", "tasks:read"],
-        consultant: ["clients:read_assigned", "applications:read_assigned", "tasks:read"],
-        support_agent: ["clients:read", "messages:write"],
-        finance_manager: ["payments:read", "refunds:write"],
-        content_manager: ["packages:write", "posts:write", "packages:read", "posts:read"],
+        manager: [
+          "clients:write", "clients:read", "clients:read_assigned",
+          "applications:write", "applications:read", "applications:read_assigned",
+          "employees:read",
+          "members:read",
+          "activity:read",
+          "analytics:read",
+          "packages:read",
+        ],
+        consultant: [
+          "clients:read_assigned",
+          "applications:read_assigned",
+          "activity:read",
+        ],
+        support_agent: [
+          "clients:read",
+          "messages:write",
+          "activity:read",
+        ],
+        finance_manager: [
+          "payments:read", "payments:write",
+          "refunds:write",
+          "analytics:read",
+          "activity:read",
+        ],
+        content_manager: [
+          "packages:write", "packages:read",
+          "posts:write", "posts:read",
+          "activity:read",
+        ],
         read_only: ["*:read"],
       };
       const allowed = map[role] ?? [];
       if (allowed.includes("*")) return true;
-      return allowed.includes(permission) || allowed.includes(`${permission.split(":")[0]}:*`);
+      // "*:read" matches any "<resource>:read".
+      if (allowed.includes("*:read") && permission.endsWith(":read")) return true;
+      if (allowed.includes(permission)) return true;
+      const resource = permission.split(":")[0];
+      return allowed.includes(`${resource}:*`);
     },
     [role],
   );
@@ -215,22 +260,65 @@ function useConsultingState() {
 
   const changeMemberRole = useCallback(
     async (memberId: string, newRole: MemberRole): Promise<boolean> => {
-      if (isTestMode) return false;
+      if (isTestMode) {
+        const ok = !!testUpdateMemberRole(company?.id ?? "", memberId, newRole);
+        if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
+        return ok;
+      }
       const ok = await apiUpdateMemberRole(memberId, newRole);
       if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
       return ok;
     },
-    [queryClient, isTestMode],
+    [queryClient, isTestMode, company],
   );
 
   const changeMemberStatus = useCallback(
     async (memberId: string, status: MemberStatus): Promise<boolean> => {
-      if (isTestMode) return false;
+      if (isTestMode) {
+        const ok = !!testUpdateMemberStatus(company?.id ?? "", memberId, status);
+        if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
+        return ok;
+      }
       const ok = await apiUpdateMemberStatus(memberId, status);
       if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
       return ok;
     },
-    [queryClient, isTestMode],
+    [queryClient, isTestMode, company],
+  );
+
+  const removeMember = useCallback(
+    async (memberId: string): Promise<boolean> => {
+      if (isTestMode) {
+        const ok = testRemoveMember(company?.id ?? "", memberId);
+        if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
+        return ok;
+      }
+      const ok = await apiRemoveMember(memberId);
+      if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
+      return ok;
+    },
+    [queryClient, isTestMode, company],
+  );
+
+  const logActivity = useCallback(
+    async (
+      action: string,
+      entityType?: string | null,
+      entityId?: string | null,
+      metadata?: Record<string, unknown> | null,
+    ): Promise<boolean> => {
+      const cid = company?.id;
+      if (!cid) return false;
+      if (isTestMode) {
+        testLogActivity(cid, effectiveMember?.user_id ?? null, action, entityType, entityId, metadata);
+        queryClient.invalidateQueries({ queryKey: ["consulting-activity"] });
+        return true;
+      }
+      const ok = await apiLogActivity(cid, effectiveMember?.user_id ?? null, action, entityType, entityId, metadata);
+      if (ok) queryClient.invalidateQueries({ queryKey: ["consulting-activity"] });
+      return ok;
+    },
+    [company, effectiveMember, isTestMode, queryClient],
   );
 
   return useMemo<ConsultingContextValue>(
@@ -246,8 +334,10 @@ function useConsultingState() {
       refresh,
       changeMemberRole,
       changeMemberStatus,
+      removeMember,
+      logActivity,
     }),
-    [effectiveCompany, effectiveMember, role, loading, isTestMode, isMember, isAdmin, can, refresh, changeMemberRole, changeMemberStatus],
+    [effectiveCompany, effectiveMember, role, loading, isTestMode, isMember, isAdmin, can, refresh, changeMemberRole, changeMemberStatus, removeMember, logActivity],
   );
 }
 

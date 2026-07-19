@@ -4,15 +4,22 @@ import { motion } from "framer-motion";
 import {
   UserCog,
   Plus,
+  Search,
   Mail,
   Phone,
-  Trash2,
-  Ban,
-  CheckCircle2,
   Loader2,
   X,
-  Send,
-  Shield,
+  Edit3,
+  UserPlus,
+  UserMinus,
+  ShieldCheck,
+  ShieldOff,
+  Ban,
+  CheckCircle2,
+  Users,
+  DollarSign,
+  Activity,
+  Calendar,
 } from "lucide-react";
 
 import { DashboardShell } from "@/components/consulting/DashboardShell";
@@ -22,107 +29,245 @@ import { EmptyState } from "@/components/consulting/EmptyState";
 import { SlideOver } from "@/components/consulting/SlideOver";
 import { ConfirmDialog } from "@/components/consulting/ConfirmDialog";
 import { Field, SelectField } from "@/components/consulting/Field";
+import { StatCard } from "@/components/consulting/StatCard";
 import { useConsulting } from "@/contexts/ConsultingContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSEO } from "@/hooks/use-seo";
 import { toast } from "@/hooks/use-toast";
 import {
-  fetchMembers,
-  fetchInvitations,
-  inviteMember,
-  revokeInvitation,
+  fetchMembers as apiFetchMembers,
+  fetchInvitations as apiFetchInvitations,
+  inviteMember as apiInviteMember,
+  fetchEmployeeStats as apiFetchEmployeeStats,
+  fetchClientById as apiFetchClientById,
   type ConsultingMember,
   type ConsultingInvitation,
   type MemberRole,
-  type MemberStatus,
+  type EmployeeStats,
 } from "@/lib/consulting";
+import {
+  testFetchMembers,
+  testFetchInvitations,
+  testCreateInvitation,
+  testFetchEmployeeStats,
+  testAssignClientToEmployee,
+  testFetchClients,
+  testLogActivity,
+  type TestMemberInput,
+} from "@/lib/consulting-test-mode";
+import { cn } from "@/lib/utils";
 
-const ROLES: { value: MemberRole; label: string }[] = [
-  { value: "owner", label: "Owner" },
-  { value: "administrator", label: "Administrator" },
-  { value: "manager", label: "Manager" },
-  { value: "consultant", label: "Consultant" },
-  { value: "support_agent", label: "Support Agent" },
-  { value: "finance_manager", label: "Finance Manager" },
-  { value: "content_manager", label: "Content Manager" },
-  { value: "read_only", label: "Read Only" },
+const ROLES: { value: MemberRole; label: string; description: string }[] = [
+  { value: "owner", label: "Owner", description: "Full access to everything" },
+  { value: "administrator", label: "Administrator", description: "Manage most company data" },
+  { value: "manager", label: "Manager", description: "Clients, applications, employees" },
+  { value: "consultant", label: "Consultant", description: "Assigned clients only" },
+  { value: "support_agent", label: "Support Agent", description: "Messages and client support" },
+  { value: "finance_manager", label: "Finance Manager", description: "Payments and reports" },
+  { value: "content_manager", label: "Content Manager", description: "Packages and posts" },
+  { value: "read_only", label: "Read Only", description: "View access only" },
 ];
 
-const ROLE_DESCRIPTIONS: Record<MemberRole, string> = {
-  owner: "Full company access, including deleting the company.",
-  administrator: "Full access except deleting the company.",
-  manager: "Manage clients, applications, and tasks.",
-  consultant: "Manage only clients assigned to them.",
-  support_agent: "View clients and send messages.",
-  finance_manager: "Access payments and refunds. No company profile deletion.",
-  content_manager: "Create posts and packages. No payment details.",
-  read_only: "View only — no edits.",
-};
+function roleLabel(role: MemberRole): string {
+  return ROLES.find((r) => r.value === role)?.label ?? role;
+}
+
+function roleDescription(role: MemberRole): string {
+  return ROLES.find((r) => r.value === role)?.description ?? "";
+}
+
+interface InviteInput {
+  email: string;
+  full_name: string;
+  role: MemberRole;
+}
 
 export default function ConsultingEmployees() {
-  const { company, isAdmin, changeMemberRole, changeMemberStatus } = useConsulting();
+  const { company, can, isTestMode, changeMemberRole, changeMemberStatus, removeMember, logActivity } = useConsulting();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const companyId = company?.id ?? "";
 
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<MemberRole | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "invited" | "suspended" | "removed">("all");
+
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [profile, setProfile] = useState<ConsultingMember | null>(null);
-  const [roleTarget, setRoleTarget] = useState<ConsultingMember | null>(null);
-  const [newRole, setNewRole] = useState<MemberRole>("consultant");
-  const [statusTarget, setStatusTarget] = useState<ConsultingMember | null>(null);
-  const [newStatus, setNewStatus] = useState<MemberStatus>("suspended");
-  const [revoking, setRevoking] = useState(false);
-  const [revokeTarget, setRevokeTarget] = useState<ConsultingInvitation | null>(null);
+  const [editing, setEditing] = useState<ConsultingMember | null>(null);
+  const [profileMember, setProfileMember] = useState<ConsultingMember | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<ConsultingMember | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<ConsultingMember | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
 
-  useSEO({ title: "Employees | OXEN Consulting", description: "Manage your team" });
+  useSEO({ title: "Employees | OXEN Consulting", description: "Manage your team and roles" });
 
-  const { data: members = [], isLoading } = useQuery({
+  // Members
+  const testMembers = useQuery({
+    queryKey: ["consulting-members-test", companyId],
+    queryFn: () => testFetchMembers(companyId),
+    enabled: !!companyId && isTestMode,
+    staleTime: 0,
+  });
+  const realMembers = useQuery({
     queryKey: ["consulting-members", companyId],
-    queryFn: () => fetchMembers(companyId),
-    enabled: !!companyId,
+    queryFn: () => apiFetchMembers(companyId),
+    enabled: !!companyId && !isTestMode,
   });
+  const members = (isTestMode ? (testMembers.data ?? []) : (realMembers.data ?? [])) as ConsultingMember[];
 
-  const { data: invitations = [] } = useQuery({
+  // Invitations
+  const testInvites = useQuery({
+    queryKey: ["consulting-invitations-test", companyId],
+    queryFn: () => testFetchInvitations(companyId),
+    enabled: !!companyId && isTestMode,
+    staleTime: 0,
+  });
+  const realInvites = useQuery({
     queryKey: ["consulting-invitations", companyId],
-    queryFn: () => fetchInvitations(companyId),
-    enabled: !!companyId && isAdmin,
+    queryFn: () => apiFetchInvitations(companyId),
+    enabled: !!companyId && !isTestMode,
   });
+  const invitations = isTestMode ? (testInvites.data ?? []) : (realInvites.data ?? []);
 
+  // Employee stats
+  const testStats = useQuery({
+    queryKey: ["consulting-employee-stats-test", companyId],
+    queryFn: () => testFetchEmployeeStats(companyId),
+    enabled: !!companyId && isTestMode,
+    staleTime: 0,
+  });
+  const realStats = useQuery({
+    queryKey: ["consulting-employee-stats", companyId],
+    queryFn: () => apiFetchEmployeeStats(companyId),
+    enabled: !!companyId && !isTestMode,
+  });
+  const stats = (isTestMode ? (testStats.data ?? []) : (realStats.data ?? [])) as EmployeeStats[];
+
+  const statsByUserId = useMemo(() => {
+    const map = new Map<string, EmployeeStats>();
+    for (const s of stats) map.set(s.user_id, s);
+    return map;
+  }, [stats]);
+
+  const canManage = can("employees:write") || can("members:write") || (can("clients:write") && isTestMode);
+
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["consulting-members"] });
+    queryClient.invalidateQueries({ queryKey: ["consulting-members-test"] });
+    queryClient.invalidateQueries({ queryKey: ["consulting-invitations"] });
+    queryClient.invalidateQueries({ queryKey: ["consulting-invitations-test"] });
+    queryClient.invalidateQueries({ queryKey: ["consulting-employee-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["consulting-employee-stats-test"] });
+  }, [queryClient]);
+
+  // ── Mutations ──────────────────────────────────────────
   const inviteMutation = useMutation({
-    mutationFn: ({ email, role }: { email: string; role: MemberRole }) =>
-      inviteMember(companyId, email, role, ""),
+    mutationFn: async (input: InviteInput) => {
+      if (isTestMode) {
+        const { member } = testCreateInvitation(companyId, input.email, input.role, user?.id ?? "", input.full_name);
+        testLogActivity(companyId, user?.id ?? null, "employee_invited", "member", member.id, {
+          email: input.email,
+          role: input.role,
+          name: input.full_name,
+        });
+        return member;
+      }
+      return apiInviteMember(companyId, input.email, input.role, user?.id ?? "");
+    },
     onSuccess: () => {
       toast({ title: "Invitation sent" });
       setInviteOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["consulting-invitations"] });
+      invalidate();
+      void logActivity("employee_invited", "member", null, null);
     },
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
   });
 
   const roleMutation = useMutation({
-    mutationFn: ({ memberId, role }: { memberId: string; role: MemberRole }) =>
-      changeMemberRole(memberId, role),
-    onSuccess: () => {
+    mutationFn: async ({ id, role }: { id: string; role: MemberRole }) => changeMemberRole(id, role),
+    onSuccess: (_ok, vars) => {
       toast({ title: "Role updated" });
-      setRoleTarget(null);
+      setEditing(null);
+      invalidate();
+      void logActivity("employee_role_changed", "member", vars.id, { new_role: vars.role });
     },
     onError: () => toast({ title: "Failed to update role", variant: "destructive" }),
   });
 
-  const statusMutation = useMutation({
-    mutationFn: ({ memberId, status }: { memberId: string; status: MemberStatus }) =>
-      changeMemberStatus(memberId, status),
-    onSuccess: () => {
-      toast({ title: "Status updated" });
-      setStatusTarget(null);
+  const suspendMutation = useMutation({
+    mutationFn: async ({ id, suspend }: { id: string; suspend: boolean }) =>
+      changeMemberStatus(id, suspend ? "suspended" : "active"),
+    onSuccess: (_ok, vars) => {
+      toast({ title: vars.suspend ? "Employee suspended" : "Employee activated" });
+      setSuspendTarget(null);
+      invalidate();
+      void logActivity(vars.suspend ? "employee_suspended" : "employee_activated", "member", vars.id);
     },
-    onError: () => toast({ title: "Failed to update status", variant: "destructive" }),
+    onError: () => toast({ title: "Failed", variant: "destructive" }),
   });
 
+  const removeMutation = useMutation({
+    mutationFn: async (id: string) => removeMember(id),
+    onSuccess: (_ok, id) => {
+      toast({ title: "Employee removed" });
+      setRemoveTarget(null);
+      invalidate();
+      void logActivity("employee_removed", "member", id);
+    },
+    onError: () => toast({ title: "Failed to remove", variant: "destructive" }),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: async ({ clientId, employeeId }: { clientId: string; employeeId: string | null }) => {
+      if (isTestMode) return testAssignClientToEmployee(companyId, clientId, employeeId);
+      const { assignClientToEmployee } = await import("@/lib/consulting");
+      return assignClientToEmployee(clientId, employeeId);
+    },
+    onSuccess: (_ok, vars) => {
+      toast({ title: "Client assigned" });
+      setAssignOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["consulting-clients"] });
+      queryClient.invalidateQueries({ queryKey: ["consulting-clients-test"] });
+      queryClient.invalidateQueries({ queryKey: ["consulting-employee-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["consulting-employee-stats-test"] });
+      void logActivity("client_assigned", "client", vars.clientId, { employee_id: vars.employeeId });
+    },
+    onError: () => toast({ title: "Failed to assign", variant: "destructive" }),
+  });
+
+  // ── Filtering ──────────────────────────────────────────
+  const filteredMembers = useMemo(() => {
+    let rows = members;
+    if (statusFilter !== "all") rows = rows.filter((m) => m.status === statusFilter);
+    if (roleFilter !== "all") rows = rows.filter((m) => m.role === roleFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      rows = rows.filter(
+        (m) =>
+          (m.profile?.name ?? "").toLowerCase().includes(q) ||
+          (m.profile?.email ?? "").toLowerCase().includes(q),
+      );
+    }
+    return rows;
+  }, [members, statusFilter, roleFilter, search]);
+
+  // ── Team-level summary stats ───────────────────────────
+  const teamSummary = useMemo(() => {
+    const active = members.filter((m) => m.status === "active").length;
+    const invited = members.filter((m) => m.status === "invited").length;
+    const suspended = members.filter((m) => m.status === "suspended").length;
+    const totalClients = stats.reduce((s, e) => s + e.total_clients, 0);
+    const totalRevenue = stats.reduce((s, e) => s + e.revenue_generated, 0);
+    const totalSuccess = stats.reduce((s, e) => s + e.successful_clients, 0);
+    return { active, invited, suspended, totalClients, totalRevenue, totalSuccess };
+  }, [members, stats]);
+
+  // ── Columns ────────────────────────────────────────────
   const columns: Column<ConsultingMember>[] = useMemo(
     () => [
       {
         key: "name",
-        header: "Employee",
+        header: "Full name",
         render: (m) => (
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/15">
@@ -135,9 +280,7 @@ export default function ConsultingEmployees() {
               )}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">
-                {m.profile?.name ?? "Unknown"}
-              </p>
+              <p className="truncate text-sm font-semibold text-foreground">{m.profile?.name ?? "Unknown"}</p>
               <p className="truncate text-[10px] text-muted-foreground">{m.profile?.email ?? "—"}</p>
             </div>
           </div>
@@ -146,18 +289,76 @@ export default function ConsultingEmployees() {
       {
         key: "role",
         header: "Role",
-        render: (m) => <span className="text-xs capitalize text-foreground">{m.role.replace(/_/g, " ")}</span>,
+        render: (m) => (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary capitalize whitespace-nowrap">
+            <ShieldCheck className="h-3 w-3" />
+            {roleLabel(m.role)}
+          </span>
+        ),
       },
       {
-        key: "phone",
-        header: "Phone",
+        key: "email",
+        header: "Email",
         hideOnMobile: true,
-        render: (m) => <span className="text-xs text-muted-foreground">{m.profile?.email ?? "—"}</span>,
+        render: (m) => <span className="text-xs text-foreground">{m.profile?.email ?? "—"}</span>,
       },
       {
-        key: "status",
-        header: "Status",
-        render: (m) => <StatusBadge status={m.status} />,
+        key: "active_clients",
+        header: "Active",
+        hideOnMobile: true,
+        render: (m) => {
+          const s = statsByUserId.get(m.user_id);
+          return <span className="text-xs font-semibold text-foreground">{s?.active_clients ?? 0}</span>;
+        },
+      },
+      {
+        key: "total_clients",
+        header: "Total",
+        hideOnMobile: true,
+        render: (m) => {
+          const s = statsByUserId.get(m.user_id);
+          return <span className="text-xs text-foreground">{s?.total_clients ?? 0}</span>;
+        },
+      },
+      {
+        key: "successful",
+        header: "Success",
+        hideOnMobile: true,
+        render: (m) => {
+          const s = statsByUserId.get(m.user_id);
+          return <span className="text-xs font-semibold text-emerald-400">{s?.successful_clients ?? 0}</span>;
+        },
+      },
+      {
+        key: "unsuccessful",
+        header: "Unsucc.",
+        hideOnMobile: true,
+        render: (m) => {
+          const s = statsByUserId.get(m.user_id);
+          return <span className="text-xs font-semibold text-destructive">{s?.unsuccessful_clients ?? 0}</span>;
+        },
+      },
+      {
+        key: "revenue",
+        header: "Revenue",
+        hideOnMobile: true,
+        render: (m) => {
+          const s = statsByUserId.get(m.user_id);
+          return (
+            <span className="text-xs font-semibold text-primary">
+              ${(s?.revenue_generated ?? 0).toLocaleString()}
+            </span>
+          );
+        },
+      },
+      {
+        key: "success_rate",
+        header: "Rate",
+        hideOnMobile: true,
+        render: (m) => {
+          const s = statsByUserId.get(m.user_id);
+          return <span className="text-xs text-foreground">{(s?.success_rate ?? 0).toFixed(1)}%</span>;
+        },
       },
       {
         key: "last_active",
@@ -170,40 +371,34 @@ export default function ConsultingEmployees() {
         ),
       },
       {
+        key: "status",
+        header: "Status",
+        render: (m) => <StatusBadge status={m.status} />,
+      },
+      {
         key: "actions",
         header: "Actions",
         render: (m) => (
           <div className="flex items-center gap-1">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setProfile(m);
-              }}
+              onClick={(e) => { e.stopPropagation(); setProfileMember(m); }}
               className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-muted-foreground transition hover:text-foreground"
               aria-label="View profile"
             >
-              <UserCog className="h-3.5 w-3.5" />
+              <Search className="h-3.5 w-3.5" />
             </button>
-            {isAdmin && m.role !== "owner" && (
+            {canManage && m.role !== "owner" && (
               <>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setRoleTarget(m);
-                    setNewRole(m.role);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); setEditing(m); }}
                   className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary transition hover:bg-primary/20"
                   aria-label="Change role"
                 >
-                  <Shield className="h-3.5 w-3.5" />
+                  <Edit3 className="h-3.5 w-3.5" />
                 </button>
                 {m.status === "active" ? (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setStatusTarget(m);
-                      setNewStatus("suspended");
-                    }}
+                    onClick={(e) => { e.stopPropagation(); setSuspendTarget(m); }}
                     className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 transition hover:bg-amber-500/20"
                     aria-label="Suspend"
                   >
@@ -211,32 +406,35 @@ export default function ConsultingEmployees() {
                   </button>
                 ) : (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setStatusTarget(m);
-                      setNewStatus("active");
-                    }}
+                    onClick={(e) => { e.stopPropagation(); setSuspendTarget(m); }}
                     className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 transition hover:bg-emerald-500/20"
                     aria-label="Activate"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                   </button>
                 )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setRemoveTarget(m); }}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-destructive/10 text-destructive transition hover:bg-destructive/20"
+                  aria-label="Remove"
+                >
+                  <UserMinus className="h-3.5 w-3.5" />
+                </button>
               </>
             )}
           </div>
         ),
       },
     ],
-    [isAdmin],
+    [canManage, statsByUserId],
   );
 
   return (
     <DashboardShell
       title="Employees"
-      subtitle="Your team members and their access levels"
+      subtitle="Invite your team, assign roles, and track performance"
       actions={
-        isAdmin && (
+        canManage && (
           <button
             onClick={() => setInviteOpen(true)}
             className="gold-gradient flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-primary-foreground transition active:scale-95"
@@ -247,208 +445,190 @@ export default function ConsultingEmployees() {
         )
       }
     >
+      {/* Team summary stats */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <StatCard label="Active" value={teamSummary.active} icon={CheckCircle2} accent="green" delay={0} />
+        <StatCard label="Invited" value={teamSummary.invited} icon={UserPlus} accent="blue" delay={0.05} />
+        <StatCard label="Suspended" value={teamSummary.suspended} icon={Ban} accent="red" delay={0.1} />
+        <StatCard label="Total Clients" value={teamSummary.totalClients} icon={Users} accent="gold" delay={0.15} />
+        <StatCard label="Successful" value={teamSummary.totalSuccess} icon={CheckCircle2} accent="green" delay={0.2} />
+        <StatCard label="Revenue" value={`$${teamSummary.totalRevenue.toLocaleString()}`} icon={DollarSign} accent="gold" delay={0.25} />
+      </div>
+
+      {/* Filters */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-4 flex flex-wrap items-center gap-2"
+      >
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name or email…"
+            className="w-full rounded-xl border border-input bg-background/50 py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none"
+          />
+        </div>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as MemberRole | "all")}
+          className="rounded-xl border border-input bg-background/50 px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
+        >
+          <option value="all">All roles</option>
+          {ROLES.map((r) => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+          className="rounded-xl border border-input bg-background/50 px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
+        >
+          <option value="all">All statuses</option>
+          <option value="active">Active</option>
+          <option value="invited">Invited</option>
+          <option value="suspended">Suspended</option>
+          <option value="removed">Removed</option>
+        </select>
+        {canManage && (
+          <button
+            onClick={() => setAssignOpen(true)}
+            className="glass flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-foreground transition hover:border-primary/30"
+          >
+            <Users className="h-3.5 w-3.5" />
+            Assign client
+          </button>
+        )}
+      </motion.div>
+
       {/* Pending invitations */}
-      {isAdmin && invitations.length > 0 && (
+      {invitations.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 glass rounded-2xl p-4"
+          className="glass mb-4 rounded-2xl p-4"
         >
-          <h3 className="mb-3 font-display text-sm font-bold">Pending Invitations</h3>
+          <h3 className="mb-3 font-display text-sm font-bold text-foreground">Pending invitations</h3>
           <div className="space-y-2">
             {invitations.map((inv) => (
-              <div
-                key={inv.id}
-                className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.02] px-3 py-2.5"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-foreground">{inv.email}</p>
-                  <p className="text-[10px] text-muted-foreground capitalize">
-                    {inv.role.replace(/_/g, " ")} · invited {new Date(inv.created_at).toLocaleDateString()}
-                  </p>
+              <div key={inv.id} className="flex items-center justify-between rounded-xl bg-white/[0.02] px-3 py-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-foreground">{inv.email}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">Role: {roleLabel(inv.role)}</p>
+                  </div>
                 </div>
-                <button
-                  onClick={() => setRevokeTarget(inv)}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive transition hover:bg-destructive/20"
-                  aria-label="Revoke"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={inv.status} />
+                </div>
               </div>
             ))}
           </div>
         </motion.div>
       )}
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      ) : members.length === 0 ? (
-        <EmptyState
-          icon={UserCog}
-          title="No employees yet"
-          description="Invite team members to help manage clients, applications, and packages. Each role has specific permissions."
-          action={isAdmin ? { label: "Invite your first employee", onClick: () => setInviteOpen(true) } : undefined}
-        />
-      ) : (
-        <DataTable
-          columns={columns}
-          rows={members}
-          rowKey={(m) => m.id}
-          onRowClick={(m) => setProfile(m)}
-        />
-      )}
+      <DataTable
+        columns={columns}
+        rows={filteredMembers}
+        rowKey={(m) => m.id}
+        onRowClick={(m) => setProfileMember(m)}
+        loading={isTestMode ? testMembers.isLoading : realMembers.isLoading}
+        empty={
+          <EmptyState
+            icon={UserCog}
+            title="No employees yet"
+            description="Invite consultants and managers to help handle client applications. Each role has specific permissions."
+            action={canManage ? { label: "Invite your first employee", onClick: () => setInviteOpen(true) } : undefined}
+          />
+        }
+      />
 
       {/* Invite modal */}
       {inviteOpen && (
         <InviteModal
           onClose={() => setInviteOpen(false)}
-          onSubmit={(email, role) => inviteMutation.mutate({ email, role })}
+          onSubmit={(input) => inviteMutation.mutate(input)}
           loading={inviteMutation.isPending}
         />
       )}
 
-      {/* Profile slide-over */}
+      {/* Change role modal */}
+      {editing && (
+        <RoleModal
+          member={editing}
+          onClose={() => setEditing(null)}
+          onSubmit={(role) => roleMutation.mutate({ id: editing.id, role })}
+          loading={roleMutation.isPending}
+        />
+      )}
+
+      {/* Employee profile slide-over */}
       <SlideOver
-        open={!!profile}
-        onClose={() => setProfile(null)}
-        title={profile?.profile?.name ?? "Employee"}
-        subtitle={profile?.profile?.email ?? undefined}
+        open={!!profileMember}
+        onClose={() => setProfileMember(null)}
+        title={profileMember?.profile?.name ?? "Employee"}
+        subtitle={profileMember ? roleLabel(profileMember.role) : ""}
+        width="max-w-lg"
       >
-        {profile && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-primary/15">
-                {profile.profile?.avatar_url ? (
-                  <img src={profile.profile.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="font-display text-xl font-bold text-primary">
-                    {(profile.profile?.name ?? "?").charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate font-display text-base font-bold">{profile.profile?.name}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <StatusBadge status={profile.role} label={profile.role.replace(/_/g, " ")} />
-                  <StatusBadge status={profile.status} />
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl bg-primary/[0.06] p-3 text-xs text-foreground/90">
-              <Shield className="mr-1.5 inline h-3.5 w-3.5 text-primary" />
-              {ROLE_DESCRIPTIONS[profile.role]}
-            </div>
-
-            <div className="space-y-2">
-              <Row icon={Mail} label="Email" value={profile.profile?.email ?? "—"} />
-              <Row icon={Phone} label="Joined" value={new Date(profile.created_at).toLocaleDateString()} />
-              <Row
-                icon={CheckCircle2}
-                label="Last active"
-                value={profile.last_active_at ? new Date(profile.last_active_at).toLocaleString() : "—"}
-              />
-            </div>
-
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-              <h4 className="mb-2 font-display text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Performance
-              </h4>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <Stat label="Active clients" value="0" />
-                <Stat label="Total clients" value="0" />
-                <Stat label="Successful" value="0" />
-                <Stat label="Revenue" value="$0" />
-              </div>
-              <p className="mt-2 text-[10px] text-muted-foreground">
-                Per-employee client counts — populated as clients are assigned. Activity history & tasks: Phase 2.
-              </p>
-            </div>
-          </div>
+        {profileMember && (
+          <EmployeeProfileBody
+            member={profileMember}
+            stats={statsByUserId.get(profileMember.user_id) ?? null}
+            isTestMode={isTestMode}
+            companyId={companyId}
+            onAssign={() => setAssignOpen(true)}
+          />
         )}
       </SlideOver>
 
-      {/* Change role dialog */}
-      <ConfirmDialog
-        open={!!roleTarget}
-        title="Change role"
-        message={
-          roleTarget
-            ? `Change ${roleTarget.profile?.name ?? "this employee"}'s role. New permissions apply immediately.`
-            : ""
-        }
-        confirmLabel="Update Role"
-        onConfirm={() => roleTarget && roleMutation.mutate({ memberId: roleTarget.id, role: newRole })}
-        onCancel={() => setRoleTarget(null)}
-        loading={roleMutation.isPending}
-      />
-      {roleTarget && (
-        <div className="fixed inset-0 z-[89] flex items-center justify-center" style={{ pointerEvents: "none" }}>
-          <div className="glass-strong w-[calc(100%-2.5rem)] max-w-xs rounded-2xl p-4" style={{ pointerEvents: "auto" }}>
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">Select new role</p>
-            <select
-              value={newRole}
-              onChange={(e) => setNewRole(e.target.value as MemberRole)}
-              className="w-full rounded-xl border border-input bg-background/50 px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
-            >
-              {ROLES.filter((r) => r.value !== "owner").map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
-            <p className="mt-2 text-[11px] text-muted-foreground">{ROLE_DESCRIPTIONS[newRole]}</p>
-          </div>
-        </div>
+      {/* Assign client modal */}
+      {assignOpen && (
+        <AssignClientModal
+          isTestMode={isTestMode}
+          companyId={companyId}
+          members={members.filter((m) => m.status === "active")}
+          onClose={() => setAssignOpen(false)}
+          onSubmit={(clientId, employeeId) => assignMutation.mutate({ clientId, employeeId })}
+          loading={assignMutation.isPending}
+        />
       )}
 
-      {/* Status change dialog */}
       <ConfirmDialog
-        open={!!statusTarget}
-        title={newStatus === "suspended" ? "Suspend employee" : "Activate employee"}
+        open={!!suspendTarget}
+        title={suspendTarget?.status === "active" ? "Suspend employee" : "Activate employee"}
         message={
-          statusTarget
-            ? newStatus === "suspended"
-              ? `Suspend ${statusTarget.profile?.name ?? "this employee"}? They'll lose access immediately.`
-              : `Restore access for ${statusTarget.profile?.name ?? "this employee"}?`
-            : ""
+          suspendTarget?.status === "active"
+            ? `Suspend ${suspendTarget?.profile?.name ?? "this employee"}? They will lose dashboard access until reactivated.`
+            : `Reactivate ${suspendTarget?.profile?.name ?? "this employee"}? They will regain dashboard access.`
         }
-        confirmLabel={newStatus === "suspended" ? "Suspend" : "Activate"}
-        destructive={newStatus === "suspended"}
-        onConfirm={() => statusTarget && statusMutation.mutate({ memberId: statusTarget.id, status: newStatus })}
-        onCancel={() => setStatusTarget(null)}
-        loading={statusMutation.isPending}
+        confirmLabel={suspendTarget?.status === "active" ? "Suspend" : "Activate"}
+        destructive={suspendTarget?.status === "active"}
+        loading={suspendMutation.isPending}
+        onConfirm={() => {
+          if (suspendTarget) suspendMutation.mutate({ id: suspendTarget.id, suspend: suspendTarget.status === "active" });
+        }}
+        onCancel={() => setSuspendTarget(null)}
       />
 
-      {/* Revoke invitation */}
       <ConfirmDialog
-        open={!!revokeTarget}
-        title="Revoke invitation"
-        message={`Revoke the invitation sent to ${revokeTarget?.email}? They won't be able to join.`}
-        confirmLabel="Revoke"
+        open={!!removeTarget}
+        title="Remove employee"
+        message={`Remove ${removeTarget?.profile?.name ?? "this employee"}? They will lose all access. This can be undone by re-inviting them.`}
+        confirmLabel="Remove"
         destructive
-        loading={revoking}
-        onConfirm={async () => {
-          if (!revokeTarget) return;
-          setRevoking(true);
-          try {
-            await revokeInvitation(revokeTarget.id);
-            toast({ title: "Invitation revoked" });
-            setRevokeTarget(null);
-            queryClient.invalidateQueries({ queryKey: ["consulting-invitations"] });
-          } catch {
-            toast({ title: "Failed", variant: "destructive" });
-          } finally {
-            setRevoking(false);
-          }
+        loading={removeMutation.isPending}
+        onConfirm={() => {
+          if (removeTarget) removeMutation.mutate(removeTarget.id);
         }}
-        onCancel={() => setRevokeTarget(null)}
+        onCancel={() => setRemoveTarget(null)}
       />
     </DashboardShell>
   );
 }
 
-/* ── Invite modal ────────────────────────────────────────── */
+/* ── Invite modal ──────────────────────────────────────── */
 
 function InviteModal({
   onClose,
@@ -456,11 +636,103 @@ function InviteModal({
   loading,
 }: {
   onClose: () => void;
-  onSubmit: (email: string, role: MemberRole) => void;
+  onSubmit: (input: InviteInput) => void;
   loading: boolean;
 }) {
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<MemberRole>("consultant");
+  const [form, setForm] = useState<InviteInput>({
+    email: "",
+    full_name: "",
+    role: "consultant",
+  });
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={onClose}
+        className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 26 }}
+        className="fixed left-1/2 top-1/2 z-[81] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2"
+      >
+        <div className="glass-strong rounded-3xl p-6 shadow-2xl">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-display text-lg font-bold">Invite Employee</h3>
+            <button
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04] text-muted-foreground transition hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            <Field
+              label="Full name"
+              value={form.full_name}
+              onChange={(v) => setForm((f) => ({ ...f, full_name: v }))}
+              placeholder="Sarah Johnson"
+              required
+            />
+            <Field
+              label="Email"
+              value={form.email}
+              onChange={(v) => setForm((f) => ({ ...f, email: v }))}
+              type="email"
+              placeholder="sarah@yourcompany.com"
+              required
+            />
+            <SelectField<MemberRole>
+              label="Role"
+              value={form.role}
+              onChange={(v) => setForm((f) => ({ ...f, role: v }))}
+              options={ROLES.map((r) => ({ value: r.value, label: `${r.label} — ${r.description}` }))}
+              required
+            />
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[11px] text-amber-300/90">
+              <Mail className="mr-1 inline h-3 w-3" />
+              In test mode, the employee is added immediately. In production, they'll receive an email invitation.
+            </div>
+          </div>
+          <div className="mt-5 flex gap-3">
+            <button
+              onClick={onClose}
+              className="glass flex-1 rounded-2xl py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => form.email.trim() && form.full_name.trim() && onSubmit(form)}
+              disabled={loading || !form.email.trim() || !form.full_name.trim()}
+              className="gold-gradient flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-primary-foreground transition active:scale-95 disabled:opacity-50"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Send Invite
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+/* ── Role change modal ─────────────────────────────────── */
+
+function RoleModal({
+  member,
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  member: ConsultingMember;
+  onClose: () => void;
+  onSubmit: (role: MemberRole) => void;
+  loading: boolean;
+}) {
+  const [role, setRole] = useState<MemberRole>(member.role);
 
   return (
     <>
@@ -478,7 +750,10 @@ function InviteModal({
       >
         <div className="glass-strong rounded-3xl p-6 shadow-2xl">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-display text-lg font-bold">Invite Employee</h3>
+            <div>
+              <h3 className="font-display text-lg font-bold">Change Role</h3>
+              <p className="text-xs text-muted-foreground">{member.profile?.name}</p>
+            </div>
             <button
               onClick={onClose}
               className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04] text-muted-foreground transition hover:text-foreground"
@@ -486,24 +761,32 @@ function InviteModal({
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="space-y-3">
-            <Field
-              label="Email address"
-              value={email}
-              onChange={setEmail}
-              type="email"
-              placeholder="colleague@example.com"
-              required
-            />
-            <SelectField<MemberRole>
-              label="Role"
-              value={role}
-              onChange={setRole}
-              options={ROLES.filter((r) => r.value !== "owner")}
-            />
-            <div className="rounded-xl bg-primary/[0.06] p-3 text-[11px] text-foreground/90">
-              {ROLE_DESCRIPTIONS[role]}
-            </div>
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+            {ROLES.map((r) => (
+              <button
+                key={r.value}
+                onClick={() => setRole(r.value)}
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition",
+                  role === r.value
+                    ? "border-primary/40 bg-primary/10"
+                    : "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]",
+                )}
+              >
+                <span
+                  className={cn(
+                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                    role === r.value ? "border-primary bg-primary text-primary-foreground" : "border-white/20",
+                  )}
+                >
+                  {role === r.value && <CheckCircle2 className="h-3 w-3" />}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{r.label}</p>
+                  <p className="text-[11px] text-muted-foreground">{r.description}</p>
+                </div>
+              </button>
+            ))}
           </div>
           <div className="mt-5 flex gap-3">
             <button
@@ -513,18 +796,12 @@ function InviteModal({
               Cancel
             </button>
             <button
-              onClick={() => {
-                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                  toast({ title: "Enter a valid email", variant: "destructive" });
-                  return;
-                }
-                onSubmit(email, role);
-              }}
-              disabled={loading || !email.trim()}
+              onClick={() => role !== member.role && onSubmit(role)}
+              disabled={loading || role === member.role}
               className="gold-gradient flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-primary-foreground transition active:scale-95 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Send Invite
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save Role
             </button>
           </div>
         </div>
@@ -533,7 +810,218 @@ function InviteModal({
   );
 }
 
-function Row({
+/* ── Assign client modal ───────────────────────────────── */
+
+function AssignClientModal({
+  isTestMode,
+  companyId,
+  members,
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  isTestMode: boolean;
+  companyId: string;
+  members: ConsultingMember[];
+  onClose: () => void;
+  onSubmit: (clientId: string, employeeId: string | null) => void;
+  loading: boolean;
+}) {
+  const [clientId, setClientId] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
+
+  const testClients = useQuery({
+    queryKey: ["consulting-clients-test-assign", companyId],
+    queryFn: () => testFetchClients(companyId, {}),
+    enabled: isTestMode && !!companyId,
+    staleTime: 0,
+  });
+  const realClientsQuery = useQuery({
+    queryKey: ["consulting-clients-assign", companyId],
+    queryFn: async () => {
+      const { fetchClients } = await import("@/lib/consulting");
+      return fetchClients(companyId, { pageSize: 200 });
+    },
+    enabled: !isTestMode && !!companyId,
+  });
+  const clients = isTestMode ? (testClients.data ?? []) : (realClientsQuery.data?.clients ?? []);
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={onClose}
+        className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 26 }}
+        className="fixed left-1/2 top-1/2 z-[81] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2"
+      >
+        <div className="glass-strong rounded-3xl p-6 shadow-2xl">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-display text-lg font-bold">Assign Client</h3>
+            <button
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04] text-muted-foreground transition hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="space-y-3">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">Client</span>
+              <select
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                className="w-full rounded-xl border border-input bg-background/50 px-3.5 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
+              >
+                <option value="">Select a client…</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>{c.full_name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">Assign to</span>
+              <select
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                className="w-full rounded-xl border border-input bg-background/50 px-3.5 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
+              >
+                <option value="">Unassigned</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.user_id}>
+                    {m.profile?.name ?? "Member"} ({roleLabel(m.role)})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="mt-5 flex gap-3">
+            <button
+              onClick={onClose}
+              className="glass flex-1 rounded-2xl py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => clientId && onSubmit(clientId, employeeId || null)}
+              disabled={loading || !clientId}
+              className="gold-gradient flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-primary-foreground transition active:scale-95 disabled:opacity-50"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Assign
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+/* ── Employee profile slide-over body ──────────────────── */
+
+function EmployeeProfileBody({
+  member,
+  stats,
+  isTestMode,
+  companyId,
+  onAssign,
+}: {
+  member: ConsultingMember;
+  stats: EmployeeStats | null;
+  isTestMode: boolean;
+  companyId: string;
+  onAssign: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-primary/15">
+          {member.profile?.avatar_url ? (
+            <img src={member.profile.avatar_url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-lg font-bold text-primary">
+              {(member.profile?.name ?? "?").charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-display text-base font-bold text-foreground">
+            {member.profile?.name ?? "Unknown"}
+          </p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold capitalize text-primary">
+              <ShieldCheck className="h-3 w-3" />
+              {roleLabel(member.role)}
+            </span>
+            <StatusBadge status={member.status} />
+          </div>
+        </div>
+      </div>
+
+      {/* Contact info */}
+      <div className="space-y-2">
+        <InfoRow icon={Mail} label="Email" value={member.profile?.email ?? "—"} />
+        <InfoRow icon={Calendar} label="Joined" value={new Date(member.created_at).toLocaleDateString()} />
+        <InfoRow
+          icon={Activity}
+          label="Last active"
+          value={member.last_active_at ? new Date(member.last_active_at).toLocaleDateString() : "—"}
+        />
+      </div>
+
+      {/* Role description */}
+      <div className="glass rounded-xl p-4">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Role</p>
+        <p className="mt-1 font-display text-sm font-bold text-foreground">{roleLabel(member.role)}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{roleDescription(member.role)}</p>
+      </div>
+
+      {/* Performance stats */}
+      <div>
+        <p className="mb-2 font-display text-sm font-bold text-foreground">Performance</p>
+        <div className="grid grid-cols-2 gap-2">
+          <StatTile label="Active clients" value={stats?.active_clients ?? 0} icon={Users} />
+          <StatTile label="Total clients" value={stats?.total_clients ?? 0} icon={Users} />
+          <StatTile label="Successful" value={stats?.successful_clients ?? 0} icon={CheckCircle2} accent="green" />
+          <StatTile label="Unsuccessful" value={stats?.unsuccessful_clients ?? 0} icon={ShieldOff} accent="red" />
+          <StatTile
+            label="Revenue"
+            value={`$${(stats?.revenue_generated ?? 0).toLocaleString()}`}
+            icon={DollarSign}
+            accent="gold"
+          />
+          <StatTile
+            label="Success rate"
+            value={`${(stats?.success_rate ?? 0).toFixed(1)}%`}
+            icon={Activity}
+            accent="blue"
+          />
+        </div>
+      </div>
+
+      {/* Assign client CTA */}
+      <button
+        onClick={onAssign}
+        className="gold-gradient flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold text-primary-foreground transition active:scale-95"
+      >
+        <UserPlus className="h-3.5 w-3.5" />
+        Assign a client
+      </button>
+
+      <p className="border-t border-white/[0.06] pt-2 text-center text-[10px] text-muted-foreground">
+        Member ID: {member.id.slice(0, 8)} · {isTestMode ? "Test Mode" : "Live"}
+      </p>
+    </div>
+  );
+}
+
+function InfoRow({
   icon: Icon,
   label,
   value,
@@ -553,11 +1041,31 @@ function Row({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function StatTile({
+  label,
+  value,
+  icon: Icon,
+  accent = "default",
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ComponentType<{ className?: string }>;
+  accent?: "green" | "red" | "gold" | "blue" | "default";
+}) {
+  const accentMap: Record<string, string> = {
+    green: "text-emerald-400",
+    red: "text-destructive",
+    gold: "text-primary",
+    blue: "text-sky-400",
+    default: "text-foreground",
+  };
   return (
-    <div className="rounded-lg bg-white/[0.02] p-2">
-      <p className="text-[10px] text-muted-foreground">{label}</p>
-      <p className="mt-0.5 font-display text-sm font-bold">{value}</p>
+    <div className="glass rounded-xl p-3">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <Icon className="h-3 w-3" />
+        {label}
+      </div>
+      <p className={cn("mt-1 font-display text-lg font-bold", accentMap[accent])}>{value}</p>
     </div>
   );
 }

@@ -1278,6 +1278,463 @@ export async function fetchApplicationStatusDistribution(
   return Array.from(buckets.entries()).map(([status, count]) => ({ status, count }));
 }
 
+/* ============================================================
+   Phase 5 — Employees, Activity Logs, Analytics
+   ============================================================ */
+
+// ── Activity log ─────────────────────────────────────────────
+
+export interface ConsultingActivityLog {
+  id: string;
+  consulting_company_id: string;
+  actor_id: string | null;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  metadata: Json;
+  created_at: string;
+  actor?: { name: string | null; avatar_url: string | null } | null;
+}
+
+/** Append an activity log row. RLS: members only. */
+export async function logActivity(
+  companyId: string,
+  actorId: string | null,
+  action: string,
+  entityType?: string | null,
+  entityId?: string | null,
+  metadata?: Record<string, unknown> | null,
+): Promise<boolean> {
+  const { error } = await supabase.from("consulting_activity_logs").insert({
+    consulting_company_id: companyId,
+    actor_id: actorId,
+    action,
+    entity_type: entityType ?? null,
+    entity_id: entityId ?? null,
+    metadata: (metadata ?? {}) as unknown as Json,
+  });
+  if (error) {
+    console.error("logActivity error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function fetchActivityLogs(
+  companyId: string,
+  opts: { action?: string; actorId?: string; startDate?: string; endDate?: string; limit?: number } = {},
+): Promise<ConsultingActivityLog[]> {
+  let query = supabase
+    .from("consulting_activity_logs")
+    .select("*, actor:profiles!consulting_activity_logs_actor_id_fkey(name,avatar_url)")
+    .eq("consulting_company_id", companyId)
+    .order("created_at", { ascending: false });
+  if (opts.action) query = query.eq("action", opts.action);
+  if (opts.actorId) query = query.eq("actor_id", opts.actorId);
+  if (opts.startDate) query = query.gte("created_at", opts.startDate);
+  if (opts.endDate) query = query.lt("created_at", opts.endDate);
+  if (opts.limit) query = query.limit(opts.limit);
+  const { data, error } = await query;
+  if (error) {
+    console.error("fetchActivityLogs error:", error);
+    return [];
+  }
+  return (data ?? []) as unknown as ConsultingActivityLog[];
+}
+
+// ── Employee stats (per-employee performance aggregations) ──────
+
+export interface EmployeeStats {
+  member_id: string;
+  consulting_company_id: string;
+  user_id: string;
+  role: MemberRole;
+  status: MemberStatus;
+  active_clients: number;
+  total_clients: number;
+  successful_clients: number;
+  unsuccessful_clients: number;
+  revenue_generated: number;
+  success_rate: number;
+  last_active_at: string | null;
+  created_at: string;
+  /** Joined from profiles */
+  profile?: { name: string | null; email: string | null; avatar_url: string | null } | null;
+}
+
+/** Compute employee stats by aggregating clients + payments in JS. */
+export async function fetchEmployeeStats(companyId: string): Promise<EmployeeStats[]> {
+  const { data: members, error: mErr } = await supabase
+    .from("consulting_members")
+    .select("*, profile:profiles!consulting_members_user_id_fkey(name,email,avatar_url)")
+    .eq("consulting_company_id", companyId)
+    .order("created_at", { ascending: true });
+  if (mErr) {
+    console.error("fetchEmployeeStats members error:", mErr);
+    return [];
+  }
+
+  const { data: clients, error: cErr } = await supabase
+    .from("consulting_clients")
+    .select("id, assigned_employee_id, final_result, is_archived")
+    .eq("consulting_company_id", companyId);
+  if (cErr) console.error("fetchEmployeeStats clients error:", cErr);
+
+  const { data: payments, error: pErr } = await supabase
+    .from("consulting_payments")
+    .select("client_id, gross_amount, status")
+    .eq("consulting_company_id", companyId)
+    .eq("status", "paid");
+  if (pErr) console.error("fetchEmployeeStats payments error:", pErr);
+
+  const clientList = (clients ?? []) as unknown as {
+    id: string;
+    assigned_employee_id: string | null;
+    final_result: FinalResult | null;
+    is_archived: boolean;
+  }[];
+  const paymentList = (payments ?? []) as unknown as {
+    client_id: string | null;
+    gross_amount: number;
+  }[];
+
+  // Map client_id -> revenue
+  const revenueByClient = new Map<string, number>();
+  for (const p of paymentList) {
+    if (!p.client_id) continue;
+    revenueByClient.set(p.client_id, (revenueByClient.get(p.client_id) ?? 0) + Number(p.gross_amount));
+  }
+
+  return ((members ?? []) as unknown as ConsultingMember[]).map((m) => {
+    const myClients = clientList.filter((c) => c.assigned_employee_id === m.user_id);
+    const totalClients = myClients.length;
+    const activeClients = myClients.filter((c) => !c.is_archived).length;
+    const successful = myClients.filter((c) => c.final_result === "success").length;
+    const unsuccessful = myClients.filter((c) => c.final_result === "unsuccessful").length;
+    const decided = successful + unsuccessful;
+    const revenue = myClients.reduce((sum, c) => sum + (revenueByClient.get(c.id) ?? 0), 0);
+    const successRate = decided === 0 ? 0 : Math.round((successful / decided) * 1000) / 10;
+    return {
+      member_id: m.id,
+      consulting_company_id: m.consulting_company_id,
+      user_id: m.user_id,
+      role: m.role,
+      status: m.status,
+      active_clients: activeClients,
+      total_clients: totalClients,
+      successful_clients: successful,
+      unsuccessful_clients: unsuccessful,
+      revenue_generated: revenue,
+      success_rate: successRate,
+      last_active_at: m.last_active_at,
+      created_at: m.created_at,
+      profile: (m as ConsultingMember & { profile?: { name: string | null; email: string | null; avatar_url: string | null } | null }).profile ?? null,
+    };
+  });
+}
+
+// ── Remove employee (sets status to 'removed') ────────────────────
+
+export async function removeMember(memberId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("consulting_members")
+    .update({ status: "removed", updated_at: new Date().toISOString() })
+    .eq("id", memberId);
+  if (error) {
+    console.error("removeMember error:", error);
+    return false;
+  }
+  return true;
+}
+
+// ── Assign a client to an employee (or unassign with null) ─────────
+
+export async function assignClientToEmployee(
+  clientId: string,
+  employeeId: string | null,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("consulting_clients")
+    .update({
+      assigned_employee_id: employeeId,
+      last_activity_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", clientId);
+  if (error) {
+    console.error("assignClientToEmployee error:", error);
+    return false;
+  }
+  return true;
+}
+
+// ── Date-range analytics ───────────────────────────────────────────
+
+export type DateRangePreset =
+  | "today"
+  | "week"
+  | "month"
+  | "3months"
+  | "year"
+  | "custom";
+
+export interface DateRange {
+  start: string; // ISO
+  end: string;   // ISO
+  preset: DateRangePreset;
+}
+
+export function resolveDateRange(
+  preset: DateRangePreset,
+  customStart?: string,
+  customEnd?: string,
+): DateRange {
+  const now = new Date();
+  const end = new Date(now);
+  let start = new Date(now);
+  switch (preset) {
+    case "today":
+      start.setHours(0, 0, 0, 0);
+      break;
+    case "week":
+      start.setDate(now.getDate() - now.getDay());
+      start.setHours(0, 0, 0, 0);
+      break;
+    case "month":
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case "3months":
+      start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      break;
+    case "year":
+      start = new Date(now.getFullYear(), 0, 1);
+      break;
+    case "custom":
+      if (customStart) start = new Date(customStart);
+      if (customEnd) end.setTime(new Date(customEnd).getTime());
+      break;
+  }
+  return { start: start.toISOString(), end: end.toISOString(), preset };
+}
+
+export interface AnalyticsStats {
+  totalClients: number;
+  newClientsPeriod: number;
+  activeApplications: number;
+  successfulClients: number;
+  unsuccessfulClients: number;
+  pendingClients: number;
+  monthlyRevenue: number;
+  annualRevenue: number;
+  totalRevenue: number;
+  successRate: number;
+}
+
+/** Fetch analytics stats, optionally constrained to a date range. */
+export async function fetchAnalyticsStats(
+  companyId: string,
+  range?: DateRange,
+): Promise<AnalyticsStats> {
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const startOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString();
+
+  const { count: totalClients } = await supabase
+    .from("consulting_clients")
+    .select("*", { count: "exact", head: true })
+    .eq("consulting_company_id", companyId)
+    .eq("is_archived", false);
+
+  let newClientsPeriod = 0;
+  if (range) {
+    const { count } = await supabase
+      .from("consulting_clients")
+      .select("*", { count: "exact", head: true })
+      .eq("consulting_company_id", companyId)
+      .eq("is_archived", false)
+      .gte("created_at", range.start)
+      .lt("created_at", range.end);
+    newClientsPeriod = count ?? 0;
+  }
+
+  const { count: activeApplications } = await supabase
+    .from("consulting_applications")
+    .select("*", { count: "exact", head: true })
+    .eq("consulting_company_id", companyId)
+    .in("status", ["new", "documents", "processing", "submitted"]);
+
+  const { count: successfulClients } = await supabase
+    .from("consulting_clients")
+    .select("*", { count: "exact", head: true })
+    .eq("consulting_company_id", companyId)
+    .eq("final_result", "success");
+
+  const { count: unsuccessfulClients } = await supabase
+    .from("consulting_clients")
+    .select("*", { count: "exact", head: true })
+    .eq("consulting_company_id", companyId)
+    .eq("final_result", "unsuccessful");
+
+  const { count: pendingClients } = await supabase
+    .from("consulting_clients")
+    .select("*", { count: "exact", head: true })
+    .eq("consulting_company_id", companyId)
+    .eq("final_result", "pending");
+
+  const { data: paid } = await supabase
+    .from("consulting_payments")
+    .select("gross_amount,paid_at")
+    .eq("consulting_company_id", companyId)
+    .eq("status", "paid");
+  const paidList = (paid ?? []) as unknown as { gross_amount: number; paid_at: string | null }[];
+  const totalRevenue = paidList.reduce((s, p) => s + Number(p.gross_amount), 0);
+  const monthlyRevenue = paidList
+    .filter((p) => p.paid_at && new Date(p.paid_at) >= new Date(startOfMonth))
+    .reduce((s, p) => s + Number(p.gross_amount), 0);
+  const annualRevenue = paidList
+    .filter((p) => p.paid_at && new Date(p.paid_at) >= new Date(startOfYear))
+    .reduce((s, p) => s + Number(p.gross_amount), 0);
+
+  const decided = (successfulClients ?? 0) + (unsuccessfulClients ?? 0);
+  const successRate = decided === 0 ? 0 : Math.round(((successfulClients ?? 0) / decided) * 1000) / 10;
+
+  return {
+    totalClients: totalClients ?? 0,
+    newClientsPeriod,
+    activeApplications: activeApplications ?? 0,
+    successfulClients: successfulClients ?? 0,
+    unsuccessfulClients: unsuccessfulClients ?? 0,
+    pendingClients: pendingClients ?? 0,
+    monthlyRevenue,
+    annualRevenue,
+    totalRevenue,
+    successRate,
+  };
+}
+
+/** Monthly series (clients + revenue) optionally bounded by a range. */
+export async function fetchAnalyticsMonthlySeries(
+  companyId: string,
+  months = 6,
+): Promise<{ label: string; clients: number; revenue: number; success: number; unsuccessful: number }[]> {
+  const out: { label: string; clients: number; revenue: number; success: number; unsuccessful: number }[] = [];
+  const now = new Date();
+  for (let i = months - 1; i >= 0; i--) {
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    const label = start.toLocaleDateString("en-US", { month: "short" });
+
+    const { count: clients } = await supabase
+      .from("consulting_clients")
+      .select("*", { count: "exact", head: true })
+      .eq("consulting_company_id", companyId)
+      .gte("created_at", start.toISOString())
+      .lt("created_at", end.toISOString());
+
+    const { count: success } = await supabase
+      .from("consulting_clients")
+      .select("*", { count: "exact", head: true })
+      .eq("consulting_company_id", companyId)
+      .eq("final_result", "success")
+      .gte("created_at", start.toISOString())
+      .lt("created_at", end.toISOString());
+
+    const { count: unsuccessful } = await supabase
+      .from("consulting_clients")
+      .select("*", { count: "exact", head: true })
+      .eq("consulting_company_id", companyId)
+      .eq("final_result", "unsuccessful")
+      .gte("created_at", start.toISOString())
+      .lt("created_at", end.toISOString());
+
+    const { data: pays } = await supabase
+      .from("consulting_payments")
+      .select("gross_amount")
+      .eq("consulting_company_id", companyId)
+      .eq("status", "paid")
+      .gte("paid_at", start.toISOString())
+      .lt("paid_at", end.toISOString());
+    const revenue = ((pays ?? []) as unknown as { gross_amount: number }[]).reduce(
+      (s, p) => s + Number(p.gross_amount),
+      0,
+    );
+
+    out.push({
+      label,
+      clients: clients ?? 0,
+      revenue,
+      success: success ?? 0,
+      unsuccessful: unsuccessful ?? 0,
+    });
+  }
+  return out;
+}
+
+/** Final result distribution (success vs unsuccessful vs pending). */
+export async function fetchFinalResultDistribution(
+  companyId: string,
+): Promise<{ label: string; count: number; color: string }[]> {
+  const { count: success } = await supabase
+    .from("consulting_clients")
+    .select("*", { count: "exact", head: true })
+    .eq("consulting_company_id", companyId)
+    .eq("final_result", "success");
+  const { count: unsuccessful } = await supabase
+    .from("consulting_clients")
+    .select("*", { count: "exact", head: true })
+    .eq("consulting_company_id", companyId)
+    .eq("final_result", "unsuccessful");
+  const { count: pending } = await supabase
+    .from("consulting_clients")
+    .select("*", { count: "exact", head: true })
+    .eq("consulting_company_id", companyId)
+    .eq("final_result", "pending");
+  return [
+    { label: "Success", count: success ?? 0, color: "#10b981" },
+    { label: "Unsuccessful", count: unsuccessful ?? 0, color: "#ef4444" },
+    { label: "Pending", count: pending ?? 0, color: "#f59e0b" },
+  ];
+}
+
+/** Clients grouped by destination country. */
+export async function fetchClientsByDestination(
+  companyId: string,
+): Promise<{ label: string; count: number }[]> {
+  const { data, error } = await supabase
+    .from("consulting_clients")
+    .select("destination_country")
+    .eq("consulting_company_id", companyId)
+    .eq("is_archived", false);
+  if (error) {
+    console.error("fetchClientsByDestination error:", error);
+    return [];
+  }
+  const rows = (data ?? []) as unknown as { destination_country: string | null }[];
+  const buckets = new Map<string, number>();
+  for (const r of rows) {
+    const label = r.destination_country ?? "Unspecified";
+    buckets.set(label, (buckets.get(label) ?? 0) + 1);
+  }
+  return Array.from(buckets.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/** Employee performance list for charting. */
+export async function fetchEmployeePerformance(
+  companyId: string,
+): Promise<{ label: string; clients: number; successful: number }[]> {
+  const stats = await fetchEmployeeStats(companyId);
+  return stats
+    .filter((s) => s.status !== "removed")
+    .map((s) => ({
+      label: s.profile?.name ?? "Member",
+      clients: s.total_clients,
+      successful: s.successful_clients,
+    }))
+    .sort((a, b) => b.clients - a.clients)
+    .slice(0, 8);
+}
+
 // ── Storage helper (logos, documents) ───────────────────────
 
 export async function uploadConsultingAsset(

@@ -106,10 +106,14 @@ interface AddClientInput {
 }
 
 export default function ConsultingClients() {
-  const { company, can, isTestMode } = useConsulting();
+  const { company, can, isTestMode, role } = useConsulting();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const companyId = company?.id ?? "";
+
+  // Consultant RBAC: consultants only see clients assigned to them.
+  const isConsultant = role === "consultant";
+  const assignedEmployeeId = isConsultant ? (user?.id ?? "") : undefined;
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ClientApplicationStatus | "all">("all");
@@ -125,25 +129,28 @@ export default function ConsultingClients() {
 
   // Test-mode queries
   const testClients = useQuery({
-    queryKey: ["consulting-clients-test", companyId, search, statusFilter, employeeFilter, archivedView],
-    queryFn: () =>
-      testFetchClients(companyId, {
+    queryKey: ["consulting-clients-test", companyId, search, statusFilter, employeeFilter, archivedView, assignedEmployeeId ?? "any"],
+    queryFn: () => {
+      const rows = testFetchClients(companyId, {
         search: search.trim() || undefined,
         status: statusFilter,
         archived: archivedView,
-      }),
+      });
+      // Consultant RBAC: filter to assigned clients only in test mode.
+      return isConsultant ? rows.filter((r) => r.assigned_employee_id === assignedEmployeeId) : rows;
+    },
     enabled: !!companyId && isTestMode,
     staleTime: 0,
   });
 
   // Real queries
   const realClients = useQuery({
-    queryKey: ["consulting-clients", companyId, search, statusFilter, employeeFilter, archivedView],
+    queryKey: ["consulting-clients", companyId, search, statusFilter, employeeFilter, archivedView, assignedEmployeeId ?? "any"],
     queryFn: () =>
       apiFetchClients(companyId, {
         search: search.trim() || undefined,
         status: statusFilter,
-        employeeId: employeeFilter === "all" ? undefined : employeeFilter,
+        employeeId: isConsultant ? assignedEmployeeId : (employeeFilter === "all" ? undefined : employeeFilter),
         archived: archivedView,
         pageSize: 100,
       }),
@@ -166,6 +173,8 @@ export default function ConsultingClients() {
   });
 
   const canWrite = can("clients:write");
+  // Consultants can't write to clients (only read assigned). Support agents can read but not write.
+  const canWriteClients = canWrite && !isConsultant;
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["consulting-clients"] });
@@ -311,7 +320,7 @@ export default function ConsultingClients() {
             >
               <Search className="h-3.5 w-3.5" />
             </button>
-            {canWrite && (
+            {canWriteClients && (
               <button
                 onClick={(e) => { e.stopPropagation(); setEditing(c); }}
                 className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary transition hover:bg-primary/20"
@@ -320,7 +329,7 @@ export default function ConsultingClients() {
                 <Edit3 className="h-3.5 w-3.5" />
               </button>
             )}
-            {canWrite && (
+            {canWriteClients && (
               <button
                 onClick={(e) => { e.stopPropagation(); setArchiveTarget(c); }}
                 className="flex h-8 w-8 items-center justify-center rounded-lg bg-destructive/10 text-destructive transition hover:bg-destructive/20"
@@ -333,7 +342,7 @@ export default function ConsultingClients() {
         ),
       },
     ],
-    [canWrite],
+    [canWrite, canWriteClients],
   );
 
   return (
@@ -341,7 +350,7 @@ export default function ConsultingClients() {
       title="Clients"
       subtitle="People who purchased your services or contacted your company"
       actions={
-        canWrite && (
+        canWriteClients && (
           <button
             onClick={() => setAddOpen(true)}
             className="gold-gradient flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-primary-foreground transition active:scale-95"
@@ -419,11 +428,13 @@ export default function ConsultingClients() {
         empty={
           <EmptyState
             icon={Users}
-            title={archivedView ? "No archived clients" : "No clients yet"}
+            title={archivedView ? "No archived clients" : isConsultant ? "No clients assigned to you" : "No clients yet"}
             description={archivedView
               ? "Archived clients will appear here. Restore them any time."
-              : "When users purchase your service packages or contact your company, they'll appear here. You can also add clients manually."}
-            action={canWrite && !archivedView ? { label: "Add your first client", onClick: () => setAddOpen(true) } : undefined}
+              : isConsultant
+                ? "Clients assigned to you will appear here. Ask a manager or admin to assign clients to see them in your list."
+                : "When users purchase your service packages or contact your company, they'll appear here. You can also add clients manually."}
+            action={canWriteClients && !archivedView ? { label: "Add your first client", onClick: () => setAddOpen(true) } : undefined}
           />
         }
       />

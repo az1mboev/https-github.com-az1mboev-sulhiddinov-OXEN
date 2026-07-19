@@ -42,17 +42,14 @@ const ConsultingClients = lazy(() => import("./pages/consulting/Clients"));
 const ConsultingApplications = lazy(() => import("./pages/consulting/Applications"));
 const ConsultingPackages = lazy(() => import("./pages/consulting/Packages"));
 const ConsultingPublicPackage = lazy(() => import("./pages/consulting/PublicPackageProfile"));
-const ConsultingEmployeesComingSoon = lazy(() =>
-  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.EmployeesComingSoon })),
-);
+const ConsultingEmployees = lazy(() => import("./pages/consulting/Employees"));
+const ConsultingAnalytics = lazy(() => import("./pages/consulting/Analytics"));
+const ConsultingActivityLog = lazy(() => import("./pages/consulting/ActivityLog"));
 const ConsultingPostsComingSoon = lazy(() =>
   import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.PostsComingSoon })),
 );
 const ConsultingPaymentsComingSoon = lazy(() =>
   import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.PaymentsComingSoon })),
-);
-const ConsultingAnalyticsComingSoon = lazy(() =>
-  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.AnalyticsComingSoon })),
 );
 const ConsultingReviewsComingSoon = lazy(() =>
   import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.ReviewsComingSoon })),
@@ -202,10 +199,11 @@ const App = () => (
                                 <Route path="/consulting/packages" element={<RequireAuth><RequireConsultingMember><ConsultingPackages /></RequireConsultingMember></RequireAuth>} />
                                 {/* Public package route — visible only when published */}
                                 <Route path="/consulting/package/:packageId" element={<ConsultingPublicPackage />} />
-                                <Route path="/consulting/employees" element={<RequireAuth><RequireConsultingMember><ConsultingEmployeesComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/employees" element={<RequireAuth><RequireConsultingMember><ConsultingEmployees /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/posts" element={<RequireAuth><RequireConsultingMember><ConsultingPostsComingSoon /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/payments" element={<RequireAuth><RequireConsultingMember><ConsultingPaymentsComingSoon /></RequireConsultingMember></RequireAuth>} />
-                                <Route path="/consulting/analytics" element={<RequireAuth><RequireConsultingMember><ConsultingAnalyticsComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/analytics" element={<RequireAuth><RequireConsultingMember><ConsultingAnalytics /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/activity" element={<RequireAuth><RequireConsultingMember><ConsultingActivityLog /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/reviews" element={<RequireAuth><RequireConsultingMember><ConsultingReviewsComingSoon /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/company-profile" element={<RequireAuth><RequireConsultingMember><ConsultingCompanyProfile /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/subscription" element={<RequireAuth><RequireConsultingMember><ConsultingSubscriptionComingSoon /></RequireConsultingMember></RequireAuth>} />
