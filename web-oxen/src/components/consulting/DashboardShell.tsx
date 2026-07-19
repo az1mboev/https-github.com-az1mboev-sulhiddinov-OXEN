@@ -40,9 +40,9 @@ interface NavItem {
 // "This module will be available in the next phase." page — no broken buttons.
 const NAV_ITEMS: NavItem[] = [
   { to: "/consulting/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/consulting/clients", label: "Clients", icon: Users, comingNext: true },
-  { to: "/consulting/applications", label: "Applications", icon: FileStack, comingNext: true },
-  { to: "/consulting/packages", label: "Service Packages", icon: Package, comingNext: true },
+  { to: "/consulting/clients", label: "Clients", icon: Users },
+  { to: "/consulting/applications", label: "Applications", icon: FileStack },
+  { to: "/consulting/packages", label: "Service Packages", icon: Package },
   { to: "/consulting/employees", label: "Employees", icon: UserCog, comingNext: true },
   { to: "/consulting/posts", label: "Posts", icon: Newspaper, comingNext: true },
   { to: "/consulting/payments", label: "Payments", icon: CreditCard, comingNext: true },

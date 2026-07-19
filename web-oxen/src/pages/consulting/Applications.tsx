@@ -24,18 +24,27 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSEO } from "@/hooks/use-seo";
 import { toast } from "@/hooks/use-toast";
 import {
-  fetchApplications,
-  fetchApplicationHistory,
-  fetchClients,
-  fetchMembers,
-  fetchCompanyPackages,
-  createApplication,
-  updateApplicationStatus,
+  fetchApplications as apiFetchApplications,
+  fetchApplicationHistory as apiFetchApplicationHistory,
+  fetchClients as apiFetchClients,
+  fetchMembers as apiFetchMembers,
+  fetchCompanyPackages as apiFetchCompanyPackages,
+  createApplication as apiCreateApplication,
+  updateApplicationStatus as apiUpdateApplicationStatus,
   type ConsultingApplication,
   type ApplicationStatus,
   type ConsultingClient,
   type ConsultingPackage,
 } from "@/lib/consulting";
+import {
+  testFetchApplications,
+  testFetchApplicationHistory,
+  testFetchClients,
+  testFetchPackages,
+  testCreateApplication,
+  testUpdateApplicationStatus,
+  type TestApplicationInput,
+} from "@/lib/consulting-test-mode";
 import { cn } from "@/lib/utils";
 
 const KANBAN_COLUMNS: { id: ApplicationStatus; title: string; accent: string }[] = [
@@ -51,7 +60,7 @@ const KANBAN_COLUMNS: { id: ApplicationStatus; title: string; accent: string }[]
 type ViewMode = "table" | "kanban";
 
 export default function ConsultingApplications() {
-  const { company, can } = useConsulting();
+  const { company, can, isTestMode } = useConsulting();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const companyId = company?.id ?? "";
@@ -64,73 +73,120 @@ export default function ConsultingApplications() {
 
   useSEO({ title: "Applications | OXEN Consulting", description: "Manage client applications" });
 
-  const { data: applications = [], isLoading } = useQuery({
-    queryKey: ["consulting-applications", companyId, search, statusFilter],
+  // Test-mode queries
+  const testData = useQuery({
+    queryKey: ["consulting-applications-test", companyId, search, statusFilter],
     queryFn: () =>
-      fetchApplications(companyId, {
+      testFetchApplications(companyId, {
         search: search.trim() || undefined,
         status: statusFilter,
       }),
-    enabled: !!companyId,
+    enabled: !!companyId && isTestMode,
+    staleTime: 0,
   });
 
-  const { data: clientsData } = useQuery({
+  // Real queries
+  const realData = useQuery({
+    queryKey: ["consulting-applications", companyId, search, statusFilter],
+    queryFn: () =>
+      apiFetchApplications(companyId, {
+        search: search.trim() || undefined,
+        status: statusFilter,
+      }),
+    enabled: !!companyId && !isTestMode,
+  });
+
+  const applications = isTestMode ? (testData.data ?? []) : (realData.data ?? []);
+  const isLoading = isTestMode ? testData.isLoading : realData.isLoading;
+
+  const testClients = useQuery({
+    queryKey: ["consulting-clients-test-all", companyId],
+    queryFn: () => testFetchClients(companyId, {}),
+    enabled: !!companyId && isTestMode && addOpen,
+    staleTime: 0,
+  });
+
+  const realClients = useQuery({
     queryKey: ["consulting-clients-all", companyId],
-    queryFn: () => fetchClients(companyId, { pageSize: 200 }),
-    enabled: !!companyId && addOpen,
+    queryFn: () => apiFetchClients(companyId, { pageSize: 200 }),
+    enabled: !!companyId && !isTestMode && addOpen,
   });
-  const clients = clientsData?.clients ?? [];
 
-  const { data: packages = [] } = useQuery({
+  const clients = isTestMode ? (testClients.data ?? []) : (realClients.data?.clients ?? []);
+
+  const testPackages = useQuery({
     queryKey: ["consulting-packages", companyId],
-    queryFn: () => fetchCompanyPackages(companyId),
-    enabled: !!companyId && addOpen,
+    queryFn: () => testFetchPackages(companyId),
+    enabled: !!companyId && isTestMode && addOpen,
+    staleTime: 0,
   });
+
+  const realPackages = useQuery({
+    queryKey: ["consulting-packages", companyId],
+    queryFn: () => apiFetchCompanyPackages(companyId),
+    enabled: !!companyId && !isTestMode && addOpen,
+  });
+
+  const packages = isTestMode ? (testPackages.data ?? []) : (realPackages.data ?? []);
 
   const { data: members = [] } = useQuery({
     queryKey: ["consulting-members", companyId],
-    queryFn: () => fetchMembers(companyId),
-    enabled: !!companyId,
+    queryFn: () => apiFetchMembers(companyId),
+    enabled: !!companyId && !isTestMode,
   });
 
-  const { data: history = [] } = useQuery({
-    queryKey: ["consulting-application-history", historyId],
-    queryFn: () => fetchApplicationHistory(historyId!),
-    enabled: !!historyId,
+  const testHistory = useQuery({
+    queryKey: ["consulting-application-history-test", historyId, companyId],
+    queryFn: () => (historyId ? testFetchApplicationHistory(companyId, historyId) : Promise.resolve([])),
+    enabled: !!historyId && isTestMode,
+    staleTime: 0,
   });
+
+  const realHistory = useQuery({
+    queryKey: ["consulting-application-history", historyId],
+    queryFn: () => apiFetchApplicationHistory(historyId!),
+    enabled: !!historyId && !isTestMode,
+  });
+
+  const history = isTestMode ? (testHistory.data ?? []) : (realHistory.data ?? []);
 
   const canWrite = can("applications:write");
 
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["consulting-applications"] });
+    queryClient.invalidateQueries({ queryKey: ["consulting-applications-test"] });
+    queryClient.invalidateQueries({ queryKey: ["consulting-application-history"] });
+  }, [queryClient]);
+
   const moveMutation = useMutation({
-    mutationFn: ({ app, newStatus }: { app: ConsultingApplication; newStatus: ApplicationStatus }) =>
-      updateApplicationStatus(app, newStatus, user?.id ?? ""),
+    mutationFn: async ({ app, newStatus, note }: { app: ConsultingApplication; newStatus: ApplicationStatus; note?: string }) => {
+      if (isTestMode) {
+        testUpdateApplicationStatus(companyId, app, newStatus, user?.id ?? "", note);
+        return;
+      }
+      await apiUpdateApplicationStatus(app, newStatus, user?.id ?? "", note);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["consulting-applications"] });
-      queryClient.invalidateQueries({ queryKey: ["consulting-stats"] });
+      toast({ title: "Application status updated" });
+      invalidate();
     },
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
   });
 
   const addMutation = useMutation({
-    mutationFn: (input: {
-      client_id: string;
-      service_id?: string;
-      destination_country?: string;
-      application_type?: string;
-      assigned_employee_id?: string;
-      expected_completion_date?: string;
-    }) => createApplication(companyId, input, user?.id ?? ""),
+    mutationFn: async (input: TestApplicationInput & { note?: string }) => {
+      if (isTestMode) return testCreateApplication(companyId, input, user?.id ?? "");
+      return apiCreateApplication(companyId, input, user?.id ?? "");
+    },
     onSuccess: () => {
       toast({ title: "Application created" });
       setAddOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["consulting-applications"] });
-      queryClient.invalidateQueries({ queryKey: ["consulting-stats"] });
+      invalidate();
     },
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
   });
 
   // ── Kanban columns (grouped by status) ───────────────────
-
   const kanbanColumns: KanbanColumn<ConsultingApplication>[] = useMemo(
     () =>
       KANBAN_COLUMNS.map((c) => ({
@@ -150,7 +206,6 @@ export default function ConsultingApplications() {
   );
 
   // ── Table columns ────────────────────────────────────────
-
   const columns: Column<ConsultingApplication>[] = useMemo(
     () => [
       {
@@ -278,7 +333,7 @@ export default function ConsultingApplications() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search type or destination…"
+            placeholder="Search client, type, or destination…"
             className="w-full rounded-xl border border-input bg-background/50 py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none"
           />
         </div>
@@ -332,12 +387,12 @@ export default function ConsultingApplications() {
         />
       )}
 
-      {/* Add modal */}
       {addOpen && (
         <AddApplicationModal
           clients={clients}
           packages={packages}
           members={members}
+          isTestMode={isTestMode}
           onClose={() => setAddOpen(false)}
           onSubmit={(input) => addMutation.mutate(input)}
           loading={addMutation.isPending}
@@ -388,6 +443,7 @@ function AddApplicationModal({
   clients,
   packages,
   members,
+  isTestMode,
   onClose,
   onSubmit,
   loading,
@@ -395,15 +451,9 @@ function AddApplicationModal({
   clients: ConsultingClient[];
   packages: ConsultingPackage[];
   members: { user_id: string; profile?: { name: string | null } | null }[];
+  isTestMode: boolean;
   onClose: () => void;
-  onSubmit: (input: {
-    client_id: string;
-    service_id?: string;
-    destination_country?: string;
-    application_type?: string;
-    assigned_employee_id?: string;
-    expected_completion_date?: string;
-  }) => void;
+  onSubmit: (input: TestApplicationInput) => void;
   loading: boolean;
 }) {
   const [clientId, setClientId] = useState("");
@@ -412,6 +462,21 @@ function AddApplicationModal({
   const [appType, setAppType] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const [expectedDate, setExpectedDate] = useState("");
+
+  const submit = () => {
+    if (!clientId) {
+      toast({ title: "Please select a client", variant: "destructive" });
+      return;
+    }
+    onSubmit({
+      client_id: clientId,
+      service_id: serviceId || null,
+      destination_country: destination || null,
+      application_type: appType || null,
+      assigned_employee_id: employeeId || null,
+      expected_completion_date: expectedDate ? new Date(expectedDate).toISOString() : null,
+    });
+  };
 
   return (
     <>
@@ -437,7 +502,7 @@ function AddApplicationModal({
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
             <label className="block">
               <span className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-muted-foreground">
                 Client <span className="text-primary">*</span>
@@ -460,44 +525,31 @@ function AddApplicationModal({
               options={[
                 { value: "", label: "None" },
                 ...packages.map((p) => ({
-                  value: p.service_id ?? p.id,
+                  value: p.id,
                   label: p.service?.title ?? "Package",
                 })),
               ]}
             />
-            <Field
-              label="Destination country"
-              value={destination}
-              onChange={setDestination}
-              placeholder="Canada"
-            />
-            <Field
-              label="Application type"
-              value={appType}
-              onChange={setAppType}
-              placeholder="e.g. Student Visa, Tourist Visa"
-            />
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">Assigned employee</span>
-              <select
-                value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
-                className="w-full rounded-xl border border-input bg-background/50 px-3.5 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
-              >
-                <option value="">Unassigned</option>
-                {members.map((m) => (
-                  <option key={m.user_id} value={m.user_id}>
-                    {m.profile?.name ?? "Team member"}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Field
-              label="Expected completion date"
-              value={expectedDate}
-              onChange={setExpectedDate}
-              type="date"
-            />
+            <Field label="Destination country" value={destination} onChange={setDestination} placeholder="Canada" />
+            <Field label="Application type" value={appType} onChange={setAppType} placeholder="e.g. Student Visa, Tourist Visa" />
+            {!isTestMode && (
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">Assigned employee</span>
+                <select
+                  value={employeeId}
+                  onChange={(e) => setEmployeeId(e.target.value)}
+                  className="w-full rounded-xl border border-input bg-background/50 px-3.5 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
+                >
+                  <option value="">Unassigned</option>
+                  {members.map((m) => (
+                    <option key={m.user_id} value={m.user_id}>
+                      {m.profile?.name ?? "Team member"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <Field label="Expected completion date" value={expectedDate} onChange={setExpectedDate} type="date" />
           </div>
           <div className="mt-5 flex gap-3">
             <button
@@ -507,17 +559,7 @@ function AddApplicationModal({
               Cancel
             </button>
             <button
-              onClick={() =>
-                clientId &&
-                onSubmit({
-                  client_id: clientId,
-                  service_id: serviceId || undefined,
-                  destination_country: destination || undefined,
-                  application_type: appType || undefined,
-                  assigned_employee_id: employeeId || undefined,
-                  expected_completion_date: expectedDate ? new Date(expectedDate).toISOString() : undefined,
-                })
-              }
+              onClick={submit}
               disabled={loading || !clientId}
               className="gold-gradient flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-primary-foreground transition active:scale-95 disabled:opacity-50"
             >

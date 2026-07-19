@@ -1294,3 +1294,260 @@ export async function uploadConsultingAsset(
   const { data: pub } = supabase.storage.from("consulting").getPublicUrl(data.path);
   return pub.publicUrl;
 }
+
+/* ============================================================
+   Phase 4 — Package media, public package, client status history
+   ============================================================ */
+
+// ── Package media (gallery + video) ─────────────────────────
+
+export interface ConsultingPackageMedia {
+  id: string;
+  consulting_company_id: string;
+  package_id: string;
+  kind: "image" | "video";
+  url: string;
+  title: string | null;
+  position: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchPackageMedia(packageId: string): Promise<ConsultingPackageMedia[]> {
+  const { data, error } = await supabase
+    .from("consulting_package_media")
+    .select("*")
+    .eq("package_id", packageId)
+    .order("position", { ascending: true });
+  if (error) {
+    console.error("fetchPackageMedia error:", error);
+    return [];
+  }
+  return (data ?? []) as unknown as ConsultingPackageMedia[];
+}
+
+export async function addPackageMedia(
+  companyId: string,
+  packageId: string,
+  input: { kind: "image" | "video"; url: string; title?: string | null; position?: number },
+  createdBy: string,
+): Promise<ConsultingPackageMedia | null> {
+  const { data, error } = await supabase
+    .from("consulting_package_media")
+    .insert({
+      consulting_company_id: companyId,
+      package_id: packageId,
+      kind: input.kind,
+      url: input.url,
+      title: input.title ?? null,
+      position: input.position ?? 0,
+      created_by: createdBy,
+    })
+    .select("*")
+    .single();
+  if (error) {
+    console.error("addPackageMedia error:", error);
+    return null;
+  }
+  return data as unknown as ConsultingPackageMedia;
+}
+
+export async function removePackageMedia(mediaId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("consulting_package_media")
+    .delete()
+    .eq("id", mediaId);
+  if (error) {
+    console.error("removePackageMedia error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function clearPackageMedia(packageId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("consulting_package_media")
+    .delete()
+    .eq("package_id", packageId);
+  if (error) {
+    console.error("clearPackageMedia error:", error);
+    return false;
+  }
+  return true;
+}
+
+// ── Public package fetch (published-gated) ─────────────────
+
+export async function fetchPublicPackage(packageId: string): Promise<{
+  pkg: ConsultingPackage | null;
+  media: ConsultingPackageMedia[];
+  company: ConsultingCompany | null;
+}> {
+  const { data, error } = await supabase
+    .from("consulting_packages")
+    .select(
+      "*, service:services!consulting_packages_service_id_fkey(id,title,description,cover_image,price,currency,category,is_active), consulting_companies!consulting_packages_consulting_company_id_fkey(*)",
+    )
+    .eq("id", packageId)
+    .maybeSingle();
+  if (error) console.error("fetchPublicPackage error:", error);
+  const pkg = data as unknown as ConsultingPackage & {
+    consulting_companies?: ConsultingCompany;
+  } | null;
+  if (!pkg || !pkg.is_published) {
+    return { pkg: null, media: [], company: null };
+  }
+  const media = await fetchPackageMedia(packageId);
+  const company = (pkg.consulting_companies as ConsultingCompany | undefined) ?? null;
+  // Strip joined company to keep ConsultingPackage shape.
+  const { ...pkgClean } = pkg;
+  delete (pkgClean as { consulting_companies?: unknown }).consulting_companies;
+  return { pkg: pkgClean as ConsultingPackage, media, company };
+}
+
+// ── Package publish/unpublish ───────────────────────────────
+
+export async function setPackagePublished(
+  packageId: string,
+  published: boolean,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("consulting_packages")
+    .update({ is_published: published, updated_at: new Date().toISOString() })
+    .eq("id", packageId);
+  if (error) {
+    console.error("setPackagePublished error:", error);
+    return false;
+  }
+  return true;
+}
+
+// ── Client status history ───────────────────────────────────
+
+export interface ConsultingClientStatusHistory {
+  id: string;
+  consulting_company_id: string;
+  client_id: string;
+  previous_status: ClientApplicationStatus | null;
+  new_status: ClientApplicationStatus;
+  changed_by: string | null;
+  note: string | null;
+  created_at: string;
+  changed_by_profile?: { name: string | null; avatar_url: string | null } | null;
+}
+
+export async function fetchClientStatusHistory(
+  clientId: string,
+): Promise<ConsultingClientStatusHistory[]> {
+  const { data, error } = await supabase
+    .from("consulting_client_status_history")
+    .select("*, changed_by_profile:profiles!consulting_client_status_history_changed_by_fkey(name,avatar_url)")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: true });
+  if (error) {
+    console.error("fetchClientStatusHistory error:", error);
+    return [];
+  }
+  return (data ?? []) as unknown as ConsultingClientStatusHistory[];
+}
+
+/** Update client application status and append a status-history entry. */
+export async function updateClientStatus(
+  clientId: string,
+  companyId: string,
+  newStatus: ClientApplicationStatus,
+  changedBy: string,
+  note?: string,
+): Promise<{ ok: boolean; error: string | null }> {
+  // Fetch current status first.
+  const { data: current, error: fetchErr } = await supabase
+    .from("consulting_clients")
+    .select("application_status")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (fetchErr) {
+    return { ok: false, error: fetchErr.message };
+  }
+  const previous = (current as { application_status: ClientApplicationStatus } | null)?.application_status ?? null;
+  if (previous === newStatus) return { ok: true, error: null };
+
+  const { error: updateErr } = await supabase
+    .from("consulting_clients")
+    .update({ application_status: newStatus, last_activity_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", clientId);
+  if (updateErr) {
+    return { ok: false, error: updateErr.message };
+  }
+
+  const { error: histErr } = await supabase.from("consulting_client_status_history").insert({
+    consulting_company_id: companyId,
+    client_id: clientId,
+    previous_status: previous,
+    new_status: newStatus,
+    changed_by: changedBy,
+    note: note ?? null,
+  });
+  if (histErr) console.error("updateClientStatus history error:", histErr);
+
+  return { ok: true, error: null };
+}
+
+// ── Duplicate a package (service + package + media) ─────────
+
+export async function duplicatePackage(
+  source: ConsultingPackage,
+  companyId: string,
+  createdBy: string,
+): Promise<ConsultingPackage | null> {
+  if (!source.service_id) return null;
+  // 1. Duplicate the linked service row.
+  const { data: svc, error: svcErr } = await supabase
+    .from("services")
+    .insert({
+      consulting_id: companyId,
+      title: `${source.service?.title ?? "Package"} (Copy)`,
+      description: source.service?.description ?? "",
+      category: source.service?.category ?? "General",
+      price: source.service?.price ?? 0,
+      currency: source.service?.currency ?? "USD",
+      cover_image: source.service?.cover_image ?? null,
+      is_active: false,
+    })
+    .select("*")
+    .single();
+  if (svcErr || !svc) {
+    console.error("duplicatePackage service insert error:", svcErr);
+    return null;
+  }
+  const newServiceId = (svc as { id: string }).id;
+
+  // 2. Duplicate the consulting_packages row.
+  const newPkg = await upsertPackage(
+    companyId,
+    newServiceId,
+    {
+      destination_country: source.destination_country,
+      estimated_processing_time: source.estimated_processing_time,
+      included_services: source.included_services,
+      required_documents: source.required_documents,
+      what_client_receives: source.what_client_receives,
+      who_this_is_for: source.who_this_is_for,
+      refund_conditions: source.refund_conditions,
+      contact_info: source.contact_info,
+      available_slots: source.available_slots,
+      faq: source.faq,
+      is_published: false,
+    },
+    createdBy,
+  );
+  if (!newPkg) return null;
+
+  // 3. Copy media.
+  const media = await fetchPackageMedia(source.id);
+  for (const m of media) {
+    await addPackageMedia(companyId, newPkg.id, { kind: m.kind, url: m.url, title: m.title, position: m.position }, createdBy);
+  }
+
+  return newPkg;
+}

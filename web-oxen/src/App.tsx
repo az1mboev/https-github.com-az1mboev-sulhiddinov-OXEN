@@ -38,15 +38,10 @@ const ConsultingSetupSuccess = lazy(() => import("./pages/consulting/SetupSucces
 const ConsultingDashboardHome = lazy(() => import("./pages/consulting/DashboardHome"));
 const ConsultingCompanyProfile = lazy(() => import("./pages/consulting/CompanyProfile"));
 const ConsultingPublicCompanyProfile = lazy(() => import("./pages/consulting/PublicCompanyProfile"));
-const ConsultingClientsComingSoon = lazy(() =>
-  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.ClientsComingSoon })),
-);
-const ConsultingApplicationsComingSoon = lazy(() =>
-  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.ApplicationsComingSoon })),
-);
-const ConsultingPackagesComingSoon = lazy(() =>
-  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.PackagesComingSoon })),
-);
+const ConsultingClients = lazy(() => import("./pages/consulting/Clients"));
+const ConsultingApplications = lazy(() => import("./pages/consulting/Applications"));
+const ConsultingPackages = lazy(() => import("./pages/consulting/Packages"));
+const ConsultingPublicPackage = lazy(() => import("./pages/consulting/PublicPackageProfile"));
 const ConsultingEmployeesComingSoon = lazy(() =>
   import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.EmployeesComingSoon })),
 );
@@ -202,9 +197,11 @@ const App = () => (
                                   }
                                 />
                                 {/* Consulting dashboard sections — all navigable; unfinished ones show a polished "next phase" page */}
-                                <Route path="/consulting/clients" element={<RequireAuth><RequireConsultingMember><ConsultingClientsComingSoon /></RequireConsultingMember></RequireAuth>} />
-                                <Route path="/consulting/applications" element={<RequireAuth><RequireConsultingMember><ConsultingApplicationsComingSoon /></RequireConsultingMember></RequireAuth>} />
-                                <Route path="/consulting/packages" element={<RequireAuth><RequireConsultingMember><ConsultingPackagesComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/clients" element={<RequireAuth><RequireConsultingMember><ConsultingClients /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/applications" element={<RequireAuth><RequireConsultingMember><ConsultingApplications /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/packages" element={<RequireAuth><RequireConsultingMember><ConsultingPackages /></RequireConsultingMember></RequireAuth>} />
+                                {/* Public package route — visible only when published */}
+                                <Route path="/consulting/package/:packageId" element={<ConsultingPublicPackage />} />
                                 <Route path="/consulting/employees" element={<RequireAuth><RequireConsultingMember><ConsultingEmployeesComingSoon /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/posts" element={<RequireAuth><RequireConsultingMember><ConsultingPostsComingSoon /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/payments" element={<RequireAuth><RequireConsultingMember><ConsultingPaymentsComingSoon /></RequireConsultingMember></RequireAuth>} />
