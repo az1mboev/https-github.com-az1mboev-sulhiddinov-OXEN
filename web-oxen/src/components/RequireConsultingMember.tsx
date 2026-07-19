@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useConsulting } from "@/contexts/ConsultingContext";
+import { CONSULTING_OPEN_PREVIEW_MODE } from "@/lib/consulting-preview";
 
 /**
  * RequireConsultingMember — wraps protected consulting routes.
@@ -15,6 +16,10 @@ import { useConsulting } from "@/contexts/ConsultingContext";
  *
  * Routes that must remain accessible when the subscription is EXPIRED
  * (renew, billing, support, security) should set `allowExpired`.
+ *
+ * When `CONSULTING_OPEN_PREVIEW_MODE` is `true`, membership + subscription
+ * checks are bypassed so every signed-in user can preview the dashboard.
+ * Set the flag to `false` to restore the full payment-gated flow.
  *
  * Relies on the single top-level ConsultingProvider in App.tsx.
  */
@@ -36,6 +41,8 @@ function Inner({ children, allowExpired = false }: Props) {
       navigate("/auth?redirect=" + encodeURIComponent(location.pathname), { replace: true });
       return;
     }
+    // Preview mode: bypass membership + subscription checks entirely.
+    if (CONSULTING_OPEN_PREVIEW_MODE) return;
     if (loading) return;
     if (!isMember) {
       navigate("/explore", { replace: true });
@@ -49,7 +56,7 @@ function Inner({ children, allowExpired = false }: Props) {
     }
   }, [authReady, user, isMember, loading, subscriptionAccess, allowExpired, navigate, location.pathname]);
 
-  if (!authReady || loading) {
+  if (!authReady || (!CONSULTING_OPEN_PREVIEW_MODE && loading)) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -57,7 +64,16 @@ function Inner({ children, allowExpired = false }: Props) {
     );
   }
 
-  if (!user || user.isGuest || !isMember) {
+  if (!user || user.isGuest) {
+    return null;
+  }
+
+  // Preview mode: any signed-in user can view the dashboard.
+  if (CONSULTING_OPEN_PREVIEW_MODE) {
+    return <>{children}</>;
+  }
+
+  if (!isMember) {
     return null;
   }
 

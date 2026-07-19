@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConsulting } from "@/contexts/ConsultingContext";
 import { useSEO } from "@/hooks/use-seo";
+import { CONSULTING_OPEN_PREVIEW_MODE } from "@/lib/consulting-preview";
 
 const springIn = {
   type: "spring" as const,
@@ -26,11 +27,12 @@ export default function Explore() {
   });
 
   const handleBuy = useCallback(() => {
+    const target = CONSULTING_OPEN_PREVIEW_MODE ? "/consulting/dashboard" : "/consulting/checkout";
     if (user?.isGuest) {
-      navigate(`/auth?redirect=${encodeURIComponent("/consulting/checkout")}`);
+      navigate(`/auth?redirect=${encodeURIComponent(target)}`);
       return;
     }
-    navigate("/consulting/checkout");
+    navigate(target);
   }, [user, navigate]);
 
   // If the user is already a consulting member, show a "Go to Dashboard" CTA instead.

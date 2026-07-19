@@ -24,6 +24,7 @@ import {
   testLogActivity,
 } from "@/lib/consulting-test-mode";
 import { useAuth } from "@/contexts/AuthContext";
+import { CONSULTING_OPEN_PREVIEW_MODE, PREVIEW_COMPANY_LOGO, PREVIEW_COMPANY_NAME } from "@/lib/consulting-preview";
 
 /* ============================================================
    ConsultingContext — current company, membership, RBAC,
@@ -89,6 +90,104 @@ interface TestSubscriptionState {
 }
 
 const TEST_SUB_KEY = "oxen.consulting.test.subscription";
+
+/**
+ * Preview-mode company: synthesized entirely client-side when
+ * CONSULTING_OPEN_PREVIEW_MODE is on and the user has no real or test-mode
+ * consulting company. No database rows are created. The same company id is
+ * reused for the user across sessions so any test-mode data they create
+ * (packages, clients, etc.) stays associated with the preview company.
+ */
+const PREVIEW_COMPANY_KEY = "oxen.consulting.preview.company";
+
+interface PreviewCompanyState {
+  companyId: string;
+  createdAt: string;
+}
+
+function readPreviewCompany(userId: string): PreviewCompanyState | null {
+  try {
+    const raw = localStorage.getItem(`${PREVIEW_COMPANY_KEY}.${userId}`);
+    return raw ? (JSON.parse(raw) as PreviewCompanyState) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writePreviewCompany(userId: string, state: PreviewCompanyState): void {
+  try {
+    localStorage.setItem(`${PREVIEW_COMPANY_KEY}.${userId}`, JSON.stringify(state));
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Synthesize a preview company + owner member. Uses a stable company id per
+ * user so test-mode data (packages, clients, employees, etc.) persists across
+ * sessions under `oxen.consulting.test.<companyId>.*` keys.
+ */
+function synthesizePreviewCompany(userId: string): { company: ConsultingCompany; member: ConsultingMember } {
+  const existing = readPreviewCompany(userId);
+  const now = new Date().toISOString();
+  const companyId = existing?.companyId ?? `preview-company-${userId}`;
+  if (!existing) {
+    writePreviewCompany(userId, { companyId, createdAt: now });
+  }
+  const createdAt = existing?.createdAt ?? now;
+  // Subscription is treated as "active" with a far-future end date so the
+  // preview dashboard is fully usable. When the flag is flipped off, these
+  // synthesized rows disappear and the real payment-gated flow takes over.
+  const farFuture = new Date();
+  farFuture.setFullYear(farFuture.getFullYear() + 1);
+  return {
+    company: {
+      id: companyId,
+      owner_id: userId,
+      name: PREVIEW_COMPANY_NAME,
+      legal_name: PREVIEW_COMPANY_NAME,
+      registration_number: null,
+      country: null,
+      city: null,
+      address: null,
+      logo_url: PREVIEW_COMPANY_LOGO,
+      cover_image_url: null,
+      description:
+        "This is a preview consulting workspace running in demo mode. No payment was required and no real data is stored on the server.",
+      contact_email: null,
+      contact_phone: null,
+      website: null,
+      working_hours: null,
+      supported_languages: null,
+      destination_countries: null,
+      years_experience: 0,
+      manager_full_name: null,
+      manager_phone: null,
+      manager_email: null,
+      license_info: null,
+      is_published: false,
+      is_verified: false,
+      verification_status: "pending",
+      subscription_status: "active",
+      subscription_plan: "annual",
+      subscription_start_date: createdAt,
+      subscription_end_date: farFuture.toISOString(),
+      created_at: createdAt,
+      updated_at: now,
+    },
+    member: {
+      id: `preview-member-${userId}`,
+      consulting_company_id: companyId,
+      user_id: userId,
+      role: "owner",
+      status: "active",
+      invited_by: userId,
+      last_active_at: now,
+      created_at: createdAt,
+      updated_at: now,
+    },
+  };
+}
 
 function readOnboarding(): OnboardingSnapshot | null {
   try {
@@ -289,13 +388,30 @@ function useConsultingState() {
   const snapshot = useMemo(() => (isEnabled ? readOnboarding() : null), [isEnabled]);
   const useFallback = isEnabled && !membership && !company && !!snapshot;
 
+  // Preview mode: when the flag is on and the user has no real membership and
+  // no onboarding snapshot, synthesize a preview company so every signed-in
+  // user can open the dashboard. This takes priority over the onboarding
+  // fallback so a brand-new user (who never went through checkout) still sees
+  // the dashboard.
+  const usePreview =
+    CONSULTING_OPEN_PREVIEW_MODE && isEnabled && !membership && !company && !useFallback;
+
+  const previewSynthesized = useMemo(() => {
+    if (!usePreview || !user) return null;
+    return synthesizePreviewCompany(user.id);
+  }, [usePreview, user]);
+
   // Read test subscription state (re-read on each render via state below)
-  const testSub = useMemo(() => (useFallback ? readTestSubscription() : null), [useFallback]);
+  const testSub = useMemo(
+    () => (useFallback ? readTestSubscription() : null),
+    [useFallback],
+  );
 
   const synthesized = useMemo(() => {
+    if (usePreview && previewSynthesized) return previewSynthesized;
     if (!useFallback || !snapshot || !user) return null;
     return synthesizeFromSnapshot(user.id, snapshot, testSub);
-  }, [useFallback, snapshot, user, testSub]);
+  }, [usePreview, previewSynthesized, useFallback, snapshot, user, testSub]);
 
   const effectiveCompany = company ?? synthesized?.company ?? null;
   const effectiveMember = membership ?? synthesized?.member ?? null;
@@ -307,10 +423,10 @@ function useConsultingState() {
   const isMember = !!effectiveMember;
   const isAdmin = role === "owner" || role === "administrator";
 
-  const subscriptionAccess = useMemo(
-    () => deriveAccessStatus(effectiveCompany, isTestMode ? testSub : null),
-    [effectiveCompany, isTestMode, testSub],
-  );
+  const subscriptionAccess = useMemo<SubscriptionAccess>(() => {
+    if (usePreview) return "active";
+    return deriveAccessStatus(effectiveCompany, isTestMode ? testSub : null);
+  }, [usePreview, effectiveCompany, isTestMode, testSub]);
   const hasActiveSubscription = subscriptionAccess === "active";
   const hasExpiredSubscription = subscriptionAccess === "expired";
   const subscriptionEndDate = effectiveCompany?.subscription_end_date ?? null;
