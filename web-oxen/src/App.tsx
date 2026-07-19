@@ -11,7 +11,6 @@ import RequireAuth from "./components/RequireAuth";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ChatProvider } from "./contexts/ChatContext";
 import { CommentsProvider } from "./contexts/CommentsContext";
-import { ConsultingProvider } from "./contexts/ConsultingContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { OfflineProvider } from "./contexts/OfflineContext";
 import { PreferencesProvider } from "./contexts/PreferencesContext";
@@ -32,12 +31,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const City = lazy(() => import("./pages/City"));
-const ConsultingApplications = lazy(() => import("./pages/consulting/Applications"));
-const ConsultingClients = lazy(() => import("./pages/consulting/Clients"));
 const ConsultingDashboard = lazy(() => import("./pages/ConsultingDashboard"));
-const ConsultingEmployees = lazy(() => import("./pages/consulting/Employees"));
-const ConsultingOverview = lazy(() => import("./pages/consulting/Overview"));
-const ConsultingPackages = lazy(() => import("./pages/consulting/Packages"));
 const Country = lazy(() => import("./pages/Country"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
@@ -47,7 +41,6 @@ const Messages = lazy(() => import("./pages/Messages"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Planner = lazy(() => import("./pages/Planner"));
 const Profile = lazy(() => import("./pages/Profile"));
-const RequireConsultingMember = lazy(() => import("./components/RequireConsultingMember"));
 const ServiceDetails = lazy(() => import("./pages/ServiceDetails"));
 const ServiceEditor = lazy(() => import("./pages/ServiceEditor"));
 const Services = lazy(() => import("./pages/Services"));
@@ -116,7 +109,6 @@ const App = () => (
     <ThemeProvider>
       <LanguageProvider>
         <AuthProvider>
-          <ConsultingProvider>
           <TravelProvider>
             <UniversityProvider>
               <ChatProvider>
@@ -135,7 +127,7 @@ const App = () => (
                             <Suspense fallback={<RouteFallback />}>
                               <Routes>
                               <Route path="/auth" element={<Auth />} />
-                              <Route path="/checkout" element={<Checkout />} />
+                              <Route path="/consulting/checkout" element={<Checkout />} />
                               <Route element={<Layout />}>
                                 <Route path="/" element={<Index />} />
                                 <Route path="/country/:countryId" element={<Country />} />
@@ -165,27 +157,6 @@ const App = () => (
                                   element={<RequireAuth><ServiceEditor /></RequireAuth>}
                                 />
 
-                                {/* Consulting dashboard — Phase 1 */}
-                                <Route
-                                  path="/consulting/dashboard"
-                                  element={<Suspense fallback={<RouteFallback />}><RequireConsultingMember><ConsultingOverview /></RequireConsultingMember></Suspense>}
-                                />
-                                <Route
-                                  path="/consulting/clients"
-                                  element={<Suspense fallback={<RouteFallback />}><RequireConsultingMember><ConsultingClients /></RequireConsultingMember></Suspense>}
-                                />
-                                <Route
-                                  path="/consulting/applications"
-                                  element={<Suspense fallback={<RouteFallback />}><RequireConsultingMember><ConsultingApplications /></RequireConsultingMember></Suspense>}
-                                />
-                                <Route
-                                  path="/consulting/packages"
-                                  element={<Suspense fallback={<RouteFallback />}><RequireConsultingMember><ConsultingPackages /></RequireConsultingMember></Suspense>}
-                                />
-                                <Route
-                                  path="/consulting/employees"
-                                  element={<Suspense fallback={<RouteFallback />}><RequireConsultingMember><ConsultingEmployees /></RequireConsultingMember></Suspense>}
-                                />
                                 <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
                                 <Route path="/profile/edit" element={<RequireAuth><EditProfile /></RequireAuth>} />
                                 <Route path="/support" element={<Support />} />
@@ -224,7 +195,6 @@ const App = () => (
             </ChatProvider>
             </UniversityProvider>
           </TravelProvider>
-          </ConsultingProvider>
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>

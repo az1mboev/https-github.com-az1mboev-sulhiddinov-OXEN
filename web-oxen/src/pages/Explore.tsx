@@ -9,8 +9,6 @@ import {
   Check,
   ArrowRight,
   LifeBuoy,
-  LayoutDashboard,
-  Globe2,
   HelpCircle,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
@@ -18,11 +16,9 @@ import { useNavigate } from "react-router-dom";
 
 import { CONSULTING_PLANS, type SubscriptionPlan } from "@/lib/consulting";
 import { useAuth } from "@/contexts/AuthContext";
-import { useConsulting } from "@/contexts/ConsultingContext";
 import { useSEO } from "@/hooks/use-seo";
 import { toast } from "@/hooks/use-toast";
 import { Accordion } from "@/components/consulting/Field";
-import { cn } from "@/lib/utils";
 
 const springIn = {
   type: "spring" as const,
@@ -39,45 +35,14 @@ const cardSpring = {
 };
 
 const FEATURES = [
-  {
-    icon: Briefcase,
-    title: "Company Workspace",
-    description: "A dedicated dashboard for your consulting company with full team management.",
-  },
-  {
-    icon: Users,
-    title: "Client Management",
-    description: "Track every client from lead to final result with notes, documents, and timelines.",
-  },
-  {
-    icon: BarChart3,
-    title: "Business Analytics",
-    description: "Real-time revenue, conversion, and success-rate insights from your real data.",
-  },
-  {
-    icon: CreditCard,
-    title: "Secure Payments",
-    description: "Tokenized card payments with OTP verification. No raw card data ever stored.",
-  },
-  {
-    icon: Globe2,
-    title: "Public Profile",
-    description: "A verified public company profile so clients can discover your services.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Role-Based Access",
-    description: "Granular permissions for owners, admins, consultants, finance, and support.",
-  },
-];
-
-const BENEFITS = [
-  "Publish unlimited service packages with rich media, FAQ, and documents",
-  "Manage applications on a drag-and-drop Kanban board",
-  "Assign clients to employees and track performance per consultant",
-  "Receive verified reviews only from clients who purchased a service",
-  "Export clients, payments, and reports to CSV",
-  "14-day renewal reminders before subscription expiry",
+  { icon: Briefcase, title: "Company Profile", description: "A dedicated company profile on OXEN so clients can discover your consulting services." },
+  { icon: Briefcase, title: "Service Packages", description: "Publish unlimited service packages with rich media, FAQ, and documents." },
+  { icon: Users, title: "Client Management", description: "Track every client from lead to final result with notes, documents, and timelines." },
+  { icon: Users, title: "Employee Management", description: "Invite your team, assign roles, and control access with granular permissions." },
+  { icon: BarChart3, title: "Business Dashboard", description: "Real-time revenue, conversion, and success-rate insights from your real data." },
+  { icon: CreditCard, title: "Payment History", description: "Every transaction recorded and exportable. Transparent commission on each sale." },
+  { icon: Users, title: "Reviews", description: "Verified reviews collected only from clients who purchased a service." },
+  { icon: LifeBuoy, title: "Support", description: "Dedicated OXEN support team and a help center for your team and clients." },
 ];
 
 const FAQ = [
@@ -111,19 +76,18 @@ const FAQ = [
 export default function Explore() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { company, isMember } = useConsulting();
   const [agreedTerms, setAgreedTerms] = useState(false);
 
   useSEO({
     title: "Consulting Business | OXEN",
     description:
-      "Grow your consulting business with OXEN. Manage clients, applications, payments, and analytics from one dashboard.",
+      "Grow your consulting business with OXEN. Create a consulting company profile and manage your services through OXEN.",
   });
 
   const handleSelectPlan = useCallback(
     (plan: SubscriptionPlan) => {
       if (user?.isGuest) {
-        navigate(`/auth?redirect=${encodeURIComponent(`/checkout?plan=${plan}`)}`);
+        navigate(`/auth?redirect=${encodeURIComponent(`/consulting/checkout?plan=${plan}`)}`);
         return;
       }
       if (!agreedTerms) {
@@ -134,7 +98,7 @@ export default function Explore() {
         document.getElementById("terms-checkbox")?.focus();
         return;
       }
-      navigate(`/checkout?plan=${plan}`);
+      navigate(`/consulting/checkout?plan=${plan}`);
     },
     [user, agreedTerms, navigate],
   );
@@ -167,30 +131,18 @@ export default function Explore() {
           <span className="text-gold-gradient">with OXEN</span>
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Create your consulting company account, publish service packages, manage clients, employees, payments, and
-          business analytics from one dashboard.
+          Create a consulting company profile and manage your services through OXEN.
         </p>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          {isMember && company ? (
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => navigate("/consulting/dashboard")}
-              className="gold-gradient flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20"
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              Go to Dashboard
-            </motion.button>
-          ) : (
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => handleSelectPlan("quarterly")}
-              className="gold-gradient flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20"
-            >
-              <Sparkles className="h-4 w-4" />
-              Buy Consulting Subscription
-            </motion.button>
-          )}
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => handleSelectPlan("quarterly")}
+            className="gold-gradient flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20"
+          >
+            <Sparkles className="h-4 w-4" />
+            Buy Consulting Subscription
+          </motion.button>
           <button
             onClick={handleContactSupport}
             className="glass flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-foreground transition hover:border-primary/30"
@@ -225,12 +177,11 @@ export default function Explore() {
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ delay: i * 0.08, ...cardSpring }}
                 whileTap={{ scale: 0.98 }}
-                className={cn(
-                  "relative flex flex-col rounded-3xl border p-6 transition",
+                className={
                   featured
-                    ? "border-primary/40 bg-primary/[0.04] shadow-xl shadow-primary/10"
-                    : "glass border-white/[0.06]",
-                )}
+                    ? "relative flex flex-col rounded-3xl border border-primary/40 bg-primary/[0.04] p-6 shadow-xl shadow-primary/10"
+                    : "glass relative flex flex-col rounded-3xl border border-white/[0.06] p-6"
+                }
               >
                 {plan.badge && (
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-lg">
@@ -274,16 +225,14 @@ export default function Explore() {
 
                 <button
                   onClick={() => handleSelectPlan(plan.id)}
-                  disabled={isMember}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-2xl py-3 text-sm font-bold transition active:scale-95 disabled:opacity-50",
+                  className={
                     featured
-                      ? "gold-gradient text-primary-foreground"
-                      : "bg-white/[0.06] text-foreground hover:bg-white/[0.1]",
-                  )}
+                      ? "gold-gradient flex items-center justify-center gap-1.5 rounded-2xl py-3 text-sm font-bold text-primary-foreground transition active:scale-95"
+                      : "flex items-center justify-center gap-1.5 rounded-2xl bg-white/[0.06] py-3 text-sm font-bold text-foreground transition hover:bg-white/[0.1] active:scale-95"
+                  }
                 >
-                  {isMember ? "Active" : "Select Plan"}
-                  {!isMember && <ArrowRight className="h-3.5 w-3.5" />}
+                  Select Plan
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               </motion.div>
             );
@@ -291,28 +240,26 @@ export default function Explore() {
         </div>
 
         {/* Terms checkbox */}
-        {!isMember && (
-          <motion.label
-            id="terms-checkbox"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="mt-5 flex cursor-pointer items-start gap-2.5 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4"
-          >
-            <input
-              type="checkbox"
-              checked={agreedTerms}
-              onChange={(e) => setAgreedTerms(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
-            />
-            <span className="text-xs text-muted-foreground">
-              I agree to the OXEN Consulting{" "}
-              <span className="font-semibold text-primary">Terms & Conditions</span>, including the subscription
-              auto-renewal policy, platform commission on package sales, and acceptable use guidelines. I understand I
-              can cancel anytime and my data is preserved in read-only mode after expiry.
-            </span>
-          </motion.label>
-        )}
+        <motion.label
+          id="terms-checkbox"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="mt-5 flex cursor-pointer items-start gap-2.5 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4"
+        >
+          <input
+            type="checkbox"
+            checked={agreedTerms}
+            onChange={(e) => setAgreedTerms(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+          />
+          <span className="text-xs text-muted-foreground">
+            I agree to the OXEN Consulting{" "}
+            <span className="font-semibold text-primary">Terms & Conditions</span>, including the subscription
+            auto-renewal policy, platform commission on package sales, and acceptable use guidelines. I understand I
+            can cancel anytime and my data is preserved in read-only mode after expiry.
+          </span>
+        </motion.label>
       </section>
 
       {/* Features overview */}
@@ -326,7 +273,7 @@ export default function Explore() {
         >
           Everything you need to run your consulting business
         </motion.h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f, i) => {
             const Icon = f.icon;
             return (
@@ -347,36 +294,6 @@ export default function Explore() {
             );
           })}
         </div>
-      </section>
-
-      {/* Subscription benefits */}
-      <section className="mb-12">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={springIn}
-          className="glass rounded-3xl p-6 sm:p-8"
-        >
-          <h2 className="mb-5 font-display text-xl font-bold sm:text-2xl">Subscription benefits</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {BENEFITS.map((b, i) => (
-              <motion.div
-                key={b}
-                initial={{ opacity: 0, x: -10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
-                className="flex items-start gap-2.5"
-              >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15">
-                  <Check className="h-3 w-3 text-primary" strokeWidth={3} />
-                </span>
-                <span className="text-sm text-foreground/90">{b}</span>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
       </section>
 
       {/* Secure payment message */}
@@ -425,15 +342,13 @@ export default function Explore() {
         transition={springIn}
         className="mb-4 text-center"
       >
-        {!isMember && (
-          <button
-            onClick={() => handleSelectPlan("quarterly")}
-            className="gold-gradient mx-auto flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold text-primary-foreground shadow-xl shadow-primary/20 transition active:scale-95"
-          >
-            <Sparkles className="h-4 w-4" />
-            Get started today
-          </button>
-        )}
+        <button
+          onClick={() => handleSelectPlan("quarterly")}
+          className="gold-gradient mx-auto flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold text-primary-foreground shadow-xl shadow-primary/20 transition active:scale-95"
+        >
+          <Sparkles className="h-4 w-4" />
+          Get started today
+        </button>
         <button
           onClick={handleContactSupport}
           className="mt-3 text-xs font-semibold text-primary transition hover:opacity-80"
