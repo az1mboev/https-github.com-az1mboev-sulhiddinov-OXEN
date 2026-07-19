@@ -20,7 +20,21 @@ interface AuthContextValue {
   loading: boolean;
   signUp: (name: string, email: string, password: string) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signInWithProvider: (provider: "google" | "apple") => Promise<void>;
+  /**
+   * Kick off OAuth with the given provider.
+   *
+   * Uses `skipBrowserRedirect: true` so we can control the redirect ourselves
+   * — this lets us escape the Rork preview iframe (Google returns 403 inside
+   * an iframe) by navigating the top-level window to the OAuth URL, with a
+   * `window.open` fallback for sandboxed iframes.
+   *
+   * Returns `{ url }` so the caller can render a manual "Open in New Tab"
+   * fallback button if the automatic redirect is blocked.
+   */
+  signInWithProvider: (
+    provider: "google" | "apple",
+    options?: { redirectToPath?: string },
+  ) => Promise<{ url?: string; error?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -152,27 +166,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signInWithProvider = useCallback(
-    async (provider: "google" | "apple") => {
+    async (
+      provider: "google" | "apple",
+      options?: { redirectToPath?: string },
+    ): Promise<{ url?: string; error?: string }> => {
       setLoading(true);
       try {
-        const { error } = await supabase.auth.signInWithOAuth({
+        // Build the real app callback URL from the current origin so OAuth
+        // redirects land on the actual deployed app (preview or production),
+        // not an embedded iframe URL. Preserve the post-login path so the
+        // Auth page can route the user back to where they started.
+        const origin =
+          typeof window !== "undefined"
+            ? window.location.origin
+            : "https://azimboyevshuxrux-mvp1.rork.app";
+        const redirectPath = options?.redirectToPath ?? "";
+        const redirectTo = `${origin}/auth${
+          redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""
+        }`;
+
+        // `skipBrowserRedirect` lets us control the navigation ourselves so we
+        // can break out of the Rork preview iframe (Google 403s inside frames).
+        const { data, error } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
-            redirectTo: "https://azimboyevshuxrux-mvp1.rork.app/auth",
-            queryParams: provider === "google" ? { access_type: "offline", prompt: "select_account" } : undefined,
+            skipBrowserRedirect: true,
+            redirectTo,
+            queryParams:
+              provider === "google"
+                ? { access_type: "offline", prompt: "select_account" }
+                : undefined,
           },
         });
 
         if (error) {
-          setLoading(false);
-          throw new Error(error.message);
+          return { error: error.message };
         }
-        // Browser redirects to the OAuth provider — we never reach this line
-        // on success. The onAuthStateChange listener picks up the session
-        // when the browser returns.
+
+        const url = data.url;
+        if (!url) {
+          return { error: "OAuth URL was not returned by Supabase." };
+        }
+
+        // Escape the iframe: navigate the top-level window to Google.
+        // Google blocks being rendered inside an iframe (X-Frame-Options:
+        // DENY), so we must redirect the top-level frame. If that is blocked
+        // (cross-origin / sandbox), fall back to opening a new tab.
+        try {
+          const inIframe =
+            typeof window !== "undefined" && window.self !== window.top;
+          if (inIframe && window.top) {
+            window.top.location.href = url;
+          } else {
+            window.location.assign(url);
+          }
+        } catch {
+          try {
+            window.open(url, "_blank", "noopener,noreferrer");
+          } catch {
+            /* caller can use the returned url for a manual fallback button */
+          }
+        }
+
+        // Return the URL so the caller can render an "Open in New Tab"
+        // fallback button if the automatic redirect is blocked.
+        return { url };
       } catch (err) {
+        return {
+          error: err instanceof Error ? err.message : "OAuth sign-in failed",
+        };
+      } finally {
         setLoading(false);
-        throw err;
       }
     },
     [],

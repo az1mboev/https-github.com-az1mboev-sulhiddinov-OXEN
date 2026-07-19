@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Mail, Lock, UserRound, Eye, EyeOff, ArrowLeft, Globe, Phone, Sparkles } from "lucide-react";
+import { Loader2, Mail, Lock, UserRound, Eye, EyeOff, ArrowLeft, Globe, Phone, Sparkles, ExternalLink } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
@@ -34,6 +34,10 @@ export default function Auth() {
   const [localLoading, setLocalLoading] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
+  // OAuth URL returned by Supabase — rendered as a manual "Open in New Tab"
+  // fallback button when the automatic top-level redirect is blocked by the
+  // Rork preview iframe sandbox.
+  const [oauthFallbackUrl, setOauthFallbackUrl] = useState<string | null>(null);
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -104,16 +108,38 @@ export default function Auth() {
   const handleGoogle = async () => {
     setLocalLoading("google");
     setOauthError(null);
+    setOauthFallbackUrl(null);
     try {
-      await signInWithProvider("google");
-      // Browser redirects to Google — onAuthStateChange picks up
-      // the session when the user returns. We never reach here on success.
+      const result = await signInWithProvider("google", {
+        redirectToPath: redirectTarget,
+      });
+      if (result.error) {
+        setOauthError(result.error);
+        toast({ title: "Sign in failed", description: result.error, variant: "destructive" });
+        setLocalLoading(null);
+        return;
+      }
+      if (result.url) {
+        // The context already attempted a top-level redirect / window.open.
+        // Keep the URL around so the user has a manual fallback button if the
+        // iframe sandbox blocked both automatic navigations.
+        setOauthFallbackUrl(result.url);
+        setLocalLoading(null);
+      }
+      // On a successful top-level redirect we never reach here — the browser
+      // is already navigating to Google. onAuthStateChange picks up the
+      // session when the user returns to /auth?redirect=…
     } catch (err) {
       const message = err instanceof Error ? err.message : "Google sign-in failed. Please try again.";
       setOauthError(message);
       toast({ title: "Sign in failed", description: message, variant: "destructive" });
       setLocalLoading(null);
     }
+  };
+
+  const openFallbackInNewTab = () => {
+    if (!oauthFallbackUrl) return;
+    window.open(oauthFallbackUrl, "_blank", "noopener,noreferrer");
   };
 
   // Show loading state while checking existing session
@@ -211,6 +237,23 @@ export default function Auth() {
                 )}
                 {t("auth.google", "Continue with Google")}
               </motion.button>
+
+              {/* Fallback: shown when the Rork preview iframe blocks the
+                  automatic top-level redirect. Opens Google OAuth in a new
+                  tab so the user can complete sign-in outside the iframe. */}
+              {oauthFallbackUrl && (
+                <motion.button
+                  type="button"
+                  onClick={openFallbackInNewTab}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-200 transition hover:bg-amber-500/15"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open Google Login in New Tab
+                </motion.button>
+              )}
 
               {/* Apple — coming soon */}
               <div className="auth-btn-provider flex w-full items-center justify-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white opacity-60">
