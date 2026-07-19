@@ -1,12 +1,28 @@
 import { motion } from "framer-motion";
-import { Compass, TrendingUp, Globe2, Map, Sparkles, ArrowRight } from "lucide-react";
-import { useCallback } from "react";
+import {
+  Briefcase,
+  Users,
+  BarChart3,
+  CreditCard,
+  ShieldCheck,
+  Sparkles,
+  Check,
+  ArrowRight,
+  LifeBuoy,
+  LayoutDashboard,
+  Globe2,
+  HelpCircle,
+} from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { OptimizedImage } from "@/components/OptimizedImage";
-import { DESTINATIONS } from "@/data/feedData";
-import { COUNTRIES } from "@/data/countries";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { CONSULTING_PLANS, type SubscriptionPlan } from "@/lib/consulting";
+import { useAuth } from "@/contexts/AuthContext";
+import { useConsulting } from "@/contexts/ConsultingContext";
+import { useSEO } from "@/hooks/use-seo";
+import { toast } from "@/hooks/use-toast";
+import { Accordion } from "@/components/consulting/Field";
+import { cn } from "@/lib/utils";
 
 const springIn = {
   type: "spring" as const,
@@ -22,189 +38,409 @@ const cardSpring = {
   mass: 0.8,
 };
 
-/* ── Featured hero card ────────────────────────────────────────────── */
+const FEATURES = [
+  {
+    icon: Briefcase,
+    title: "Company Workspace",
+    description: "A dedicated dashboard for your consulting company with full team management.",
+  },
+  {
+    icon: Users,
+    title: "Client Management",
+    description: "Track every client from lead to final result with notes, documents, and timelines.",
+  },
+  {
+    icon: BarChart3,
+    title: "Business Analytics",
+    description: "Real-time revenue, conversion, and success-rate insights from your real data.",
+  },
+  {
+    icon: CreditCard,
+    title: "Secure Payments",
+    description: "Tokenized card payments with OTP verification. No raw card data ever stored.",
+  },
+  {
+    icon: Globe2,
+    title: "Public Profile",
+    description: "A verified public company profile so clients can discover your services.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Role-Based Access",
+    description: "Granular permissions for owners, admins, consultants, finance, and support.",
+  },
+];
 
-function FeaturedCard({ dest, index }: { dest: typeof DESTINATIONS[0]; index: number }) {
-  const navigate = useNavigate();
-  const country = COUNTRIES.find((c) => c.name === dest.country);
+const BENEFITS = [
+  "Publish unlimited service packages with rich media, FAQ, and documents",
+  "Manage applications on a drag-and-drop Kanban board",
+  "Assign clients to employees and track performance per consultant",
+  "Receive verified reviews only from clients who purchased a service",
+  "Export clients, payments, and reports to CSV",
+  "14-day renewal reminders before subscription expiry",
+];
 
-  const handleClick = useCallback(() => {
-    if (country) navigate(`/country/${country.id}`);
-  }, [country, navigate]);
-
-  return (
-    <motion.button
-      initial={{ opacity: 0, y: 24, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: index * 0.08, ...cardSpring }}
-      whileTap={{ scale: 0.97 }}
-      onClick={handleClick}
-      className="travel-card group relative w-[240px] shrink-0 overflow-hidden rounded-3xl text-left"
-    >
-      <div className="relative h-[320px] w-full overflow-hidden">
-        <OptimizedImage
-          src={dest.imageUrl}
-          alt={`${dest.city}, ${dest.country}`}
-          placeholderType="post"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-        <span className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-lg backdrop-blur-md">
-          {dest.flag}
-        </span>
-        <div className="absolute bottom-0 left-0 right-0 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-white/60">{dest.country}</p>
-          <h3 className="font-display text-xl font-extrabold text-white">{dest.city}</h3>
-          <p className="mt-1 line-clamp-1 text-xs text-white/50">{dest.description}</p>
-        </div>
-      </div>
-    </motion.button>
-  );
-}
-
-/* ── Quick action tile ─────────────────────────────────────────────── */
-
-function QuickAction({
-  icon: Icon,
-  label,
-  description,
-  to,
-  delay,
-}: {
-  icon: typeof Compass;
-  label: string;
-  description: string;
-  to: string;
-  delay: number;
-}) {
-  const navigate = useNavigate();
-
-  return (
-    <motion.button
-      initial={{ opacity: 0, y: 16, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay, ...cardSpring }}
-      whileTap={{ scale: 0.97 }}
-      onClick={() => navigate(to)}
-      className="glass group flex flex-col items-start gap-3 rounded-2xl p-5 text-left transition hover:border-primary/30"
-    >
-      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition group-hover:bg-primary/20 group-hover:scale-110">
-        <Icon className="h-5 w-5" strokeWidth={2.2} />
-      </span>
-      <div>
-        <p className="font-display text-sm font-bold text-foreground">{label}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-      </div>
-      <ArrowRight className="h-4 w-4 text-muted-foreground/40 transition group-hover:translate-x-1 group-hover:text-primary" />
-    </motion.button>
-  );
-}
-
-/* ── Main Explore page ─────────────────────────────────────────────── */
+const FAQ = [
+  {
+    question: "What happens after I subscribe?",
+    answer:
+      "You'll enter your company information, add a payment method, and verify your phone. Your consulting workspace is created instantly and you can start publishing packages and inviting employees.",
+  },
+  {
+    question: "Can I cancel my subscription?",
+    answer:
+      "Yes. You can cancel anytime from the Subscription page. Your data is preserved and the dashboard switches to read-only mode. You can renew to restore full access.",
+  },
+  {
+    question: "Is my payment information secure?",
+    answer:
+      "Card numbers and CVVs are never stored in our database. We use payment-provider tokenization and only keep the masked last four digits, card brand, and a provider payment-method ID.",
+  },
+  {
+    question: "How many employees can I add?",
+    answer:
+      "The Monthly plan includes 3 employee seats, Quarterly includes 10, and Annual includes unlimited seats. You can upgrade or downgrade at any time.",
+  },
+  {
+    question: "Do you take a commission on package sales?",
+    answer:
+      "OXEN takes a small platform commission on each package sale processed through the platform. Subscription fees are separate and shown transparently on every payment receipt.",
+  },
+];
 
 export default function Explore() {
   const navigate = useNavigate();
-  const { t } = useLanguage();
-  const trending = DESTINATIONS.filter((d) => d.category === "trending").slice(0, 6);
-  const popular = DESTINATIONS.filter((d) => d.category === "popular-cities").slice(0, 4);
+  const { user } = useAuth();
+  const { company, isMember } = useConsulting();
+  const [agreedTerms, setAgreedTerms] = useState(false);
+
+  useSEO({
+    title: "Consulting Business | OXEN",
+    description:
+      "Grow your consulting business with OXEN. Manage clients, applications, payments, and analytics from one dashboard.",
+  });
+
+  const handleSelectPlan = useCallback(
+    (plan: SubscriptionPlan) => {
+      if (user?.isGuest) {
+        navigate(`/auth?redirect=${encodeURIComponent(`/checkout?plan=${plan}`)}`);
+        return;
+      }
+      if (!agreedTerms) {
+        toast({
+          title: "Please accept the Terms & Conditions first",
+          variant: "destructive",
+        });
+        document.getElementById("terms-checkbox")?.focus();
+        return;
+      }
+      navigate(`/checkout?plan=${plan}`);
+    },
+    [user, agreedTerms, navigate],
+  );
+
+  const handleContactSupport = useCallback(() => {
+    navigate("/support");
+  }, [navigate]);
+
+  const renewalInfo = useMemo(
+    () =>
+      CONSULTING_PLANS.map((p) => {
+        const date = new Date();
+        date.setMonth(date.getMonth() + p.months);
+        return { id: p.id, renewalDate: date.toLocaleDateString() };
+      }),
+    [],
+  );
 
   return (
-    <div className="min-h-screen px-5 pt-16 pb-10">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={springIn}
-        className="mb-6"
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <Compass className="h-5 w-5 text-primary" strokeWidth={2.2} />
-          <span className="text-xs font-bold uppercase tracking-widest text-primary">{t("nav.explore", "Explore")}</span>
+    <div className="mx-auto max-w-6xl px-5 pt-16 pb-10">
+      {/* Hero */}
+      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={springIn} className="mb-8">
+        <div className="mb-3 flex items-center gap-2">
+          <Briefcase className="h-5 w-5 text-primary" strokeWidth={2.2} />
+          <span className="text-xs font-bold uppercase tracking-widest text-primary">Consulting Business</span>
         </div>
-        <h1 className="font-display text-3xl font-extrabold leading-tight">
-          {t("explore.heading", "Discover your next")}
+        <h1 className="font-display text-3xl font-extrabold leading-tight sm:text-4xl">
+          Grow Your Consulting Business
           <br />
-          <span className="text-gold-gradient">{t("explore.headingAccent", "great adventure")}</span>
+          <span className="text-gold-gradient">with OXEN</span>
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {t("explore.subtitle", "From trending destinations to hidden gems — start your journey here.")}
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          Create your consulting company account, publish service packages, manage clients, employees, payments, and
+          business analytics from one dashboard.
         </p>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          {isMember && company ? (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => navigate("/consulting/dashboard")}
+              className="gold-gradient flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20"
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              Go to Dashboard
+            </motion.button>
+          ) : (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => handleSelectPlan("quarterly")}
+              className="gold-gradient flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20"
+            >
+              <Sparkles className="h-4 w-4" />
+              Buy Consulting Subscription
+            </motion.button>
+          )}
+          <button
+            onClick={handleContactSupport}
+            className="glass flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-foreground transition hover:border-primary/30"
+          >
+            <LifeBuoy className="h-4 w-4 text-primary" />
+            Contact OXEN Support
+          </button>
+        </div>
       </motion.div>
 
-      {/* Quick actions grid */}
-      <div className="mb-8 grid grid-cols-2 gap-3">
-        <QuickAction
-          icon={Globe2}
-          label={t("explore.3dGlobe", "3D Globe")}
-          description={t("explore.3dGlobeDesc", "Explore the world interactively")}
-          to="/"
-          delay={0.1}
-        />
-        <QuickAction
-          icon={Sparkles}
-          label={t("explore.aiPlanner", "AI Planner")}
-          description={t("explore.aiPlannerDesc", "Plan a trip with AI")}
-          to="/planner"
-          delay={0.15}
-        />
-        <QuickAction
-          icon={TrendingUp}
-          label={t("explore.trending", "Trending")}
-          description={t("explore.trendingDesc", "See what's hot right now")}
-          to="/travel"
-          delay={0.2}
-        />
-        <QuickAction
-          icon={Map}
-          label={t("nav.trips", "My Trips")}
-          description={t("explore.myTripsDesc", "View saved itineraries")}
-          to="/trips"
-          delay={0.25}
-        />
-      </div>
+      {/* Plans */}
+      <section className="mb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={springIn}
+          className="mb-5 flex items-center gap-2"
+        >
+          <h2 className="font-display text-xl font-bold sm:text-2xl">Choose your plan</h2>
+        </motion.div>
 
-      {/* Trending destinations */}
-      <section className="mb-8">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" strokeWidth={2.2} />
-            <h2 className="font-display text-lg font-bold">{t("explore.trendingNow", "Trending Now")}</h2>
-          </div>
-          <button
-            onClick={() => navigate("/travel")}
-            className="text-xs font-semibold text-primary transition hover:opacity-80"
-          >
-            {t("common.viewAll", "View all")} →
-          </button>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {CONSULTING_PLANS.map((plan, i) => {
+            const renewal = renewalInfo.find((r) => r.id === plan.id);
+            const featured = !!plan.badge;
+            return (
+              <motion.div
+                key={plan.id}
+                initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: i * 0.08, ...cardSpring }}
+                whileTap={{ scale: 0.98 }}
+                className={cn(
+                  "relative flex flex-col rounded-3xl border p-6 transition",
+                  featured
+                    ? "border-primary/40 bg-primary/[0.04] shadow-xl shadow-primary/10"
+                    : "glass border-white/[0.06]",
+                )}
+              >
+                {plan.badge && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-lg">
+                    {plan.badge}
+                  </span>
+                )}
+                <div className="mb-3">
+                  <h3 className="font-display text-lg font-bold text-foreground">{plan.name}</h3>
+                  <p className="text-xs text-muted-foreground">{plan.months} month{plan.months > 1 ? "s" : ""}</p>
+                </div>
+                <div className="mb-1 flex items-end gap-1.5">
+                  <span className="font-display text-4xl font-extrabold text-foreground">
+                    ${plan.price.toLocaleString()}
+                  </span>
+                  <span className="mb-1.5 text-xs text-muted-foreground">USD</span>
+                </div>
+                {plan.savingsLabel && (
+                  <span className="mb-3 inline-flex w-fit items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                    {plan.savingsLabel}
+                  </span>
+                )}
+
+                <ul className="mb-5 mt-1 space-y-2">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={3} />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mb-4 mt-auto space-y-1.5 border-t border-white/[0.06] pt-3 text-[10px] text-muted-foreground">
+                  <p>
+                    <span className="font-semibold text-foreground/70">Renews:</span>{" "}
+                    {renewal?.renewalDate} · auto-renewal on
+                  </p>
+                  <p>
+                    <span className="font-semibold text-foreground/70">Cancel:</span> anytime from your dashboard
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => handleSelectPlan(plan.id)}
+                  disabled={isMember}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-2xl py-3 text-sm font-bold transition active:scale-95 disabled:opacity-50",
+                    featured
+                      ? "gold-gradient text-primary-foreground"
+                      : "bg-white/[0.06] text-foreground hover:bg-white/[0.1]",
+                  )}
+                >
+                  {isMember ? "Active" : "Select Plan"}
+                  {!isMember && <ArrowRight className="h-3.5 w-3.5" />}
+                </button>
+              </motion.div>
+            );
+          })}
         </div>
-        <div className="-mx-5 overflow-x-auto no-scrollbar">
-          <div className="flex gap-4 px-5">
-            {trending.map((dest, i) => (
-              <FeaturedCard key={dest.id} dest={dest} index={i} />
-            ))}
-          </div>
+
+        {/* Terms checkbox */}
+        {!isMember && (
+          <motion.label
+            id="terms-checkbox"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="mt-5 flex cursor-pointer items-start gap-2.5 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4"
+          >
+            <input
+              type="checkbox"
+              checked={agreedTerms}
+              onChange={(e) => setAgreedTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+            />
+            <span className="text-xs text-muted-foreground">
+              I agree to the OXEN Consulting{" "}
+              <span className="font-semibold text-primary">Terms & Conditions</span>, including the subscription
+              auto-renewal policy, platform commission on package sales, and acceptable use guidelines. I understand I
+              can cancel anytime and my data is preserved in read-only mode after expiry.
+            </span>
+          </motion.label>
+        )}
+      </section>
+
+      {/* Features overview */}
+      <section className="mb-12">
+        <motion.h2
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={springIn}
+          className="mb-5 font-display text-xl font-bold sm:text-2xl"
+        >
+          Everything you need to run your consulting business
+        </motion.h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((f, i) => {
+            const Icon = f.icon;
+            return (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: i * 0.06, ...cardSpring }}
+                className="glass group rounded-2xl p-5"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition group-hover:scale-110">
+                  <Icon className="h-5 w-5" strokeWidth={2.2} />
+                </span>
+                <h3 className="mt-3 font-display text-sm font-bold text-foreground">{f.title}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">{f.description}</p>
+              </motion.div>
+            );
+          })}
         </div>
       </section>
 
-      {/* Popular cities */}
-      <section className="mb-8">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold">{t("explore.popularCities", "Popular Cities")}</h2>
-          <button
-            onClick={() => navigate("/travel")}
-            className="text-xs font-semibold text-primary transition hover:opacity-80"
-          >
-            {t("common.viewAll", "View all")} →
-          </button>
-        </div>
-        <div className="-mx-5 overflow-x-auto no-scrollbar">
-          <div className="flex gap-4 px-5">
-            {popular.map((dest, i) => (
-              <FeaturedCard key={dest.id} dest={dest} index={i} />
+      {/* Subscription benefits */}
+      <section className="mb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={springIn}
+          className="glass rounded-3xl p-6 sm:p-8"
+        >
+          <h2 className="mb-5 font-display text-xl font-bold sm:text-2xl">Subscription benefits</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {BENEFITS.map((b, i) => (
+              <motion.div
+                key={b}
+                initial={{ opacity: 0, x: -10 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+                className="flex items-start gap-2.5"
+              >
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                  <Check className="h-3 w-3 text-primary" strokeWidth={3} />
+                </span>
+                <span className="text-sm text-foreground/90">{b}</span>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </section>
+
+      {/* Secure payment message */}
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={springIn}
+        className="mb-12"
+      >
+        <div className="flex items-center gap-4 rounded-3xl border border-emerald-500/20 bg-emerald-500/[0.04] p-6">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
+            <ShieldCheck className="h-6 w-6" />
+          </span>
+          <div>
+            <h3 className="font-display text-base font-bold text-foreground">Secure payment</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Payments are processed through a PCI-DSS-compliant tokenization flow. We never store your raw card number
+              or CVV — only the masked last four digits and a provider payment-method ID. Phone OTP verification
+              protects every transaction.
+            </p>
+          </div>
+        </div>
+      </motion.section>
+
+      {/* FAQ */}
+      <section className="mb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={springIn}
+          className="mb-5 flex items-center gap-2"
+        >
+          <HelpCircle className="h-5 w-5 text-primary" strokeWidth={2.2} />
+          <h2 className="font-display text-xl font-bold sm:text-2xl">Frequently asked questions</h2>
+        </motion.div>
+        <Accordion items={FAQ} />
+      </section>
+
+      {/* Final CTA */}
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={springIn}
+        className="mb-4 text-center"
+      >
+        {!isMember && (
+          <button
+            onClick={() => handleSelectPlan("quarterly")}
+            className="gold-gradient mx-auto flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold text-primary-foreground shadow-xl shadow-primary/20 transition active:scale-95"
+          >
+            <Sparkles className="h-4 w-4" />
+            Get started today
+          </button>
+        )}
+        <button
+          onClick={handleContactSupport}
+          className="mt-3 text-xs font-semibold text-primary transition hover:opacity-80"
+        >
+          Questions? Contact OXEN Support →
+        </button>
+      </motion.section>
     </div>
   );
 }
