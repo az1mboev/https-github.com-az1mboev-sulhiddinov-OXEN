@@ -115,8 +115,8 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <LanguageProvider>
-      <ConsultingProvider>
         <AuthProvider>
+          <ConsultingProvider>
           <TravelProvider>
             <UniversityProvider>
               <ChatProvider>
@@ -224,8 +224,8 @@ const App = () => (
             </ChatProvider>
             </UniversityProvider>
           </TravelProvider>
+          </ConsultingProvider>
         </AuthProvider>
-      </ConsultingProvider>
       </LanguageProvider>
     </ThemeProvider>
   </QueryClientProvider>

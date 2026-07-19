@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { ConsultingProvider, useConsulting } from "@/contexts/ConsultingContext";
+import { useConsulting } from "@/contexts/ConsultingContext";
 
 /**
  * RequireConsultingMember — wraps protected consulting routes.
  * Redirects guests → /auth, non-members → /explore.
- * Provides ConsultingContext to children.
+ * Relies on the single top-level ConsultingProvider in App.tsx.
  */
 function Inner({ children }: { children: React.ReactNode }) {
   const { user, ready: authReady } = useAuth();
@@ -42,9 +42,5 @@ function Inner({ children }: { children: React.ReactNode }) {
 }
 
 export default function RequireConsultingMember({ children }: { children: React.ReactNode }) {
-  return (
-    <ConsultingProvider>
-      <Inner>{children}</Inner>
-    </ConsultingProvider>
-  );
+  return <Inner>{children}</Inner>;
 }
