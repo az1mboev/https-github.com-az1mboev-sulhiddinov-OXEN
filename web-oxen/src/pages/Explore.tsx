@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Briefcase, Sparkles, LayoutDashboard } from "lucide-react";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +8,9 @@ import { useConsulting } from "@/contexts/ConsultingContext";
 import { useSEO } from "@/hooks/use-seo";
 import { CONSULTING_OPEN_PREVIEW_MODE } from "@/lib/consulting-preview";
 
+// Explore is a public page — always open to guests and signed-in users alike.
+// Login is only required for account-only actions (e.g. opening the consulting
+// dashboard), enforced by RequireAuth on those routes, not here.
 const springIn = {
   type: "spring" as const,
   stiffness: 300,
@@ -26,17 +29,6 @@ export default function Explore() {
       "Grow your consulting business with OXEN. Subscribe to Premium Consulting and unlock a full consulting workspace.",
   });
 
-  // Preview mode: skip the landing page entirely and go straight to the
-  // consulting dashboard. Guests are sent to auth first with a redirect back.
-  useEffect(() => {
-    if (!CONSULTING_OPEN_PREVIEW_MODE) return;
-    if (user?.isGuest) {
-      navigate(`/auth?redirect=${encodeURIComponent("/consulting/dashboard")}`, { replace: true });
-      return;
-    }
-    navigate("/consulting/dashboard", { replace: true });
-  }, [user, navigate]);
-
   const handleBuy = useCallback(() => {
     const target = CONSULTING_OPEN_PREVIEW_MODE ? "/consulting/dashboard" : "/consulting/checkout";
     if (user?.isGuest) {
@@ -45,12 +37,6 @@ export default function Explore() {
     }
     navigate(target);
   }, [user, navigate]);
-
-  // In preview mode the redirect fires in the effect above; render nothing
-  // (no landing page, no Buy button) to avoid a flash of the marketing UI.
-  if (CONSULTING_OPEN_PREVIEW_MODE) {
-    return null;
-  }
 
   // If the user is already a consulting member, show a "Go to Dashboard" CTA instead.
   const showGoToDashboard = isMember && (hasActiveSubscription || hasExpiredSubscription);
