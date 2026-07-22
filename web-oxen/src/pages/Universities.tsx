@@ -24,7 +24,7 @@ import {
   MapPin,
   Globe2,
 } from "lucide-react";
-import { Suspense, lazy, useCallback, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import DestinationModal from "@/components/DestinationModal";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import UniversityModal from "@/components/UniversityModal";
+import type { UniversityMarkerData } from "@/components/Globe";
 import VideoPlayer from "@/components/VideoPlayer";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -959,15 +960,57 @@ export default function Universities() {
   const [showCountries, setShowCountries] = useState<boolean>(true);
   const [showUniversities, setShowUniversities] = useState<boolean>(true);
 
-  const handleUniversitySelect = useCallback((uni: University) => {
-    setSelectedUniversity(uni);
-    setModalOpen(true);
-    setZoomTarget({ lat: uni.latitude, lng: uni.longitude });
+  // ── Lightweight country popup (flag + name only, no large modal) ──
+  const [countryPopup, setCountryPopup] = useState<{ id: string; name: string; flag: string } | null>(null);
+
+  // ── University lazy loading with in-memory cache ──
+  const [uniLoading, setUniLoading] = useState<string | null>(null);
+  const [uniError, setUniError] = useState<string | null>(null);
+  const universityCacheRef = useRef<Map<string, University>>(new Map());
+  const failedUniIdRef = useRef<string | null>(null);
+
+  // ── Lazy-load university by ID with caching ──
+  // Cache hit = instant. Cache miss = brief loading indicator, then load + cache.
+  const loadUniversityById = useCallback((uniId: string) => {
+    setCountryPopup(null);
+    setUniError(null);
+
+    // Cache hit — instant, no loading state
+    const cached = universityCacheRef.current.get(uniId);
+    if (cached) {
+      setSelectedUniversity(cached);
+      setModalOpen(true);
+      setZoomTarget({ lat: cached.latitude, lng: cached.longitude });
+      return;
+    }
+
+    // Cache miss — show loading indicator, then load
+    setUniLoading(uniId);
+    setTimeout(() => {
+      const uni = getUniversity(uniId);
+      if (uni) {
+        universityCacheRef.current.set(uniId, uni);
+        setSelectedUniversity(uni);
+        setModalOpen(true);
+        setZoomTarget({ lat: uni.latitude, lng: uni.longitude });
+      } else {
+        setUniError("University details not found. Please try again.");
+        failedUniIdRef.current = uniId;
+      }
+      setUniLoading(null);
+    }, 300);
   }, []);
+
+  const handleRetryUniLoad = useCallback(() => {
+    const failedId = failedUniIdRef.current;
+    setUniError(null);
+    failedUniIdRef.current = null;
+    if (failedId) loadUniversityById(failedId);
+  }, [loadUniversityById]);
 
   const handleCountrySelect = useCallback((country: Country) => {
     setSelectedCountry(country);
-    setCountryModalOpen(true);
+    setCountryPopup({ id: country.id, name: country.name, flag: country.flag });
   }, []);
 
   const handleCloseUniModal = useCallback(() => {
@@ -983,21 +1026,22 @@ export default function Universities() {
   const handleBackgroundTap = useCallback(() => {
     if (modalOpen) handleCloseUniModal();
     if (countryModalOpen) handleCloseCountryModal();
+    setCountryPopup(null);
   }, [modalOpen, handleCloseUniModal, countryModalOpen, handleCloseCountryModal]);
 
   const handleSearchSelect = useCallback((result: SearchResult) => {
     if (result.type === "country") {
       setSelectedCountry(result.country);
-      setCountryModalOpen(true);
+      setCountryPopup({ id: result.country.id, name: result.country.name, flag: result.country.flag });
       setZoomTarget({ lat: result.country.lat, lng: result.country.lng });
     } else {
-      setSelectedUniversity(result.uni);
-      setModalOpen(true);
-      setZoomTarget({ lat: result.uni.latitude, lng: result.uni.longitude });
+      // Cache the university from search results for instant access
+      universityCacheRef.current.set(result.uni.id, result.uni);
+      loadUniversityById(result.uni.id);
     }
     setSearchOpen(false);
     setSearchQuery("");
-  }, []);
+  }, [loadUniversityById]);
 
   /* ── Filter + sort logic ── */
   const filteredUniversities = useMemo(() => {
@@ -1036,6 +1080,18 @@ export default function Universities() {
 
     return result;
   }, [filters, sortBy]);
+
+  // ── Lightweight marker data for the globe (only id, name, coords, logo) ──
+  // Passes minimal data to Globe instead of full University objects with heavy nested data.
+  const universityMarkerData = useMemo<UniversityMarkerData[]>(() => {
+    return filteredUniversities.map((u) => ({
+      id: u.id,
+      name: u.name,
+      latitude: u.latitude,
+      longitude: u.longitude,
+      logo: u.logo,
+    }));
+  }, [filteredUniversities]);
 
   /* ── All posts from all universities ── */
   const allPosts = useMemo(() => {
@@ -1105,9 +1161,9 @@ export default function Universities() {
               visitedIds={travelVisitedSet}
               wishlistIds={travelWishlistSet}
               universityMode
-              universities={filteredUniversities}
+              universities={universityMarkerData}
               selectedUniversityId={selectedUniversity?.id ?? null}
-              onUniversitySelect={handleUniversitySelect}
+              onUniversitySelect={loadUniversityById}
               uniWishlistIds={wishlistSet}
               uniVisitedIds={visitedSet}
               showCountries={showCountries}
@@ -1358,7 +1414,71 @@ export default function Universities() {
         )}
       </AnimatePresence>
 
-      {/* ── Country info modal ─────────────────────── */}
+      {/* ── Country popup (lightweight flag + name) ── */}
+      <AnimatePresence>
+        {countryPopup && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.96 }}
+            transition={{ type: "spring" as const, stiffness: 300, damping: 26 }}
+            className="fixed left-1/2 top-20 z-30 -translate-x-1/2"
+          >
+            <div className="glass-strong flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl">
+              <span className="text-2xl">{countryPopup.flag}</span>
+              <span className="text-sm font-bold text-foreground">{countryPopup.name}</span>
+              <button
+                onClick={() => setCountryPopup(null)}
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-muted-foreground transition hover:bg-white/20 hover:text-foreground"
+                aria-label="Close"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── University loading indicator ── */}
+      <AnimatePresence>
+        {uniLoading && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed left-1/2 top-20 z-30 -translate-x-1/2"
+          >
+            <div className="glass-strong flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span className="text-sm font-medium text-muted-foreground">Loading university…</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── University load error with retry ── */}
+      <AnimatePresence>
+        {uniError && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed left-1/2 top-20 z-30 -translate-x-1/2"
+          >
+            <div className="glass-strong flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl">
+              <span className="text-sm text-red-400">{uniError}</span>
+              <button
+                onClick={handleRetryUniLoad}
+                className="rounded-full bg-primary/15 px-3 py-1 text-xs font-bold text-primary transition hover:bg-primary/25"
+              >
+                Retry
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Country info modal (kept for future use, not triggered in current flow) ── */}
       <AnimatePresence>
         {selectedCountry && countryModalOpen && (
           <DestinationModal

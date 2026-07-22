@@ -4,7 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "rea
 import * as THREE from "three";
 
 import { COUNTRIES, type Country } from "@/data/countries";
-import type { University } from "@/data/universities";
+/** Lightweight university marker data — only what the globe needs for rendering. */
+export interface UniversityMarkerData {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  logo?: string;
+}
 
 const RADIUS = 2;
 const BORDER_OFFSET = 0.015;
@@ -387,11 +394,11 @@ function UniversityClusterMarkers({
   interactionEnabled,
   controlsRef,
 }: {
-  universities: University[];
+  universities: UniversityMarkerData[];
   selectedId: string | null;
   wishlistIds: Set<string>;
   visitedIds: Set<string>;
-  onMarkerClick: (uni: University) => void;
+  onMarkerClick: (uniId: string) => void;
   interactionEnabled: boolean;
   controlsRef: React.RefObject<any>;
 }) {
@@ -403,6 +410,7 @@ function UniversityClusterMarkers({
   const lastCamPos = useRef(new THREE.Vector3(Infinity, Infinity, Infinity));
   const needsColorUpdate = useRef(true);
   const frameCount = useRef(0);
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
 
   // Reusable temp objects (avoid per-frame allocations)
   const tmpMatrix = useMemo(() => new THREE.Matrix4(), []);
@@ -568,21 +576,35 @@ function UniversityClusterMarkers({
     }
   });
 
-  // Raycast → instanceId → university lookup
+  // Pointer down — record start position for drag-vs-click threshold
+  const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
+    pointerDownPos.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY };
+  }, []);
+
+  // Raycast → instanceId → university ID lookup.
+  // Drag threshold prevents marker click when user was rotating the globe.
   const handleClick = useCallback(
     (e: ThreeEvent<MouseEvent>) => {
       e.stopPropagation();
       if (!interactionEnabled) return;
+
+      // Drag threshold — don't fire if pointer moved more than 6px
+      if (pointerDownPos.current) {
+        const dx = e.nativeEvent.clientX - pointerDownPos.current.x;
+        const dy = e.nativeEvent.clientY - pointerDownPos.current.y;
+        pointerDownPos.current = null;
+        if (Math.sqrt(dx * dx + dy * dy) > 6) return;
+      }
+
       const instanceId = e.instanceId;
       if (instanceId === undefined || instanceId < 0) return;
       const uniIdx = visibleMapRef.current[instanceId];
-      // Int32Array returns 0 for unset, but we initialized with -1
-      if (uniIdx < 0 || uniIdx >= universities.length) return;
-      const uni = universities[uniIdx];
-      if (!uni || !uni.id) return;
-      onMarkerClick(uni);
+      if (uniIdx < 0 || uniIdx >= markerData.length) return;
+      const md = markerData[uniIdx];
+      if (!md || !md.id) return;
+      onMarkerClick(md.id);
     },
-    [interactionEnabled, onMarkerClick, universities],
+    [interactionEnabled, onMarkerClick, markerData],
   );
 
   return (
@@ -607,12 +629,13 @@ function UniversityClusterMarkers({
       <instancedMesh
         ref={dotMeshRef}
         args={[undefined as any, undefined as any, MAX_UNI_INSTANCES]}
+        onPointerDown={handlePointerDown}
         onClick={handleClick}
         onPointerOver={() => { if (interactionEnabled) document.body.style.cursor = "pointer"; }}
         onPointerOut={() => { document.body.style.cursor = "auto"; }}
         frustumCulled={false}
       >
-        <sphereGeometry args={[0.015, 8, 8]} />
+        <sphereGeometry args={[0.020, 8, 8]} />
         <meshBasicMaterial
           transparent
           opacity={0.9}
@@ -804,6 +827,7 @@ function EarthSphere({
   selectedCountry,
   hoveredCountry,
   onHoverCountry,
+  universityMode,
 }: {
   onCountrySelect: (c: Country) => void;
   onCountryDoubleClick: (c: Country) => void;
@@ -811,6 +835,8 @@ function EarthSphere({
   selectedCountry: Country | null;
   hoveredCountry: Country | null;
   onHoverCountry: (c: Country | null) => void;
+  /** When true, disables expensive hover detection and simplifies click handling for performance. */
+  universityMode?: boolean;
 }) {
   const texture = useTexture(EARTH_TEXTURE);
   const meshRef = useRef<THREE.Mesh>(null);
@@ -828,6 +854,7 @@ function EarthSphere({
 
   const handlePointerMove = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
+      if (universityMode) return; // skip expensive findCountryByPoint in university mode
       e.stopPropagation();
       const point = e.point.clone();
       if (meshRef.current) meshRef.current.worldToLocal(point);
@@ -835,12 +862,13 @@ function EarthSphere({
       const country = findCountryByPoint(lat, lng);
       onHoverCountry(country);
     },
-    [onHoverCountry],
+    [onHoverCountry, universityMode],
   );
 
   const handlePointerLeave = useCallback(() => {
+    if (universityMode) return;
     onHoverCountry(null);
-  }, [onHoverCountry]);
+  }, [onHoverCountry, universityMode]);
 
   const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
     pointerStart.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY };
@@ -855,6 +883,13 @@ function EarthSphere({
       }
 
       e.stopPropagation();
+
+      // In university mode, skip expensive country finding — just handle background tap
+      if (universityMode) {
+        onBackgroundTap?.();
+        return;
+      }
+
       const point = e.point.clone();
       if (meshRef.current) meshRef.current.worldToLocal(point);
       const { lat, lng } = vec3ToLatLng(point, RADIUS);
@@ -873,7 +908,7 @@ function EarthSphere({
         lastClickCountry.current = country;
       }
     },
-    [onCountrySelect, onCountryDoubleClick, onBackgroundTap],
+    [onCountrySelect, onCountryDoubleClick, onBackgroundTap, universityMode],
   );
 
   return (
@@ -1090,11 +1125,11 @@ function Scene({
   wishlistIds: Set<string>;
   interactionEnabled: boolean;
   universityMode?: boolean;
-  universities?: University[];
+  universities?: UniversityMarkerData[];
   selectedUniversityId?: string | null;
   uniWishlistIds?: Set<string>;
   uniVisitedIds?: Set<string>;
-  onUniversitySelect?: (uni: University) => void;
+  onUniversitySelect?: (uniId: string) => void;
   showCountries?: boolean;
   showUniversities?: boolean;
 }) {
@@ -1115,7 +1150,7 @@ function Scene({
     [interactionEnabled, onHoverCountry],
   );
   const guardedUniSelect = useCallback(
-    (uni: University) => { if (interactionEnabled && onUniversitySelect) onUniversitySelect(uni); },
+    (uniId: string) => { if (interactionEnabled && onUniversitySelect) onUniversitySelect(uniId); },
     [interactionEnabled, onUniversitySelect],
   );
 
@@ -1132,6 +1167,7 @@ function Scene({
         selectedCountry={selectedCountry}
         hoveredCountry={hoveredCountry}
         onHoverCountry={guardedHover}
+        universityMode={universityMode}
       />
       {showCountryMarkers && (
         <StatusMarkers
@@ -1186,11 +1222,11 @@ export default function Globe({
   visitedIds?: Set<string>;
   wishlistIds?: Set<string>;
   universityMode?: boolean;
-  universities?: University[];
+  universities?: UniversityMarkerData[];
   selectedUniversityId?: string | null;
   uniWishlistIds?: Set<string>;
   uniVisitedIds?: Set<string>;
-  onUniversitySelect?: (uni: University) => void;
+  onUniversitySelect?: (uniId: string) => void;
   showCountries?: boolean;
   showUniversities?: boolean;
 }) {
