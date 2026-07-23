@@ -24,7 +24,7 @@ import {
   MapPin,
   Globe2,
 } from "lucide-react";
-import { Suspense, lazy, useCallback, useMemo, useRef, useState } from "react";
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -84,7 +84,7 @@ type SortOption = "highest-ranking" | "lowest-tuition" | "most-popular" | "most-
 
 /* ── University discover card ─────────────────────────────────────── */
 
-function UniversityDiscoverCard({ uni, index }: { uni: University; index: number }) {
+function UniversityDiscoverCardInner({ uni, index }: { uni: University; index: number }) {
   const navigate = useNavigate();
   const { isWishlisted, toggleWishlist } = useUniversity();
   const [saved, setSaved] = useState<boolean>(isWishlisted(uni.id));
@@ -188,9 +188,11 @@ function UniversityDiscoverCard({ uni, index }: { uni: University; index: number
   );
 }
 
+const UniversityDiscoverCard = React.memo(UniversityDiscoverCardInner);
+
 /* ── University post card (Instagram-style) ───────────────────────── */
 
-function UniversityPostCard({ post, index }: { post: UniversityPost; index: number }) {
+function UniversityPostCardInner({ post, index }: { post: UniversityPost; index: number }) {
   const navigate = useNavigate();
   const [liked, setLiked] = useState<boolean>(post.liked ?? false);
   const [likeCount, setLikeCount] = useState<number>(post.likes);
@@ -300,6 +302,37 @@ function UniversityPostCard({ post, index }: { post: UniversityPost; index: numb
         document.body,
       )}
     </motion.article>
+  );
+}
+
+const UniversityPostCard = React.memo(UniversityPostCardInner);
+
+/* ── Lazy feed section — renders children only when scrolled into view */
+/* Deferred rendering prevents thousands of DOM nodes (cards/images) from being created on initial page load. */
+function LazySection({ children, className, minHeight = 200 }: { children: React.ReactNode; className?: string; minHeight?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className={className} style={{ minHeight: visible ? undefined : minHeight }}>
+      {visible ? children : null}
+    </div>
   );
 }
 
@@ -959,6 +992,7 @@ export default function Universities() {
   const [showCompare, setShowCompare] = useState<boolean>(false);
   const [showCountries, setShowCountries] = useState<boolean>(true);
   const [showUniversities, setShowUniversities] = useState<boolean>(true);
+  const [postsLimit, setPostsLimit] = useState<number>(12); // Start with 12 posts, load more on demand
 
   // ── Lightweight country popup (flag + name only, no large modal) ──
   const [countryPopup, setCountryPopup] = useState<{ id: string; name: string; flag: string } | null>(null);
@@ -1023,11 +1057,17 @@ export default function Universities() {
     setTimeout(() => setSelectedCountry(null), 350);
   }, []);
 
+  // Stabilize handleBackgroundTap with refs — prevents Globe re-render when modal state changes
+  const modalOpenRef = useRef(false);
+  const countryModalOpenRef = useRef(false);
+  modalOpenRef.current = modalOpen;
+  countryModalOpenRef.current = countryModalOpen;
+
   const handleBackgroundTap = useCallback(() => {
-    if (modalOpen) handleCloseUniModal();
-    if (countryModalOpen) handleCloseCountryModal();
+    if (modalOpenRef.current) handleCloseUniModal();
+    if (countryModalOpenRef.current) handleCloseCountryModal();
     setCountryPopup(null);
-  }, [modalOpen, handleCloseUniModal, countryModalOpen, handleCloseCountryModal]);
+  }, [handleCloseUniModal, handleCloseCountryModal]);
 
   const handleSearchSelect = useCallback((result: SearchResult) => {
     if (result.type === "country") {
@@ -1118,13 +1158,17 @@ export default function Universities() {
     return count;
   }, [filters]);
 
-  /* ── Themed recommendation feed sections ── */
+  /* ── Themed recommendation feed sections (memoized, sorted lazily) ── */
   const themedFeeds = useMemo(() => {
     const ivyIds = new Set(["harvard", "stanford", "mit", "princeton", "yale", "columbia", "upenn", "caltech", "uchicago", "cornell", "duke", "johnshopkins"]);
+    // Precompute sorted arrays once — reuse for multiple sections to avoid repeated sorts
+    const byStudentsDesc = [...UNIVERSITIES].sort((a, b) => b.studentsCount - a.studentsCount);
+    const byRankingAsc = [...UNIVERSITIES].sort((a, b) => a.qsRanking - b.qsRanking);
+    const byTuitionAsc = [...UNIVERSITIES].sort((a, b) => a.tuitionNumeric - b.tuitionNumeric);
     return [
-      { icon: "🔥", title: t("uni.trending", "Trending Universities"), items: [...UNIVERSITIES].sort((a, b) => b.studentsCount - a.studentsCount).slice(0, 12) },
-      { icon: "⭐", title: t("uni.topRanked", "Top Ranked"), items: [...UNIVERSITIES].sort((a, b) => a.qsRanking - b.qsRanking).slice(0, 12) },
-      { icon: "💰", title: t("uni.affordable", "Affordable Universities"), items: [...UNIVERSITIES].sort((a, b) => a.tuitionNumeric - b.tuitionNumeric).slice(0, 12) },
+      { icon: "🔥", title: t("uni.trending", "Trending Universities"), items: byStudentsDesc.slice(0, 12) },
+      { icon: "⭐", title: t("uni.topRanked", "Top Ranked"), items: byRankingAsc.slice(0, 12) },
+      { icon: "💰", title: t("uni.affordable", "Affordable Universities"), items: byTuitionAsc.slice(0, 12) },
       { icon: "🎓", title: t("uni.bestScholarships", "Best Scholarships"), items: UNIVERSITIES.filter((u) => u.hasScholarship).slice(0, 12) },
       { icon: "🌍", title: t("uni.studyAbroad", "Study Abroad Picks"), items: UNIVERSITIES.filter((u) => u.continent !== "North America").slice(0, 12) },
       { icon: "🏛", title: t("uni.ivyLeague", "Ivy League"), items: UNIVERSITIES.filter((u) => ivyIds.has(u.id)).slice(0, 12) },
@@ -1168,6 +1212,7 @@ export default function Universities() {
               uniVisitedIds={visitedSet}
               showCountries={showCountries}
               showUniversities={showUniversities}
+              reducedAnimation={modalOpen}
             />
           </Suspense>
         </motion.div>
@@ -1306,9 +1351,9 @@ export default function Universities() {
         </p>
       </section>
 
-      {/* ── Themed Recommendation Feeds ── */}
+      {/* ── Themed Recommendation Feeds (lazy rendered via IntersectionObserver) ── */}
       {themedFeeds.map((section, sectionIdx) => (
-        <section key={sectionIdx} className="relative z-10 pt-4 pb-3">
+        <LazySection key={sectionIdx} className="relative z-10 pt-4 pb-3" minHeight={280}>
           <div className="mb-3 flex items-center justify-between px-5">
             <h2 className="flex items-center gap-2 font-display text-lg font-bold">
               <span className="text-xl">{section.icon}</span>
@@ -1322,11 +1367,11 @@ export default function Universities() {
               ))}
             </div>
           </div>
-        </section>
+        </LazySection>
       ))}
 
-      {/* ── Campus Videos ──────────────────────────── */}
-      <section className="relative z-10 pt-4 pb-6">
+      {/* ── Campus Videos (lazy rendered) ──────────── */}
+      <LazySection className="relative z-10 pt-4 pb-6" minHeight={240}>
         <div className="mb-4 px-5">
           <h2 className="font-display text-lg font-bold">{t("uni.campusVideos", "Campus Videos")}</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{t("uni.campusVideosDesc", "Tour campuses from around the world")}</p>
@@ -1338,27 +1383,37 @@ export default function Universities() {
             ))}
           </div>
         </div>
-      </section>
+      </LazySection>
 
-      {/* ── University Posts (Instagram-style) ────── */}
-      <section className="relative z-10 pt-4 pb-6 px-5">
+      {/* ── University Posts (lazy rendered, paginated) ── */}
+      <LazySection className="relative z-10 pt-4 pb-6 px-5" minHeight={400}>
         <div className="mb-4">
           <h2 className="font-display text-lg font-bold">{t("uni.universityPosts", "University Posts")}</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{t("uni.postsDesc", "Student experiences and campus life")}</p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {allPosts.map((post, i) => (
+          {allPosts.slice(0, postsLimit).map((post, i) => (
             <UniversityPostCard key={post.id} post={post} index={i} />
           ))}
         </div>
-      </section>
+        {allPosts.length > postsLimit && (
+          <div className="mt-5 flex justify-center">
+            <button
+              onClick={() => setPostsLimit((prev) => prev + 12)}
+              className="glass-button rounded-full px-6 py-3 text-sm font-semibold text-foreground transition active:scale-95"
+            >
+              {t("uni.loadMore", "Load More Posts")}
+            </button>
+          </div>
+        )}
+      </LazySection>
 
       {/* ── AI Recommendations ────────────────────── */}
       <AIRecommendationSection />
 
-      {/* ── My Universities (Wishlist) ─────────────── */}
+      {/* ── My Universities (Wishlist, lazy rendered) ── */}
       {wishlist.length > 0 && (
-        <section className="relative z-10 pt-4 pb-10">
+        <LazySection className="relative z-10 pt-4 pb-10" minHeight={280}>
           <div className="mb-4 px-5">
             <h2 className="flex items-center gap-2 font-display text-lg font-bold">
               <Heart className="h-5 w-5 text-rose-400" />
@@ -1373,7 +1428,7 @@ export default function Universities() {
               ))}
             </div>
           </div>
-        </section>
+        </LazySection>
       )}
 
       {/* ── Search overlay ─────────────────────────── */}
@@ -1496,7 +1551,7 @@ export default function Universities() {
 
 /* ── Campus video card ────────────────────────────────────────────── */
 
-function CampusVideoCard({
+function CampusVideoCardInner({
   video,
   index,
 }: {
@@ -1587,3 +1642,5 @@ function CampusVideoCard({
     </>
   );
 }
+
+const CampusVideoCard = React.memo(CampusVideoCardInner);

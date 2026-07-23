@@ -1,6 +1,6 @@
 import { OrbitControls, useTexture } from "@react-three/drei";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import * as THREE from "three";
 
 import { COUNTRIES, type Country } from "@/data/countries";
@@ -393,6 +393,7 @@ function UniversityClusterMarkers({
   onMarkerClick,
   interactionEnabled,
   controlsRef,
+  reducedAnimation,
 }: {
   universities: UniversityMarkerData[];
   selectedId: string | null;
@@ -401,6 +402,7 @@ function UniversityClusterMarkers({
   onMarkerClick: (uniId: string) => void;
   interactionEnabled: boolean;
   controlsRef: React.RefObject<any>;
+  reducedAnimation?: boolean;
 }) {
   const { camera } = useThree();
   const dotMeshRef = useRef<THREE.InstancedMesh>(null);
@@ -435,6 +437,10 @@ function UniversityClusterMarkers({
     // Reset visible map when universities array changes to prevent stale indices
     visibleMapRef.current.fill(-1);
   }, [visitedIds, wishlistIds, selectedId, universities]);
+
+  // Pause pulse animation when reducedAnimation is true (modal open, tab hidden)
+  const reducedAnimationRef = useRef(false);
+  reducedAnimationRef.current = reducedAnimation;
 
   useFrame(() => {
     const dotMesh = dotMeshRef.current;
@@ -537,9 +543,9 @@ function UniversityClusterMarkers({
       needsColorUpdate.current = false;
     }
 
-    // Pulse animation for halos — every other frame to save CPU
+    // Pulse animation for halos — skip when reducedAnimation is active
     frameCount.current++;
-    const shouldPulse = frameCount.current % 2 === 0;
+    const shouldPulse = !reducedAnimationRef.current && frameCount.current % 2 === 0;
     const count = dotMesh.count;
     if (shouldPulse) {
       const t = Date.now() * 0.003;
@@ -755,7 +761,7 @@ function CountryHighlight({
 /*  Dynamic clouds layer — slowly rotating, semi-transparent            */
 /* ------------------------------------------------------------------ */
 
-function CloudsLayer() {
+function CloudsLayer({ reducedAnimation }: { reducedAnimation?: boolean }) {
   const cloudsRef = useRef<THREE.Mesh>(null);
   const texture = useTexture(CLOUDS_TEXTURE);
 
@@ -765,7 +771,7 @@ function CloudsLayer() {
   }, [texture]);
 
   useFrame((_, delta) => {
-    if (cloudsRef.current) {
+    if (cloudsRef.current && !reducedAnimation) {
       cloudsRef.current.rotation.y += delta * 0.018;
     }
   });
@@ -791,11 +797,12 @@ function CloudsLayer() {
 /*  Day/night cycle — animated directional light orbiting the globe     */
 /* ------------------------------------------------------------------ */
 
-function DayNightCycle() {
+function DayNightCycle({ reducedAnimation }: { reducedAnimation?: boolean }) {
   const lightRef = useRef<THREE.DirectionalLight>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
 
   useFrame((state) => {
+    if (reducedAnimation) return;
     const t = state.clock.getElapsedTime() * 0.08;
     if (lightRef.current) {
       lightRef.current.position.set(
@@ -928,7 +935,7 @@ function EarthSphere({
       </mesh>
 
       {/* Dynamic clouds */}
-      <CloudsLayer />
+      <CloudsLayer reducedAnimation={universityMode ? false : undefined} />
 
       {/* Inner atmosphere */}
       <mesh scale={1.025}>
@@ -984,14 +991,20 @@ function Starfield() {
 /*  Rotation controller — slow down as user zooms in                   */
 /* ------------------------------------------------------------------ */
 
-function RotationController({ controlsRef }: { controlsRef: React.RefObject<any> }) {
+function RotationController({ controlsRef, reducedAnimation }: { controlsRef: React.RefObject<any>; reducedAnimation?: boolean }) {
   const { camera } = useThree();
 
   useFrame(() => {
     if (!controlsRef.current) return;
     const ctrl = controlsRef.current;
-    const dist = camera.position.distanceTo(ctrl.target);
 
+    // When reducedAnimation (modal open, tab hidden), slow down auto-rotation significantly
+    if (reducedAnimation) {
+      ctrl.autoRotateSpeed = 0.1;
+      return;
+    }
+
+    const dist = camera.position.distanceTo(ctrl.target);
     const t = THREE.MathUtils.clamp((dist - MIN_DISTANCE) / (MAX_DISTANCE - MIN_DISTANCE), 0, 1);
     const speed = BASE_ROTATION_SPEED * Math.pow(t, 1.4);
     ctrl.autoRotateSpeed = speed;
@@ -1112,6 +1125,7 @@ function Scene({
   onUniversitySelect,
   showCountries,
   showUniversities,
+  reducedAnimation,
 }: {
   onCountrySelect: (c: Country) => void;
   onCountryDoubleClick: (c: Country) => void;
@@ -1132,6 +1146,7 @@ function Scene({
   onUniversitySelect?: (uniId: string) => void;
   showCountries?: boolean;
   showUniversities?: boolean;
+  reducedAnimation?: boolean;
 }) {
   const guardedSelect = useCallback(
     (c: Country) => { if (interactionEnabled) onCountrySelect(c); },
@@ -1159,7 +1174,7 @@ function Scene({
 
   return (
     <>
-      <DayNightCycle />
+      <DayNightCycle reducedAnimation={reducedAnimation} />
       <EarthSphere
         onCountrySelect={guardedSelect}
         onCountryDoubleClick={guardedDoubleClick}
@@ -1185,11 +1200,12 @@ function Scene({
           onMarkerClick={guardedUniSelect}
           interactionEnabled={interactionEnabled}
           controlsRef={controlsRef}
+          reducedAnimation={reducedAnimation}
         />
       )}
       <CapitalMarkers />
       <Starfield />
-      <RotationController controlsRef={controlsRef} />
+      <RotationController controlsRef={controlsRef} reducedAnimation={reducedAnimation} />
       <ZoomController zoomTarget={zoomTarget} controlsRef={controlsRef} />
     </>
   );
@@ -1199,7 +1215,11 @@ function Scene({
 /*  Public component                                                  */
 /* ------------------------------------------------------------------ */
 
-export default function Globe({
+/** Detect weak devices for adaptive quality reduction */
+const IS_WEAK_DEVICE = typeof navigator !== "undefined" &&
+  ((navigator.hardwareConcurrency ?? 4) <= 4 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+
+function GlobeInner({
   onCountrySelect,
   onBackgroundTap,
   selectedCountry,
@@ -1214,6 +1234,7 @@ export default function Globe({
   onUniversitySelect,
   showCountries = true,
   showUniversities = true,
+  reducedAnimation = false,
 }: {
   onCountrySelect?: (c: Country) => void;
   onBackgroundTap?: () => void;
@@ -1229,11 +1250,25 @@ export default function Globe({
   onUniversitySelect?: (uniId: string) => void;
   showCountries?: boolean;
   showUniversities?: boolean;
+  reducedAnimation?: boolean;
 }) {
   const controlsRef = useRef<any>(null);
   const hoveredCountryRef = useRef<Country | null>(null);
   const [internalZoomTarget, setInternalZoomTarget] = useState<{ lat: number; lng: number; distance?: number } | null>(null);
   const [hoveredCountry, setHoveredCountry] = useState<Country | null>(null);
+  const [isTabVisible, setIsTabVisible] = useState<boolean>(!document.hidden);
+
+  // Track document visibility to pause animation when tab is hidden
+  useEffect(() => {
+    const handleVisibilityChange = () => setIsTabVisible(!document.hidden);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  // Combined reduced animation: external (modal open) OR tab hidden
+  const effectiveReducedAnimation = reducedAnimation || !isTabVisible;
 
   // Manual rotation is locked until the user taps the "Click" button.
   // Auto-rotate, zoom, animations, and country selection remain active.
@@ -1268,8 +1303,9 @@ export default function Globe({
     <div className="relative h-full w-full">
       <Canvas
         camera={{ position: [0, 0.5, 5.4], fov: 40, near: 0.01, far: 200 }}
-        dpr={[1, 1.75]}
-        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+        dpr={IS_WEAK_DEVICE ? [1, 1.25] : [1, 1.75]}
+        gl={{ antialias: !IS_WEAK_DEVICE, alpha: true, powerPreference: "high-performance" }}
+        frameloop={effectiveReducedAnimation ? "demand" : "always"}
       >
         <Suspense fallback={null}>
           <Scene
@@ -1292,6 +1328,7 @@ export default function Globe({
             onUniversitySelect={onUniversitySelect}
             showCountries={showCountries}
             showUniversities={showUniversities}
+            reducedAnimation={effectiveReducedAnimation}
           />
           <OrbitControls
             ref={controlsRef}
@@ -1338,3 +1375,6 @@ export default function Globe({
     </div>
   );
 }
+
+const Globe = React.memo(GlobeInner);
+export default Globe;
