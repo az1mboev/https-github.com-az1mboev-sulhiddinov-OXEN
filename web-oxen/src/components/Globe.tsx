@@ -24,19 +24,19 @@ const CLOUDS_TEXTURE = "https://threejs.org/examples/textures/planets/earth_clou
 /*  Colors                                                            */
 /* ------------------------------------------------------------------ */
 
-const APPLE_RED = "#FF3B30";
+const APPLE_RED = "#EF4444";
 const HOVER_WHITE = "#ffffff";
 const FILL_OPACITY_TARGET = 0.18;
 const HOVER_BORDER_OPACITY = 0.82;
 const SELECTED_BORDER_OPACITY = 0.95;
 const HOVER_GLOW_OPACITY = 0.32;
 const SELECTED_GLOW_OPACITY = 0.28;
-const CAPITAL_COLOR = "#a0d8ff";
+const CAPITAL_COLOR = "#7DD3FC";
 
 /* Travel status marker colors — green=not visited, yellow=wishlist, red=visited */
 const MARKER_GREEN = new THREE.Color("#34C759");
-const MARKER_YELLOW = new THREE.Color("#FFCC00");
-const MARKER_RED = new THREE.Color("#FF3B30");
+const MARKER_YELLOW = new THREE.Color("#F59E0B");
+const MARKER_RED = new THREE.Color("#EF4444");
 const MARKER_OFFSET = 0.03;
 const EMPTY_SET: Set<string> = new Set();
 
@@ -371,10 +371,10 @@ function StatusMarkers({
 /* ------------------------------------------------------------------ */
 
 const UNI_MARKER_OFFSET = 0.025;
-const UNI_MARKER_YELLOW = new THREE.Color("#FFD700");
-const UNI_MARKER_GOLD = new THREE.Color("#FFB300");
+const UNI_MARKER_YELLOW = new THREE.Color("#7DD3FC");
+const UNI_MARKER_GOLD = new THREE.Color("#3B82F6");
 const UNI_MARKER_GREEN = new THREE.Color("#34C759");
-const UNI_MARKER_RED = new THREE.Color("#FF3B30");
+const UNI_MARKER_RED = new THREE.Color("#EF4444");
 const MAX_UNI_INSTANCES = 3000;
 
 interface UniMarkerData {
