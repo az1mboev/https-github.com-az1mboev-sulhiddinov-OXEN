@@ -437,21 +437,34 @@ function useConsultingState() {
       if (!role) return false;
       if (role === "owner" || role === "administrator") return true;
       // Full permission map per role. "*" = all permissions.
+      // Aligned with POS/Cashier spec:
+      //   Owner        → full access (POS, Cashier, transactions, reports, accounts, categories)
+      //   Manager      → view POS, add clients, add client payments, view assigned clients, limited cashier
+      //   Employee     → view assigned clients, add notes/documents, no full company profit
+      //   Cashier      → add income/expenses, receive client payments, print receipts, no owner settings
       const map: Record<MemberRole, string[]> = {
         owner: ["*"],
         administrator: ["*"],
         manager: [
           "clients:write", "clients:read", "clients:read_assigned",
           "applications:write", "applications:read", "applications:read_assigned",
+          "packages:read", "packages:write",
+          "pos:read", "pos:write",
+          "payments:read", "payments:write",
           "employees:read",
           "members:read",
           "activity:read",
           "analytics:read",
-          "packages:read",
+          "cashier:read",
+          "reports:read",
+          "reminders:read",
         ],
         consultant: [
           "clients:read_assigned",
           "applications:read_assigned",
+          "pos:read",
+          "payments:read",
+          "reminders:read",
           "activity:read",
         ],
         support_agent: [
@@ -462,6 +475,10 @@ function useConsultingState() {
         finance_manager: [
           "payments:read", "payments:write",
           "refunds:write",
+          "cashier:read", "cashier:write",
+          "pos:read", "pos:write",
+          "reports:read",
+          "reminders:read",
           "analytics:read",
           "activity:read",
         ],

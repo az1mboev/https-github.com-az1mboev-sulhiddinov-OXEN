@@ -13,6 +13,7 @@ import {
   UserPlus,
   DollarSign,
   Printer,
+  Download,
   History,
   CheckCircle2,
   XCircle,
@@ -43,6 +44,9 @@ import {
   derivePackageStatus,
   countSoldForPackage,
   computePaymentProgress,
+  buildReceipt,
+  printReceipt,
+  downloadReceipt,
   fullName,
   type PosSale,
   type PosSaleInput,
@@ -193,10 +197,20 @@ export default function ConsultingPOS() {
     });
   }, [packages, pkgSearch, pkgCategory, pkgDestination, pkgStatus, pkgPayment, companyId, sales]);
 
+  const handlePrintReceipt = useCallback((sale: PosSale) => {
+    const payments = fetchSalePayments(companyId, sale.id).filter((p) => !p.is_reversed);
+    const latest = payments[0];
+    if (!latest) { toast({ title: "No payments to receipt", variant: "destructive" }); return; }
+    if (!company) return;
+    const receipt = buildReceipt({ name: company.name, logo_url: company.logo_url, contact_phone: company.contact_phone, contact_email: company.contact_email, address: company.address }, sale, latest);
+    printReceipt(receipt);
+  }, [companyId, company]);
+
   return (
     <DashboardShell
       title="POS"
       subtitle="Sell service packages to clients and track payments"
+      showBack
     >
       {/* Package section */}
       <section className="mb-8">
@@ -463,6 +477,7 @@ export default function ConsultingPOS() {
                           onHistory={() => setHistoryFor(s)}
                           onComplete={() => setCompleteTarget(s)}
                           onCancel={() => setCancelTarget(s)}
+                          onPrintReceipt={() => handlePrintReceipt(s)}
                         />
                       </td>
                     </motion.tr>
@@ -509,6 +524,7 @@ export default function ConsultingPOS() {
                       onHistory={() => setHistoryFor(s)}
                       onComplete={() => setCompleteTarget(s)}
                       onCancel={() => setCancelTarget(s)}
+                      onPrintReceipt={() => handlePrintReceipt(s)}
                     />
                   </div>
                 </div>
@@ -696,6 +712,7 @@ function SaleActions({
   onHistory,
   onComplete,
   onCancel,
+  onPrintReceipt,
 }: {
   sale: PosSale;
   canWrite: boolean;
@@ -705,6 +722,7 @@ function SaleActions({
   onHistory: () => void;
   onComplete: () => void;
   onCancel: () => void;
+  onPrintReceipt: () => void;
 }) {
   const btn = "flex h-8 w-8 items-center justify-center rounded-lg transition";
   return (
@@ -726,10 +744,11 @@ function SaleActions({
         <History className="h-3.5 w-3.5" />
       </button>
       <button
-        onClick={() => window.print()}
+        onClick={onPrintReceipt}
         className={cn(btn, "bg-white/[0.04] text-muted-foreground hover:text-foreground")}
         aria-label="Print receipt"
         title="Print receipt"
+        disabled={sale.total_paid <= 0}
       >
         <Printer className="h-3.5 w-3.5" />
       </button>
@@ -1388,6 +1407,26 @@ function PaymentHistoryList({ companyId, sale }: { companyId: string; sale: PosS
     [companyId, sale],
   );
 
+  const handlePrint = useCallback((p: PosPayment) => {
+    const freshSale = fetchPosSales(companyId).find((s) => s.id === sale.id) ?? sale;
+    const receipt = buildReceipt(
+      { name: "OXEN Consulting", logo_url: null, contact_phone: null, contact_email: null, address: null },
+      freshSale,
+      p,
+    );
+    printReceipt(receipt);
+  }, [companyId, sale]);
+
+  const handleDownload = useCallback((p: PosPayment) => {
+    const freshSale = fetchPosSales(companyId).find((s) => s.id === sale.id) ?? sale;
+    const receipt = buildReceipt(
+      { name: "OXEN Consulting", logo_url: null, contact_phone: null, contact_email: null, address: null },
+      freshSale,
+      p,
+    );
+    downloadReceipt(receipt);
+  }, [companyId, sale]);
+
   if (payments.length === 0) {
     return (
       <div className="glass rounded-2xl p-6 text-center text-sm text-muted-foreground">
@@ -1420,6 +1459,16 @@ function PaymentHistoryList({ companyId, sale }: { companyId: string; sale: PosS
           {p.received_by_name && <p className="text-[10px] text-muted-foreground">Received by: {p.received_by_name}</p>}
           {p.comment && <p className="mt-1 text-[11px] text-foreground/80">{p.comment}</p>}
           {p.reversal_reason && <p className="mt-1 text-[10px] text-amber-400">Reason: {p.reversal_reason}</p>}
+          {!p.is_reversed && (
+            <div className="mt-2 flex gap-1.5">
+              <button onClick={() => handlePrint(p)} className="flex items-center gap-1 rounded-lg bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-muted-foreground transition hover:text-foreground">
+                <Printer className="h-3 w-3" /> Print receipt
+              </button>
+              <button onClick={() => handleDownload(p)} className="flex items-center gap-1 rounded-lg bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-muted-foreground transition hover:text-foreground">
+                <Download className="h-3 w-3" /> Download
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </div>

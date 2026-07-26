@@ -61,10 +61,12 @@ interface DashboardShellProps {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
+  /** When true, show a back button that navigates one step back in router history. */
+  showBack?: boolean;
   children: ReactNode;
 }
 
-export function DashboardShell({ title, subtitle, actions, children }: DashboardShellProps) {
+export function DashboardShell({ title, subtitle, actions, showBack = false, children }: DashboardShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -276,6 +278,15 @@ export function DashboardShell({ title, subtitle, actions, children }: Dashboard
           </button>
 
           <div className="flex min-w-0 flex-1 items-center gap-3">
+            {showBack && (
+              <button
+                onClick={() => navigate(-1)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] text-muted-foreground transition hover:text-foreground"
+                aria-label="Go back"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+            )}
             {/* Company logo + name */}
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/15">
               {logoUrl ? (

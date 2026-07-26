@@ -10,6 +10,8 @@ import {
   Clock,
   DollarSign,
   TrendingUp,
+  TrendingDown,
+  AlertTriangle,
   PackagePlus,
   Building2,
   UserPlus as InviteIcon,
@@ -32,6 +34,10 @@ import {
   testFetchAnalyticsStats,
   testFetchActivityLogs,
 } from "@/lib/consulting-test-mode";
+import {
+  fetchDashboardFinanceStats,
+  type DashboardFinanceStats,
+} from "@/lib/consulting-pos";
 
 const springIn = {
   type: "spring" as const,
@@ -69,6 +75,15 @@ export default function DashboardHome() {
     enabled: !!companyId && !isTestMode,
   });
   const stats = isTestMode ? testStatsQ.data : realStatsQ.data;
+
+  // Finance stats from POS + Cashier (real data, never fake)
+  const financeQ = useQuery({
+    queryKey: ["consulting-finance-stats", companyId],
+    queryFn: () => fetchDashboardFinanceStats(companyId),
+    enabled: !!companyId,
+    staleTime: 0,
+  });
+  const finance = financeQ.data;
 
   // Recent activity (latest 5)
   const testActivityQ = useQuery({
@@ -115,10 +130,10 @@ export default function DashboardHome() {
 
   const hasNoData =
     !loading &&
-    stats &&
-    stats.totalClients === 0 &&
-    stats.activeApplications === 0 &&
-    stats.totalRevenue === 0;
+    finance &&
+    finance.totalClients === 0 &&
+    finance.activeApplications === 0 &&
+    finance.totalRevenue === 0;
 
   return (
     <DashboardShell
@@ -148,65 +163,97 @@ export default function DashboardHome() {
 
       {/* Stat cards — real zeros when no data */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard label="Total Clients" value={stats?.totalClients ?? 0} icon={Users} accent="gold" delay={0} />
+        <StatCard label="Total Clients" value={finance?.totalClients ?? 0} icon={Users} accent="gold" delay={0} />
         <StatCard
           label="New This Month"
-          value={stats?.newClientsPeriod ?? 0}
+          value={finance?.newClientsThisMonth ?? 0}
           icon={UserPlus}
           accent="blue"
           delay={0.05}
         />
         <StatCard
           label="Active Applications"
-          value={stats?.activeApplications ?? 0}
+          value={finance?.activeApplications ?? 0}
           icon={FileStack}
           accent="blue"
           delay={0.1}
         />
         <StatCard
           label="Successful"
-          value={stats?.successfulClients ?? 0}
+          value={finance?.successfulCases ?? 0}
           icon={CheckCircle2}
           accent="green"
           delay={0.15}
         />
         <StatCard
           label="Unsuccessful"
-          value={stats?.unsuccessfulClients ?? 0}
+          value={finance?.unsuccessfulCases ?? 0}
           icon={XCircle}
           accent="red"
           delay={0.2}
         />
       </div>
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard label="Pending" value={stats?.pendingClients ?? 0} icon={Clock} accent="blue" delay={0.25} />
+        <StatCard label="Pending" value={finance?.pendingCases ?? 0} icon={Clock} accent="blue" delay={0.25} />
         <StatCard
           label="Success Rate"
-          value={`${(stats?.successRate ?? 0).toFixed(1)}%`}
+          value={`${(finance?.successRate ?? 0).toFixed(1)}%`}
           icon={TrendingUp}
           accent="green"
           delay={0.3}
         />
         <StatCard
           label="Monthly Revenue"
-          value={`$${(stats?.monthlyRevenue ?? 0).toLocaleString()}`}
+          value={`${finance?.currency ?? "USD"} ${(finance?.monthlyRevenue ?? 0).toLocaleString()}`}
           icon={DollarSign}
           accent="gold"
           delay={0.35}
         />
         <StatCard
           label="Annual Revenue"
-          value={`$${(stats?.annualRevenue ?? 0).toLocaleString()}`}
+          value={`${finance?.currency ?? "USD"} ${(finance?.annualRevenue ?? 0).toLocaleString()}`}
           icon={DollarSign}
           accent="gold"
           delay={0.4}
         />
         <StatCard
           label="Total Revenue"
-          value={`$${(stats?.totalRevenue ?? 0).toLocaleString()}`}
+          value={`${finance?.currency ?? "USD"} ${(finance?.totalRevenue ?? 0).toLocaleString()}`}
           icon={DollarSign}
           accent="gold"
           delay={0.45}
+        />
+      </div>
+
+      {/* Optional financial cards from POS/Cashier */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Outstanding Payments"
+          value={`${finance?.currency ?? "USD"} ${(finance?.outstandingPayments ?? 0).toLocaleString()}`}
+          icon={AlertTriangle}
+          accent="gold"
+          delay={0.5}
+        />
+        <StatCard
+          label="Month Expenses"
+          value={`${finance?.currency ?? "USD"} ${(finance?.monthExpenses ?? 0).toLocaleString()}`}
+          icon={TrendingDown}
+          accent="red"
+          delay={0.55}
+        />
+        <StatCard
+          label="Net Profit"
+          value={`${finance?.currency ?? "USD"} ${(finance?.netProfit ?? 0).toLocaleString()}`}
+          icon={DollarSign}
+          accent={(finance?.netProfit ?? 0) >= 0 ? "green" : "red"}
+          delay={0.6}
+        />
+        <StatCard
+          label="Active Tour Sales"
+          value={finance?.activeTourSales ?? 0}
+          icon={FileStack}
+          accent="blue"
+          delay={0.65}
         />
       </div>
 
