@@ -49,12 +49,8 @@ const ConsultingPublicPackage = lazy(() => import("./pages/consulting/PublicPack
 const ConsultingEmployees = lazy(() => import("./pages/consulting/Employees"));
 const ConsultingAnalytics = lazy(() => import("./pages/consulting/Analytics"));
 const ConsultingActivityLog = lazy(() => import("./pages/consulting/ActivityLog"));
-const ConsultingPostsComingSoon = lazy(() =>
-  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.PostsComingSoon })),
-);
-const ConsultingPaymentsComingSoon = lazy(() =>
-  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.PaymentsComingSoon })),
-);
+const ConsultingPOS = lazy(() => import("./pages/consulting/POS"));
+const ConsultingCashier = lazy(() => import("./pages/consulting/Cashier"));
 const ConsultingReviewsComingSoon = lazy(() =>
   import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.ReviewsComingSoon })),
 );
@@ -71,12 +67,10 @@ const Country = lazy(() => import("./pages/Country"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
 const Explore = lazy(() => import("./pages/Explore"));
-const Finance = lazy(() => import("./pages/Finance"));
 const Index = lazy(() => import("./pages/Index"));
 const Messages = lazy(() => import("./pages/Messages"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Planner = lazy(() => import("./pages/Planner"));
-const PostDetail = lazy(() => import("./pages/PostDetail"));
 const Profile = lazy(() => import("./pages/Profile"));
 const ServiceDetails = lazy(() => import("./pages/ServiceDetails"));
 const ServiceEditor = lazy(() => import("./pages/ServiceEditor"));
@@ -211,8 +205,6 @@ const App = () => (
                                   element={<City />}
                                 />
                                 <Route path="/explore" element={<Explore />} />
-                                <Route path="/explore/post/:postId" element={<PostDetail />} />
-                                <Route path="/explore/finance" element={<Finance />} />
                                 <Route path="/travel" element={<Travel />} />
                                 <Route path="/universities" element={<Universities />} />
                                 <Route path="/universities/:universityId" element={<UniversityDetail />} />
@@ -242,8 +234,8 @@ const App = () => (
                                 {/* Public package route — visible only when published */}
                                 <Route path="/consulting/package/:packageId" element={<ConsultingPublicPackage />} />
                                 <Route path="/consulting/employees" element={<RequireAuth><RequireConsultingMember><ConsultingEmployees /></RequireConsultingMember></RequireAuth>} />
-                                <Route path="/consulting/posts" element={<RequireAuth><RequireConsultingMember><ConsultingPostsComingSoon /></RequireConsultingMember></RequireAuth>} />
-                                <Route path="/consulting/payments" element={<RequireAuth><RequireConsultingMember><ConsultingPaymentsComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/pos" element={<RequireAuth><RequireConsultingMember><ConsultingPOS /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/cashier" element={<RequireAuth><RequireConsultingMember><ConsultingCashier /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/analytics" element={<RequireAuth><RequireConsultingMember><ConsultingAnalytics /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/activity" element={<RequireAuth><RequireConsultingMember><ConsultingActivityLog /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/reviews" element={<RequireAuth><RequireConsultingMember><ConsultingReviewsComingSoon /></RequireConsultingMember></RequireAuth>} />

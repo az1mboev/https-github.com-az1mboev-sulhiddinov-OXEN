@@ -6,11 +6,11 @@ import {
   Users,
   FileStack,
   Package,
+  ShoppingCart,
+  Wallet,
   UserCog,
-  Activity,
-  Newspaper,
-  CreditCard,
   BarChart3,
+  Activity,
   Star,
   Building2,
   CreditCard as SubscriptionIcon,
@@ -39,18 +39,17 @@ interface NavItem {
   comingNext?: boolean;
 }
 
-// All 14 items are enabled (navigable). `comingNext` items route to a polished
-// "This module will be available in the next phase." page — no broken buttons.
+// Recommended order per spec. POS and Cashier are fully functional (no "Soon" label).
 const NAV_ITEMS: NavItem[] = [
   { to: "/consulting/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/consulting/clients", label: "Clients", icon: Users },
   { to: "/consulting/applications", label: "Applications", icon: FileStack },
   { to: "/consulting/packages", label: "Service Packages", icon: Package },
+  { to: "/consulting/pos", label: "POS", icon: ShoppingCart },
+  { to: "/consulting/cashier", label: "Cashier", icon: Wallet },
   { to: "/consulting/employees", label: "Employees", icon: UserCog },
   { to: "/consulting/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/consulting/activity", label: "Activity Log", icon: Activity },
-  { to: "/consulting/posts", label: "Posts", icon: Newspaper, comingNext: true },
-  { to: "/consulting/payments", label: "Payments", icon: CreditCard, comingNext: true },
   { to: "/consulting/reviews", label: "Reviews", icon: Star, comingNext: true },
   { to: "/consulting/company-profile", label: "Company Profile", icon: Building2 },
   { to: "/consulting/subscription", label: "Subscription", icon: SubscriptionIcon, comingNext: true },
