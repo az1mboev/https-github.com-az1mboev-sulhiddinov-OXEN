@@ -71,10 +71,12 @@ const Country = lazy(() => import("./pages/Country"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
 const Explore = lazy(() => import("./pages/Explore"));
+const Finance = lazy(() => import("./pages/Finance"));
 const Index = lazy(() => import("./pages/Index"));
 const Messages = lazy(() => import("./pages/Messages"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Planner = lazy(() => import("./pages/Planner"));
+const PostDetail = lazy(() => import("./pages/PostDetail"));
 const Profile = lazy(() => import("./pages/Profile"));
 const ServiceDetails = lazy(() => import("./pages/ServiceDetails"));
 const ServiceEditor = lazy(() => import("./pages/ServiceEditor"));
@@ -209,6 +211,8 @@ const App = () => (
                                   element={<City />}
                                 />
                                 <Route path="/explore" element={<Explore />} />
+                                <Route path="/explore/post/:postId" element={<PostDetail />} />
+                                <Route path="/explore/finance" element={<Finance />} />
                                 <Route path="/travel" element={<Travel />} />
                                 <Route path="/universities" element={<Universities />} />
                                 <Route path="/universities/:universityId" element={<UniversityDetail />} />
