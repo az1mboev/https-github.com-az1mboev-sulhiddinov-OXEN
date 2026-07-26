@@ -37,6 +37,11 @@ const OwnerPayments = lazy(() => import("./pages/owner/OwnerPayments"));
 const OwnerAccounts = lazy(() => import("./pages/owner/OwnerAccounts"));
 const OwnerAccountDetails = lazy(() => import("./pages/owner/OwnerAccountDetails"));
 const OwnerAuditLog = lazy(() => import("./pages/owner/OwnerAuditLog"));
+const OwnerRevenue = lazy(() => import("./pages/owner/OwnerRevenue"));
+const OwnerNotifications = lazy(() => import("./pages/owner/OwnerNotifications"));
+const OwnerSubscriptions = lazy(() => import("./pages/owner/OwnerSubscriptions"));
+const OwnerApplications = lazy(() => import("./pages/owner/OwnerApplications"));
+const OwnerSettings = lazy(() => import("./pages/owner/OwnerSettings"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const City = lazy(() => import("./pages/City"));
@@ -272,6 +277,11 @@ const App = () => (
                                 <Route path="/owner-admin/accounts" element={<RequireAuth><RequireOwnerAdmin><OwnerAccounts /></RequireOwnerAdmin></RequireAuth>} />
                                 <Route path="/owner-admin/accounts/:companyId" element={<RequireAuth><RequireOwnerAdmin><OwnerAccountDetails /></RequireOwnerAdmin></RequireAuth>} />
                                 <Route path="/owner-admin/audit" element={<RequireAuth><RequireOwnerAdmin><OwnerAuditLog /></RequireOwnerAdmin></RequireAuth>} />
+                                <Route path="/owner-admin/revenue" element={<RequireAuth><RequireOwnerAdmin><OwnerRevenue /></RequireOwnerAdmin></RequireAuth>} />
+                                <Route path="/owner-admin/notifications" element={<RequireAuth><RequireOwnerAdmin><OwnerNotifications /></RequireOwnerAdmin></RequireAuth>} />
+                                <Route path="/owner-admin/subscriptions" element={<RequireAuth><RequireOwnerAdmin><OwnerSubscriptions /></RequireOwnerAdmin></RequireAuth>} />
+                                <Route path="/owner-admin/applications" element={<RequireAuth><RequireOwnerAdmin><OwnerApplications /></RequireOwnerAdmin></RequireAuth>} />
+                                <Route path="/owner-admin/settings" element={<RequireAuth><RequireOwnerAdmin><OwnerSettings /></RequireOwnerAdmin></RequireAuth>} />
 
                                 {/* Settings sub-pages */}
                                 <Route path="/settings/change-password" element={<RequireAuth><SettingsChangePassword /></RequireAuth>} />

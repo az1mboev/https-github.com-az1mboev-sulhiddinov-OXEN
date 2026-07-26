@@ -1,22 +1,30 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Users,
+  FileStack,
   CreditCard,
   Building2,
+  CalendarClock,
+  TrendingUp,
+  Bell,
   ScrollText,
+  Settings as SettingsIcon,
   ChevronLeft,
   Menu,
   X,
   LogOut,
   Shield,
   Crown,
+  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import LogoutDialog from "@/components/LogoutDialog";
+import { fetchUnreadNotificationCount } from "@/lib/owner-admin";
 
 interface OwnerNavItem {
   to: string;
@@ -25,11 +33,16 @@ interface OwnerNavItem {
 }
 
 const NAV_ITEMS: OwnerNavItem[] = [
-  { to: "/owner-admin", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/owner-admin", label: "Overview", icon: LayoutDashboard },
   { to: "/owner-admin/users", label: "Users", icon: Users },
-  { to: "/owner-admin/payments", label: "Consulting Payments", icon: CreditCard },
-  { to: "/owner-admin/accounts", label: "Premium Accounts", icon: Building2 },
+  { to: "/owner-admin/applications", label: "Consulting Applications", icon: FileStack },
+  { to: "/owner-admin/payments", label: "Payment Requests", icon: CreditCard },
+  { to: "/owner-admin/accounts", label: "Premium Consulting Accounts", icon: Building2 },
+  { to: "/owner-admin/subscriptions", label: "Subscriptions", icon: CalendarClock },
+  { to: "/owner-admin/revenue", label: "Revenue", icon: TrendingUp },
+  { to: "/owner-admin/notifications", label: "Notifications", icon: Bell },
   { to: "/owner-admin/audit", label: "Audit Log", icon: ScrollText },
+  { to: "/owner-admin/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 interface OwnerShellProps {
@@ -52,6 +65,15 @@ export function OwnerShell({ title, subtitle, actions, children }: OwnerShellPro
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+
+  // Unread notification badge count
+  const { data: unreadCount } = useQuery({
+    queryKey: ["owner-unread-notif-count"],
+    queryFn: () => fetchUnreadNotificationCount(),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+  const unread = unreadCount ?? 0;
 
   const go = (item: OwnerNavItem) => {
     navigate(item.to);
@@ -97,6 +119,7 @@ export function OwnerShell({ title, subtitle, actions, children }: OwnerShellPro
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.to);
+            const showBadge = item.to === "/owner-admin/notifications" && unread > 0;
             return (
               <li key={item.to}>
                 <button
@@ -109,7 +132,14 @@ export function OwnerShell({ title, subtitle, actions, children }: OwnerShellPro
                       : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
                   )}
                 >
-                  <Icon className="h-[18px] w-[18px] shrink-0" />
+                  <span className="relative shrink-0">
+                    <Icon className="h-[18px] w-[18px]" />
+                    {showBadge && (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold text-white">
+                        {unread > 99 ? "99+" : unread}
+                      </span>
+                    )}
+                  </span>
                   <span className={cn("truncate", collapsed && "hidden")}>{item.label}</span>
                 </button>
               </li>
@@ -118,8 +148,19 @@ export function OwnerShell({ title, subtitle, actions, children }: OwnerShellPro
         </ul>
       </nav>
 
-      {/* User + logout */}
+      {/* Bottom: Return to OXEN + User + logout */}
       <div className="border-t border-white/[0.06] p-3">
+        <button
+          onClick={() => navigate("/")}
+          className={cn(
+            "mb-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-white/[0.04] hover:text-foreground",
+            collapsed && "justify-center",
+          )}
+        >
+          <ArrowLeft className="h-[18px] w-[18px] shrink-0" />
+          {!collapsed && <span>Return to OXEN</span>}
+        </button>
+
         <div className={cn("flex items-center gap-2.5 rounded-xl p-2", collapsed && "justify-center")}>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-500/15">
             {user?.avatarUrl ? (
@@ -229,6 +270,20 @@ export function OwnerShell({ title, subtitle, actions, children }: OwnerShellPro
               )}
             </div>
           </div>
+
+          {/* Notification bell */}
+          <button
+            onClick={() => navigate("/owner-admin/notifications")}
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] text-muted-foreground transition hover:text-foreground"
+            aria-label="Notifications"
+          >
+            <Bell className="h-4 w-4" />
+            {unread > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
+                {unread > 99 ? "99+" : unread}
+              </span>
+            )}
+          </button>
 
           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-500/15">
             {user?.avatarUrl ? (

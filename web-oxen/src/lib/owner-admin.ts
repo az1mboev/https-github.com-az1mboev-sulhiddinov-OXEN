@@ -1039,10 +1039,36 @@ export interface OwnerAuditLog {
   entity_type: string | null;
   entity_id: string | null;
   metadata: Json;
+  // Enhanced fields (migration 0006)
+  previous_value: Json | null;
+  new_value: Json | null;
+  reason: string | null;
+  target_user_id: string | null;
+  target_company_id: string | null;
+  target_label: string | null;
+  client_ip: string | null;
+  user_agent: string | null;
   created_at: string;
 }
 
-/** Record an owner action in the audit log. */
+/** Audit log context — optional enhanced fields for sensitive actions. */
+export interface AuditContext {
+  previousValue?: Record<string, unknown> | null;
+  newValue?: Record<string, unknown> | null;
+  reason?: string | null;
+  targetUserId?: string | null;
+  targetCompanyId?: string | null;
+  targetLabel?: string | null;
+  clientIp?: string | null;
+  userAgent?: string | null;
+}
+
+/**
+ * Record an owner action in the audit log.
+ * Audit records are append-only (no UPDATE or DELETE via RLS) —
+ * migration 0006 removed update/delete policies so entries are
+ * permanent and tamper-evident.
+ */
 export async function logOwnerAction(
   ownerId: string,
   ownerEmail: string,
@@ -1050,6 +1076,7 @@ export async function logOwnerAction(
   entityType?: string | null,
   entityId?: string | null,
   metadata?: Record<string, unknown> | null,
+  ctx?: AuditContext,
 ): Promise<void> {
   await supabase.from("owner_audit_logs").insert({
     owner_id: ownerId,
@@ -1058,6 +1085,14 @@ export async function logOwnerAction(
     entity_type: entityType ?? null,
     entity_id: entityId ?? null,
     metadata: metadata ?? {},
+    previous_value: (ctx?.previousValue ?? null) as Json | null,
+    new_value: (ctx?.newValue ?? null) as Json | null,
+    reason: ctx?.reason ?? null,
+    target_user_id: ctx?.targetUserId ?? null,
+    target_company_id: ctx?.targetCompanyId ?? null,
+    target_label: ctx?.targetLabel ?? null,
+    client_ip: ctx?.clientIp ?? null,
+    user_agent: ctx?.userAgent ?? null,
   });
 }
 
@@ -1437,3 +1472,761 @@ export async function findUserByEmail(email: string): Promise<FoundUser | null> 
 }
 
 export { CONSULTING_PLANS, getPlan, computeEndDate };
+
+/* ============================================================
+   Revenue & Payment Analytics (Section 11)
+   ------------------------------------------------
+   OXEN platform subscription revenue only.
+   Consulting company business revenue (POS, Cashier, package
+   sales) is kept fully separate and never counted here.
+   ============================================================ */
+
+export interface RevenueAnalytics {
+  // Period totals (OXEN subscription revenue)
+  totalRevenue: number;
+  revenueToday: number;
+  revenueThisWeek: number;
+  revenueThisMonth: number;
+  revenueThisYear: number;
+  // Breakdowns
+  revenueByPlan: { plan: SubscriptionPlan; amount: number; count: number }[];
+  revenueByPaymentMethod: { method: string; amount: number; count: number }[];
+  newSubscriptionRevenue: number;
+  renewalRevenue: number;
+  refundTotal: number;
+  pendingPaymentTotal: number;
+  confirmedPaymentsCount: number;
+  rejectedPaymentsCount: number;
+  // Chart data
+  monthlyRevenue: { month: string; label: string; amount: number }[];
+  planSales: { plan: SubscriptionPlan; count: number; revenue: number }[];
+  userGrowth: { month: string; label: string; ordinary: number; consulting: number }[];
+  subscriptionStatusCounts: { active: number; expired: number; suspended: number; cancelled: number };
+  premiumConversionRate: number;
+}
+
+/** Fetch comprehensive revenue analytics (owner only). */
+export async function fetchRevenueAnalytics(): Promise<RevenueAnalytics> {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+  const empty: RevenueAnalytics = {
+    totalRevenue: 0,
+    revenueToday: 0,
+    revenueThisWeek: 0,
+    revenueThisMonth: 0,
+    revenueThisYear: 0,
+    revenueByPlan: [],
+    revenueByPaymentMethod: [],
+    newSubscriptionRevenue: 0,
+    renewalRevenue: 0,
+    refundTotal: 0,
+    pendingPaymentTotal: 0,
+    confirmedPaymentsCount: 0,
+    rejectedPaymentsCount: 0,
+    monthlyRevenue: [],
+    planSales: [
+      { plan: "monthly", count: 0, revenue: 0 },
+      { plan: "quarterly", count: 0, revenue: 0 },
+      { plan: "annual", count: 0, revenue: 0 },
+    ],
+    userGrowth: [],
+    subscriptionStatusCounts: { active: 0, expired: 0, suspended: 0, cancelled: 0 },
+    premiumConversionRate: 0,
+  };
+
+  try {
+    // Paid subscription payments (OXEN platform revenue)
+    const { data: paidData } = await supabase
+      .from("consulting_payments")
+      .select("gross_amount, paid_at, currency, type, status")
+      .eq("type", "subscription")
+      .eq("status", "paid");
+    const paid = (paidData ?? []) as unknown as {
+      gross_amount: number;
+      paid_at: string | null;
+      currency: string;
+      type: string;
+      status: string;
+    }[];
+
+    const totalRevenue = paid.reduce((s, p) => s + Number(p.gross_amount), 0);
+    const revenueToday = paid.filter((p) => p.paid_at && new Date(p.paid_at) >= startOfToday).reduce((s, p) => s + Number(p.gross_amount), 0);
+    const revenueThisWeek = paid.filter((p) => p.paid_at && new Date(p.paid_at) >= startOfWeek).reduce((s, p) => s + Number(p.gross_amount), 0);
+    const revenueThisMonth = paid.filter((p) => p.paid_at && new Date(p.paid_at) >= startOfMonth).reduce((s, p) => s + Number(p.gross_amount), 0);
+    const revenueThisYear = paid.filter((p) => p.paid_at && new Date(p.paid_at) >= startOfYear).reduce((s, p) => s + Number(p.gross_amount), 0);
+
+    // Refunds (type=refund, status=refunded)
+    const { data: refundData } = await supabase
+      .from("consulting_payments")
+      .select("gross_amount")
+      .eq("type", "refund")
+      .eq("status", "refunded");
+    const refundTotal = (refundData ?? []).reduce((s, p) => s + Number((p as { gross_amount: number }).gross_amount), 0);
+
+    // Pending payment requests total + confirmed/rejected counts
+    const { data: pendingReq } = await supabase
+      .from("owner_payment_requests")
+      .select("amount, verification_status")
+      .eq("verification_status", "pending_verification");
+    const pendingPaymentTotal = (pendingReq ?? []).reduce((s, p) => s + Number((p as { amount: number }).amount), 0);
+
+    const [confirmedRes, rejectedRes] = await Promise.all([
+      supabase.from("owner_payment_requests").select("*", { count: "exact", head: true }).eq("verification_status", "confirmed"),
+      supabase.from("owner_payment_requests").select("*", { count: "exact", head: true }).eq("verification_status", "rejected"),
+    ]);
+
+    // Revenue by plan — from consulting_subscriptions (active) + payment history
+    const { data: subsData } = await supabase
+      .from("consulting_subscriptions")
+      .select("plan, amount, status");
+    const subs = (subsData ?? []) as unknown as { plan: SubscriptionPlan; amount: number; status: string }[];
+    const planMap = new Map<SubscriptionPlan, { count: number; revenue: number }>();
+    for (const s of subs) {
+      const e = planMap.get(s.plan) ?? { count: 0, revenue: 0 };
+      e.count += 1;
+      e.revenue += Number(s.amount);
+      planMap.set(s.plan, e);
+    }
+    const planSales: { plan: SubscriptionPlan; count: number; revenue: number }[] = (
+      ["monthly", "quarterly", "annual"] as SubscriptionPlan[]
+    ).map((plan) => ({ plan, count: planMap.get(plan)?.count ?? 0, revenue: planMap.get(plan)?.revenue ?? 0 }));
+
+    // Revenue by plan (for cards)
+    const revenueByPlan = planSales.map((p) => ({ plan: p.plan, amount: p.revenue, count: p.count }));
+
+    // Revenue by payment method — from owner_payment_requests
+    const { data: payMethodData } = await supabase
+      .from("owner_payment_requests")
+      .select("payment_method, amount, verification_status")
+      .eq("verification_status", "confirmed");
+    const methodMap = new Map<string, { amount: number; count: number }>();
+    for (const p of (payMethodData ?? []) as unknown as { payment_method: string | null; amount: number }[]) {
+      const m = p.payment_method ?? "Unknown";
+      const e = methodMap.get(m) ?? { amount: 0, count: 0 };
+      e.amount += Number(p.amount);
+      e.count += 1;
+      methodMap.set(m, e);
+    }
+    const revenueByPaymentMethod = Array.from(methodMap.entries()).map(([method, v]) => ({ method, ...v }));
+
+    // New vs renewal revenue — from subscription history
+    const { data: histData } = await supabase
+      .from("owner_subscription_history")
+      .select("amount, action_type")
+      .in("action_type", ["activation", "extension", "plan_change"]);
+    const hist = (histData ?? []) as unknown as { amount: number | null; action_type: string }[];
+    const newSubscriptionRevenue = hist.filter((h) => h.action_type === "activation").reduce((s, h) => s + Number(h.amount ?? 0), 0);
+    const renewalRevenue = hist.filter((h) => h.action_type === "extension" || h.action_type === "plan_change").reduce((s, h) => s + Number(h.amount ?? 0), 0);
+
+    // Monthly revenue (last 12 months)
+    const monthlyMap = new Map<string, number>();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthlyMap.set(key, 0);
+    }
+    for (const p of paid) {
+      if (!p.paid_at) continue;
+      const d = new Date(p.paid_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (monthlyMap.has(key)) monthlyMap.set(key, monthlyMap.get(key)! + Number(p.gross_amount));
+    }
+    const monthlyRevenue = Array.from(monthlyMap.entries()).map(([month, amount]) => {
+      const [y, m] = month.split("-");
+      const label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString(undefined, { month: "short" });
+      return { month, label, amount };
+    });
+
+    // User growth (last 12 months) — ordinary vs consulting
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("created_at, user_type");
+    const profiles = (profilesData ?? []) as unknown as { created_at: string | null; user_type: string }[];
+    const growthMap = new Map<string, { ordinary: number; consulting: number }>();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      growthMap.set(key, { ordinary: 0, consulting: 0 });
+    }
+    for (const p of profiles) {
+      if (!p.created_at) continue;
+      const d = new Date(p.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (growthMap.has(key)) {
+        const e = growthMap.get(key)!;
+        if (p.user_type === "premium_consulting" || p.user_type === "consulting_applicant") e.consulting += 1;
+        else e.ordinary += 1;
+      }
+    }
+    const userGrowth = Array.from(growthMap.entries()).map(([month, v]) => {
+      const [y, m] = month.split("-");
+      const label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString(undefined, { month: "short" });
+      return { month, label, ...v };
+    });
+
+    // Subscription status counts
+    const [activeRes, expiredRes, suspendedRes, cancelledRes] = await Promise.all([
+      supabase.from("consulting_companies").select("*", { count: "exact", head: true }).eq("subscription_status", "active"),
+      supabase.from("consulting_companies").select("*", { count: "exact", head: true }).eq("subscription_status", "expired"),
+      supabase.from("consulting_companies").select("*", { count: "exact", head: true }).eq("subscription_status", "suspended"),
+      supabase.from("consulting_companies").select("*", { count: "exact", head: true }).eq("subscription_status", "cancelled"),
+    ]);
+    const subscriptionStatusCounts = {
+      active: activeRes.count ?? 0,
+      expired: expiredRes.count ?? 0,
+      suspended: suspendedRes.count ?? 0,
+      cancelled: cancelledRes.count ?? 0,
+    };
+
+    // Premium conversion rate = active premium accounts / consulting applicants * 100
+    const [activePremiumRes, applicantRes] = await Promise.all([
+      supabase.from("profiles").select("*", { count: "exact", head: true }).eq("user_type", "premium_consulting"),
+      supabase.from("profiles").select("*", { count: "exact", head: true }).eq("user_type", "consulting_applicant"),
+    ]);
+    const activeCount = activePremiumRes.count ?? 0;
+    const applicantCount = applicantRes.count ?? 0;
+    const premiumConversionRate = applicantCount > 0 ? (activeCount / applicantCount) * 100 : 0;
+
+    return {
+      totalRevenue,
+      revenueToday,
+      revenueThisWeek,
+      revenueThisMonth,
+      revenueThisYear,
+      revenueByPlan,
+      revenueByPaymentMethod,
+      newSubscriptionRevenue,
+      renewalRevenue,
+      refundTotal,
+      pendingPaymentTotal,
+      confirmedPaymentsCount: confirmedRes.count ?? 0,
+      rejectedPaymentsCount: rejectedRes.count ?? 0,
+      monthlyRevenue,
+      planSales,
+      userGrowth,
+      subscriptionStatusCounts,
+      premiumConversionRate,
+    };
+  } catch (err) {
+    console.error("fetchRevenueAnalytics error:", err);
+    return empty;
+  }
+}
+
+/* ============================================================
+   Owner Notifications (Section 12)
+   ============================================================ */
+
+export type OwnerEventType =
+  | "payment_submitted"
+  | "premium_application"
+  | "payment_confirmation_required"
+  | "subscription_expiring_7"
+  | "subscription_expiring_30"
+  | "subscription_expired"
+  | "payment_rejected"
+  | "refund_request"
+  | "suspicious_activity"
+  | "pending_email_registered";
+
+export interface OwnerNotification {
+  id: string;
+  event_type: OwnerEventType;
+  consulting_company_id: string | null;
+  consulting_company_name: string | null;
+  user_id: string | null;
+  user_name: string | null;
+  user_email: string | null;
+  subscription_id: string | null;
+  payment_request_id: string | null;
+  metadata: Json;
+  is_read: boolean;
+  read_at: string | null;
+  read_by: string | null;
+  priority: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Fetch all owner notifications (owner only). */
+export async function fetchOwnerNotifications(
+  filter: "all" | "unread" = "all",
+): Promise<OwnerNotification[]> {
+  let query = supabase
+    .from("owner_notifications")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (filter === "unread") query = query.eq("is_read", false);
+  const { data, error } = await query.limit(200);
+  if (error) {
+    console.error("fetchOwnerNotifications error:", error);
+    return [];
+  }
+  return (data ?? []) as unknown as OwnerNotification[];
+}
+
+/** Get unread notification count (for sidebar badge). */
+export async function fetchUnreadNotificationCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from("owner_notifications")
+    .select("*", { count: "exact", head: true })
+    .eq("is_read", false);
+  if (error) return 0;
+  return count ?? 0;
+}
+
+/** Mark a notification as read. */
+export async function markNotificationRead(
+  notificationId: string,
+  ownerId: string,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("owner_notifications")
+    .update({
+      is_read: true,
+      read_at: new Date().toISOString(),
+      read_by: ownerId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", notificationId);
+  if (error) {
+    console.error("markNotificationRead error:", error);
+    return false;
+  }
+  return true;
+}
+
+/** Mark all unread notifications as read. */
+export async function markAllNotificationsRead(
+  ownerId: string,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("owner_notifications")
+    .update({
+      is_read: true,
+      read_at: new Date().toISOString(),
+      read_by: ownerId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("is_read", false);
+  if (error) {
+    console.error("markAllNotificationsRead error:", error);
+    return false;
+  }
+  return true;
+}
+
+/** Create a notification (internal — called by other owner actions). */
+export async function createOwnerNotification(
+  input: Omit<OwnerNotification, "id" | "is_read" | "read_at" | "read_by" | "created_at" | "updated_at"> & {
+    priority?: number;
+  },
+): Promise<void> {
+  await supabase.from("owner_notifications").insert({
+    ...input,
+    priority: input.priority ?? 0,
+  });
+}
+
+/* ============================================================
+   Two-Owner Protection (Section 15)
+   ------------------------------------------------
+   Sensitive actions require a confirmation with a reason.
+   Owners cannot remove their own owner access or the other
+   owner's access from the normal UI.
+   ============================================================ */
+
+export type SensitiveAction =
+  | "block_account"
+  | "cancel_subscription"
+  | "refund_payment"
+  | "remove_premium"
+  | "change_expiration"
+  | "change_to_owner"
+  | "remove_owner";
+
+export interface ConfirmationDetails {
+  action: SensitiveAction;
+  actionLabel: string;
+  affectedAccount: string;
+  currentStatus: string;
+  newStatus: string;
+  consequences: string;
+}
+
+/** Verify the caller is an owner before allowing a sensitive action. */
+export async function verifyOwnerBeforeSensitiveAction(): Promise<{
+  isOwner: boolean;
+  ownerId: string | null;
+  ownerEmail: string | null;
+}> {
+  const access = await checkOwnerAccess();
+  return {
+    isOwner: access.is_owner,
+    ownerId: access.user_id,
+    ownerEmail: access.email,
+  };
+}
+
+/**
+ * Update user type with two-owner protection.
+   Blocks changing to 'owner' and blocks removing 'owner' role
+   via the normal Users UI. These require a separate protected
+   process (database-level, not exposed in the UI).
+ */
+export async function safeUpdateUserType(
+  userId: string,
+  newType: UserType,
+  ownerId: string,
+  ownerEmail: string,
+  reason?: string,
+): Promise<{ success: boolean; error: string | null }> {
+  // Block changing TO owner from the normal UI
+  if (newType === "owner") {
+    return {
+      success: false,
+      error: "Cannot grant Owner role from the UI. Use the protected database process.",
+    };
+  }
+
+  // Fetch current user to check if they're an owner
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, email, user_type")
+    .eq("id", userId)
+    .maybeSingle();
+  const p = profile as unknown as { id: string; email: string | null; user_type: string } | null;
+  if (!p) return { success: false, error: "User not found" };
+
+  // Block removing owner role from the normal UI
+  if (p.user_type === "owner") {
+    return {
+      success: false,
+      error: "Cannot remove Owner role from the UI. Use the protected database process.",
+    };
+  }
+
+  // Block if target is one of the seeded owner emails
+  const { data: ownerCheck } = await supabase
+    .from("owner_admins")
+    .select("email")
+    .ilike("email", p.email ?? "")
+    .maybeSingle();
+  if (ownerCheck) {
+    return {
+      success: false,
+      error: "This account is a protected Owner. Cannot change role from the UI.",
+    };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ user_type: newType, updated_at: new Date().toISOString() })
+    .eq("id", userId);
+  if (error) return { success: false, error: error.message };
+
+  await logOwnerAction(
+    ownerId,
+    ownerEmail,
+    "change_user_type",
+    "user",
+    userId,
+    { new_type: newType, previous_type: p.user_type },
+    {
+      previousValue: { user_type: p.user_type },
+      newValue: { user_type: newType },
+      reason: reason ?? null,
+      targetUserId: userId,
+      targetLabel: p.email ?? userId,
+    },
+  );
+
+  return { success: true, error: null };
+}
+
+/**
+ * Update user status with two-owner protection.
+   Blocks blocking/suspending a protected owner account.
+ */
+export async function safeUpdateUserStatus(
+  userId: string,
+  newStatus: AccountStatus,
+  ownerId: string,
+  ownerEmail: string,
+  reason?: string,
+): Promise<{ success: boolean; error: string | null }> {
+  // Fetch current user
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, email, user_type, account_status")
+    .eq("id", userId)
+    .maybeSingle();
+  const p = profile as unknown as {
+    id: string;
+    email: string | null;
+    user_type: UserType;
+    account_status: AccountStatus;
+  } | null;
+  if (!p) return { success: false, error: "User not found" };
+
+  // Block if target is an owner
+  if (p.user_type === "owner") {
+    return {
+      success: false,
+      error: "Cannot block or suspend an Owner account from the UI.",
+    };
+  }
+
+  // Block if target email is in owner_admins
+  const { data: ownerCheck } = await supabase
+    .from("owner_admins")
+    .select("email")
+    .ilike("email", p.email ?? "")
+    .maybeSingle();
+  if (ownerCheck) {
+    return {
+      success: false,
+      error: "This account is a protected Owner. Cannot change status from the UI.",
+    };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ account_status: newStatus, updated_at: new Date().toISOString() })
+    .eq("id", userId);
+  if (error) return { success: false, error: error.message };
+
+  await logOwnerAction(
+    ownerId,
+    ownerEmail,
+    newStatus === "blocked" ? "block_user" : newStatus === "suspended" ? "suspend_user" : "restore_user",
+    "user",
+    userId,
+    { new_status: newStatus, previous_status: p.account_status },
+    {
+      previousValue: { account_status: p.account_status },
+      newValue: { account_status: newStatus },
+      reason: reason ?? null,
+      targetUserId: userId,
+      targetLabel: p.email ?? userId,
+    },
+  );
+
+  return { success: true, error: null };
+}
+
+/* ============================================================
+   Consulting Applications (Owner view — Section 17 sidebar item)
+   ============================================================ */
+
+export interface ConsultingApplicationSummary {
+  id: string;
+  consulting_company_id: string;
+  company_name: string | null;
+  client_name: string | null;
+  destination_country: string | null;
+  application_type: string | null;
+  status: string;
+  submission_date: string | null;
+  expected_completion_date: string | null;
+  created_at: string;
+}
+
+/** Fetch all consulting applications across all companies (owner only). */
+export async function fetchAllConsultingApplications(
+  statusFilter?: string,
+): Promise<ConsultingApplicationSummary[]> {
+  let query = supabase
+    .from("consulting_applications")
+    .select(`
+      id,
+      consulting_company_id,
+      destination_country,
+      application_type,
+      status,
+      submission_date,
+      expected_completion_date,
+      created_at,
+      consulting_clients (name)
+    `)
+    .order("created_at", { ascending: false });
+  if (statusFilter && statusFilter !== "all") {
+    query = query.eq("status", statusFilter);
+  }
+  const { data, error } = await query.limit(200);
+  if (error) {
+    console.error("fetchAllConsultingApplications error:", error);
+    return [];
+  }
+
+  // Enrich with company names
+  const companyIds = Array.from(new Set((data ?? []).map((a) => (a as unknown as { consulting_company_id: string }).consulting_company_id)));
+  let companyMap = new Map<string, string>();
+  if (companyIds.length > 0) {
+    const { data: companies } = await supabase
+      .from("consulting_companies")
+      .select("id, name")
+      .in("id", companyIds);
+    for (const c of (companies ?? []) as unknown as { id: string; name: string }[]) {
+      companyMap.set(c.id, c.name);
+    }
+  }
+
+  return (data ?? []).map((a) => {
+    const row = a as unknown as {
+      id: string;
+      consulting_company_id: string;
+      destination_country: string | null;
+      application_type: string | null;
+      status: string;
+      submission_date: string | null;
+      expected_completion_date: string | null;
+      created_at: string;
+      consulting_clients: { name: string | null } | null;
+    };
+    return {
+      id: row.id,
+      consulting_company_id: row.consulting_company_id,
+      company_name: companyMap.get(row.consulting_company_id) ?? null,
+      client_name: row.consulting_clients?.name ?? null,
+      destination_country: row.destination_country,
+      application_type: row.application_type,
+      status: row.status,
+      submission_date: row.submission_date,
+      expected_completion_date: row.expected_completion_date,
+      created_at: row.created_at,
+    };
+  });
+}
+
+/* ============================================================
+   All Subscriptions (Owner view — Section 17 sidebar item)
+   ============================================================ */
+
+export interface OwnerSubscriptionRow {
+  id: string;
+  company_id: string;
+  company_name: string;
+  owner_name: string | null;
+  owner_email: string | null;
+  plan: SubscriptionPlan;
+  status: string;
+  start_date: string;
+  end_date: string;
+  amount: number;
+  currency: string;
+  auto_renewal: boolean;
+  days_remaining: number;
+  display_status: SubscriptionDisplayStatus;
+}
+
+/** Fetch all consulting subscriptions across all companies (owner only). */
+export async function fetchAllSubscriptions(
+  statusFilter?: string,
+): Promise<OwnerSubscriptionRow[]> {
+  const { data: subsData, error } = await supabase
+    .from("consulting_subscriptions")
+    .select(`
+      id,
+      consulting_company_id,
+      plan,
+      status,
+      start_date,
+      end_date,
+      amount,
+      currency,
+      auto_renewal
+    `)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) {
+    console.error("fetchAllSubscriptions error:", error);
+    return [];
+  }
+
+  const subs = (subsData ?? []) as unknown as {
+    id: string;
+    consulting_company_id: string;
+    plan: SubscriptionPlan;
+    status: string;
+    start_date: string;
+    end_date: string;
+    amount: number;
+    currency: string;
+    auto_renewal: boolean;
+  }[];
+
+  if (subs.length === 0) return [];
+
+  // Enrich with company + owner info
+  const companyIds = Array.from(new Set(subs.map((s) => s.consulting_company_id)));
+  const { data: companiesData } = await supabase
+    .from("consulting_companies")
+    .select("id, name, owner_id, subscription_status, subscription_end_date")
+    .in("id", companyIds);
+  const companies = (companiesData ?? []) as unknown as {
+    id: string;
+    name: string;
+    owner_id: string;
+    subscription_status: string;
+    subscription_end_date: string | null;
+  }[];
+
+  const ownerIds = Array.from(new Set(companies.map((c) => c.owner_id)));
+  let profileMap = new Map<string, { name: string | null; email: string | null }>();
+  if (ownerIds.length > 0) {
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("id, name, email")
+      .in("id", ownerIds);
+    for (const p of (profilesData ?? []) as unknown as { id: string; name: string | null; email: string | null }[]) {
+      profileMap.set(p.id, { name: p.name, email: p.email });
+    }
+  }
+
+  const companyMap = new Map<string, { name: string; owner_id: string }>();
+  for (const c of companies) companyMap.set(c.id, { name: c.name, owner_id: c.owner_id });
+
+  const result: OwnerSubscriptionRow[] = subs.map((s) => {
+    const comp = companyMap.get(s.consulting_company_id);
+    const ownerProfile = comp ? profileMap.get(comp.owner_id) : null;
+    const days = daysRemaining(s.end_date);
+    const displayStatus = deriveDisplayStatus({
+      subscription_status: s.status as SubscriptionStatus,
+      subscription_end_date: s.end_date,
+    });
+    return {
+      id: s.id,
+      company_id: s.consulting_company_id,
+      company_name: comp?.name ?? "Unknown",
+      owner_name: ownerProfile?.name ?? null,
+      owner_email: ownerProfile?.email ?? null,
+      plan: s.plan,
+      status: s.status,
+      start_date: s.start_date,
+      end_date: s.end_date,
+      amount: Number(s.amount),
+      currency: s.currency,
+      auto_renewal: s.auto_renewal,
+      days_remaining: days,
+      display_status: displayStatus,
+    };
+  });
+
+  if (statusFilter && statusFilter !== "all") {
+    if (statusFilter === "active") return result.filter((r) => r.display_status === "active");
+    if (statusFilter === "expiring_soon") return result.filter((r) => r.display_status === "expiring_soon");
+    if (statusFilter === "expired") return result.filter((r) => r.display_status === "expired");
+    if (statusFilter === "suspended") return result.filter((r) => r.display_status === "suspended");
+    if (statusFilter === "cancelled") return result.filter((r) => r.display_status === "cancelled");
+    return result.filter((r) => r.status === statusFilter);
+  }
+
+  return result;
+}
