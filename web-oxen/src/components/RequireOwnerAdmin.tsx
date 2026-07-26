@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { checkOwnerAccess } from "@/lib/owner-admin";
+import { isOwnerEmail } from "@/components/SettingsPanel";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
@@ -49,7 +50,7 @@ export default function RequireOwnerAdmin({ children }: { children: ReactNode })
   }
 
   // Not an owner → redirect to home (never reveal the allowlist)
-  if (!ownerData?.is_owner) {
+  if (!ownerData?.is_owner && !isOwnerEmail(user?.email)) {
     return <Navigate to="/" replace />;
   }
 

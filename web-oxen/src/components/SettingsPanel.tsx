@@ -22,6 +22,22 @@ import { cn } from "@/lib/utils";
 import LogoutDialog from "@/components/LogoutDialog";
 import { checkOwnerAccess } from "@/lib/owner-admin";
 
+/**
+ * Owner email allowlist — the two accounts permitted to see the
+ * Owner Panel button and access /owner-admin. Checked client-side
+ * so the entry point works even before the owner_admins migration
+ * has been applied. The server-side RLS / checkOwnerAccess() check
+ * remains the authoritative gate; this list only unlocks the entry
+ * button and route for the two known owner emails.
+ */
+const OWNER_EMAILS = new Set([
+  "solisulhiddinov@gmail.com",
+  "az1mboevvv@gmail.com",
+]);
+export function isOwnerEmail(email: string | undefined | null): boolean {
+  return !!email && OWNER_EMAILS.has(email.trim().toLowerCase());
+}
+
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -159,7 +175,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     staleTime: 5 * 60_000,
     retry: false,
   });
-  const isOwner = !!ownerAccess?.is_owner;
+  const isOwner = !!ownerAccess?.is_owner || isOwnerEmail(user?.email);
 
   // Privacy toggles
   const [privateAccount, setPrivateAccount] = useState(false);
