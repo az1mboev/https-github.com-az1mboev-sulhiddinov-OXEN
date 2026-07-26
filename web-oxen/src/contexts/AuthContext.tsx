@@ -411,31 +411,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         //    OAuth callbacks, or multiple button clicks.
         //    normalized_nickname is set client-side as a fallback in case
         //    the DB trigger hasn't been applied yet.
+        //
+        //    RESILIENCE: If the onboarding columns (user_id, nickname,
+        //    full_name, onboarding_completed, etc.) haven't been added to
+        //    the profiles table yet (migration 0008 not applied), PostgREST
+        //    rejects the payload with a "Could not find the 'X' column"
+        //    error. We detect this and fall back to a base-column-only
+        //    upsert (id, email, name, avatar_url, provider) so the profile
+        //    row is at least created/updated, then return a clear message
+        //    telling the user to run migration 0008.
+        const fullPayload = {
+          id: userId,
+          user_id: userId,
+          email: session.user.email ?? null,
+          normalized_email: (session.user.email ?? "").trim().toLowerCase() || null,
+          nickname: trimmedNickname,
+          normalized_nickname: normalizedNickname,
+          name: fullName,
+          full_name: fullName,
+          avatar_url: avatarUrl,
+          provider,
+          onboarding_completed: true,
+          updated_at: new Date().toISOString(),
+        };
+
         const { error: profileError } = await supabase
           .from("profiles")
-          .upsert(
-            {
-              id: userId,
-              user_id: userId,
-              email: session.user.email ?? null,
-              normalized_email: (session.user.email ?? "").trim().toLowerCase() || null,
-              nickname: trimmedNickname,
-              normalized_nickname: normalizedNickname,
-              name: fullName,
-              full_name: fullName,
-              avatar_url: avatarUrl,
-              provider,
-              onboarding_completed: true,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "user_id" },
-          );
+          .upsert(fullPayload, { onConflict: "user_id" });
 
         if (profileError) {
           // Unique violation → nickname already taken
           if (profileError.code === "23505") {
             return { error: "This nickname is already taken. Please choose another." };
           }
+
+          // Column-not-found → migration 0008 not applied yet.
+          // Fall back to base columns only so the profile row is saved,
+          // then surface a clear actionable message.
+          const isMissingColumn =
+            (profileError.code === "PGRST204" ||
+             (profileError.message ?? "").includes("Could not find the") ||
+             (profileError.message ?? "").includes("column") &&
+             (profileError.message ?? "").includes("does not exist"));
+
+          if (isMissingColumn) {
+            // Base columns that exist in the original profiles table.
+            const { error: baseError } = await supabase
+              .from("profiles")
+              .upsert(
+                {
+                  id: userId,
+                  email: session.user.email ?? null,
+                  name: fullName,
+                  avatar_url: avatarUrl,
+                  provider,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: "id" },
+              );
+
+            if (baseError && baseError.code !== "23505") {
+              return { error: baseError.message };
+            }
+
+            return {
+              error:
+                "OXEN onboarding columns are missing from the database. " +
+                "Please run migration 0008 (backend/migrations/0008_profiles_onboarding_columns.sql) " +
+                "in the Supabase SQL editor, then try again.",
+            };
+          }
+
           return { error: profileError.message };
         }
 
