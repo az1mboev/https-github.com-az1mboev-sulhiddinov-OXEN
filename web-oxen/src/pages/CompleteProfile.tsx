@@ -41,6 +41,9 @@ export default function CompleteProfile() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [nicknameStatus, setNicknameStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Monotonic request id — prevents a stale slow availability response
+  // from overwriting the status of a newer keystroke.
+  const nicknameReqRef = useRef<number>(0);
 
   // If not signed in or already onboarded, redirect away
   useEffect(() => {
@@ -68,8 +71,11 @@ export default function CompleteProfile() {
       return;
     }
     setNicknameStatus("checking");
+    const reqId = ++nicknameReqRef.current;
     debounceRef.current = setTimeout(async () => {
       const result = await checkNicknameAvailability(trimmed);
+      // Only apply the result if no newer keystroke has superseded this check.
+      if (reqId !== nicknameReqRef.current) return;
       setNicknameStatus(result);
     }, 500);
   }, []);

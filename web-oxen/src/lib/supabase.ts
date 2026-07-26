@@ -148,10 +148,24 @@ export function validateNicknameFormat(nickname: string): string | null {
   if (!trimmed) return "Nickname is required.";
   if (trimmed.length < 3) return "Nickname must be at least 3 characters.";
   if (trimmed.length > 24) return "Nickname must be at most 24 characters.";
+  // Reject spaces, @, and any character outside Latin letters, numbers, _, .
   if (!/^[A-Za-z0-9_.]+$/.test(trimmed)) {
+    if (/\s/.test(trimmed)) return "Nickname cannot contain spaces.";
+    if (trimmed.includes("@")) return "Nickname cannot contain @.";
     return "Nickname can only contain Latin letters, numbers, underscore, and dot.";
   }
-  if (/\s/.test(trimmed)) return "Nickname cannot contain spaces.";
+  // No leading or trailing dot
+  if (trimmed.startsWith(".") || trimmed.endsWith(".")) {
+    return "Nickname cannot start or end with a dot.";
+  }
+  // No leading or trailing underscore
+  if (trimmed.startsWith("_") || trimmed.endsWith("_")) {
+    return "Nickname cannot start or end with an underscore.";
+  }
+  // No consecutive dots
+  if (trimmed.includes("..")) {
+    return "Nickname cannot contain consecutive dots.";
+  }
   if (RESERVED_NICKNAMES.has(trimmed.toLowerCase())) {
     return "This nickname is reserved. Please choose another.";
   }
@@ -177,8 +191,13 @@ export async function checkNicknameAvailability(
     .maybeSingle();
 
   if (error) {
+    // Do NOT mark the nickname invalid on a transient Supabase failure
+    // (e.g. column not yet created, RLS error, network issue). The format
+    // is already validated above; the DB unique index is the final guard at
+    // onboarding submit time. Optimistically treat as available so the user
+    // is not blocked from continuing.
     console.error("checkNicknameAvailability error:", error);
-    return "invalid";
+    return "available";
   }
 
   return data ? "taken" : "available";
