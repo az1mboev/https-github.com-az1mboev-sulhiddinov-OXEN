@@ -357,11 +357,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const completeOnboarding = useCallback(
     async (nickname: string, password: string): Promise<{ error?: string }> => {
       if (!session?.user) return { error: "No active session. Please sign in again." };
+      // Guard: never send an empty password to updateUser.
+      if (!password || password.length === 0) {
+        return { error: "Password is required to complete setup." };
+      }
       setLoading(true);
       try {
-        // 1. Update the Supabase Auth user's password (managed securely by Supabase).
+        // 1. Set the user's password via Supabase Auth.
+        //    Called exactly ONCE per attempt with the password currently
+        //    entered by the user — no cached or previous password state.
+        //
+        //    If the user previously attempted onboarding and the password
+        //    was already set, Supabase returns the `same_password` error.
+        //    This is NOT a real failure — the password IS correct, it's
+        //    just not new. We treat it as success and continue to the
+        //    profile update so the user is not blocked from completing
+        //    onboarding on retry. Any OTHER error is surfaced to the user.
         const { error: pwError } = await supabase.auth.updateUser({ password });
-        if (pwError) return { error: pwError.message };
+        if (pwError) {
+          const isSamePassword =
+            pwError.code === "same_password" ||
+            (pwError.message ?? "").toLowerCase().includes("should be different");
+          if (!isSamePassword) {
+            // Real error (weak password, session expired, etc.) — show it.
+            return { error: pwError.message };
+          }
+          // Password was already set in a previous attempt — continue.
+        }
 
         // 2. Update the profile row with the nickname + onboarding flag.
         //    The DB trigger normalizes nickname → normalized_nickname.
