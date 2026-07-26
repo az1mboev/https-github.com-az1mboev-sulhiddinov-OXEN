@@ -363,6 +363,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setLoading(true);
       try {
+        const userId = session.user.id;
+        const trimmedNickname = nickname.trim();
+        const normalizedNickname = trimmedNickname.toLowerCase();
+        const fullName =
+          session.user.user_metadata?.full_name ??
+          session.user.user_metadata?.name ??
+          session.user.email?.split("@")[0] ??
+          "Explorer";
+        const avatarUrl =
+          session.user.user_metadata?.avatar_url ??
+          session.user.user_metadata?.picture ??
+          null;
+        const provider =
+          session.user.user_metadata?.provider ??
+          session.user.app_metadata?.provider ??
+          null;
+
         // 1. Set the user's password via Supabase Auth.
         //    Called exactly ONCE per attempt with the password currently
         //    entered by the user — no cached or previous password state.
@@ -370,9 +387,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         //    If the user previously attempted onboarding and the password
         //    was already set, Supabase returns the `same_password` error.
         //    This is NOT a real failure — the password IS correct, it's
-        //    just not new. We treat it as success and continue to the
-        //    profile update so the user is not blocked from completing
-        //    onboarding on retry. Any OTHER error is surfaced to the user.
+        //    just not new. We treat it as already-completed and continue
+        //    to the profile upsert so the user is not blocked from
+        //    finishing OXEN setup on retry. Any OTHER security error is
+        //    surfaced to the user.
         const { error: pwError } = await supabase.auth.updateUser({ password });
         if (pwError) {
           const isSamePassword =
@@ -385,17 +403,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Password was already set in a previous attempt — continue.
         }
 
-        // 2. Update the profile row with the nickname + onboarding flag.
-        //    The DB trigger normalizes nickname → normalized_nickname.
+        // 2. Upsert the profile row on user_id (= auth.uid()).
+        //    This handles BOTH cases idempotently:
+        //      a) No profile row yet → creates it with all Google details.
+        //      b) Profile row already exists → updates nickname + flag.
+        //    onConflict: 'user_id' prevents duplicates on refresh, repeated
+        //    OAuth callbacks, or multiple button clicks.
+        //    normalized_nickname is set client-side as a fallback in case
+        //    the DB trigger hasn't been applied yet.
         const { error: profileError } = await supabase
           .from("profiles")
-          .update({
-            nickname: nickname.trim(),
-            full_name: session.user.user_metadata?.full_name ?? null,
-            onboarding_completed: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", session.user.id);
+          .upsert(
+            {
+              id: userId,
+              user_id: userId,
+              email: session.user.email ?? null,
+              normalized_email: (session.user.email ?? "").trim().toLowerCase() || null,
+              nickname: trimmedNickname,
+              normalized_nickname: normalizedNickname,
+              name: fullName,
+              full_name: fullName,
+              avatar_url: avatarUrl,
+              provider,
+              onboarding_completed: true,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id" },
+          );
 
         if (profileError) {
           // Unique violation → nickname already taken
