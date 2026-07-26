@@ -6,6 +6,10 @@ import { useAuth } from "@/contexts/AuthContext";
  * Wraps a protected route. If the user is a guest (not signed in),
  * redirects to /auth with the original location stored in `redirect`
  * so the Auth page can send them back after successful sign-in.
+ *
+ * If the user is signed in but hasn't completed onboarding
+ * (first Google login → nickname + password setup), redirect to
+ * /complete-profile before they can enter the main application.
  */
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, ready } = useAuth();
@@ -24,6 +28,12 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   if (!user || user.isGuest) {
     const redirect = location.pathname + location.search;
     return <Navigate to={`/auth?redirect=${encodeURIComponent(redirect)}`} replace />;
+  }
+
+  // Signed in but onboarding incomplete → complete-profile
+  // (allow /complete-profile itself so we don't loop)
+  if (!user.onboardingCompleted && location.pathname !== "/complete-profile") {
+    return <Navigate to="/complete-profile" replace />;
   }
 
   return <>{children}</>;

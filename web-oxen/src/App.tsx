@@ -43,6 +43,8 @@ const OwnerSubscriptions = lazy(() => import("./pages/owner/OwnerSubscriptions")
 const OwnerApplications = lazy(() => import("./pages/owner/OwnerApplications"));
 const OwnerSettings = lazy(() => import("./pages/owner/OwnerSettings"));
 const Auth = lazy(() => import("./pages/Auth"));
+const CompleteProfile = lazy(() => import("./pages/CompleteProfile"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const City = lazy(() => import("./pages/City"));
 const ConsultingDashboard = lazy(() => import("./pages/ConsultingDashboard"));
@@ -171,6 +173,8 @@ const App = () => (
                             <Suspense fallback={<RouteFallback />}>
                               <Routes>
                               <Route path="/auth" element={<Auth />} />
+                              <Route path="/complete-profile" element={<CompleteProfile />} />
+                              <Route path="/reset-password" element={<ResetPassword />} />
                               <Route path="/consulting/plans" element={<ConsultingPlans />} />
                               <Route path="/consulting/checkout" element={<Checkout />} />
                               <Route path="/consulting/setup-success" element={<ConsultingSetupSuccess />} />

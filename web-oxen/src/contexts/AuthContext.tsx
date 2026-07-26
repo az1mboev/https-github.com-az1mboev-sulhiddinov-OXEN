@@ -11,6 +11,10 @@ export interface AuthUser {
   provider: "email" | "google" | "apple";
   /** True when the user is a guest (not signed in). */
   isGuest: boolean;
+  /** Display nickname (original casing) or null if not yet set. */
+  nickname: string | null;
+  /** True when the user has completed the /complete-profile onboarding. */
+  onboardingCompleted: boolean;
 }
 
 interface AuthContextValue {
@@ -20,6 +24,12 @@ interface AuthContextValue {
   loading: boolean;
   signUp: (name: string, email: string, password: string) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  /**
+   * Nickname + password login. Calls the `nickname-login` Supabase Edge
+   * Function which maps the nickname to the account email server-side and
+   * authenticates via Supabase Auth. Never receives the email before login.
+   */
+  signInWithNickname: (nickname: string, password: string) => Promise<{ error?: string }>;
   /**
    * Kick off OAuth with the given provider.
    *
@@ -35,6 +45,12 @@ interface AuthContextValue {
     provider: "google" | "apple",
     options?: { redirectToPath?: string },
   ) => Promise<{ url?: string; error?: string }>;
+  /** Send a Supabase password reset email to the given email address. */
+  resetPassword: (email: string) => Promise<{ error?: string }>;
+  /** Update the current authenticated user's password (Supabase-managed). */
+  updateUserPassword: (password: string) => Promise<{ error?: string }>;
+  /** Complete onboarding: save nickname + set password + mark profile. */
+  completeOnboarding: (nickname: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -48,6 +64,8 @@ const GUEST_USER: AuthUser = {
   avatarUrl: null,
   provider: "email",
   isGuest: true,
+  nickname: null,
+  onboardingCompleted: false,
 };
 
 function authUserFromSupabase(session: Session, profile: Profile | null): AuthUser {
@@ -63,6 +81,8 @@ function authUserFromSupabase(session: Session, profile: Profile | null): AuthUs
     avatarUrl: profile?.avatar_url ?? session.user.user_metadata?.avatar_url ?? null,
     provider,
     isGuest: false,
+    nickname: profile?.nickname ?? null,
+    onboardingCompleted: profile?.onboarding_completed ?? false,
   };
 }
 
@@ -73,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(false);
 
   // Restore session on mount + listen for auth changes (OAuth redirect, signOut, etc.)
+  // Session persistence is handled by supabase-js (persistSession: true).
   useEffect(() => {
     let active = true;
 
@@ -147,6 +168,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
+        });
+
+        if (error) return { error: error.message };
+
+        setSession(data.session);
+        const p = await ensureProfile(data.session.user as User);
+        setProfile(p);
+
+        return {};
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : "Sign in failed" };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const signInWithNickname = useCallback(
+    async (nickname: string, password: string): Promise<{ error?: string }> => {
+      setLoading(true);
+      try {
+        const supabaseUrl = import.meta.env.EXPO_PUBLIC_SUPABASE_URL as string;
+        const anonKey = import.meta.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string;
+        if (!supabaseUrl || !anonKey) {
+          return { error: "Authentication service is not configured." };
+        }
+
+        const res = await fetch(`${supabaseUrl}/functions/v1/nickname-login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: anonKey,
+            Authorization: `Bearer ${anonKey}`,
+          },
+          body: JSON.stringify({ nickname: nickname.trim(), password }),
+        });
+
+        const body = await res.json() as { error?: string; access_token?: string; refresh_token?: string; expires_in?: number; user_id?: string };
+
+        if (!res.ok || !body.access_token || !body.refresh_token) {
+          return { error: body.error ?? "Nickname or password is incorrect." };
+        }
+
+        // Set the session from the returned tokens. supabase-js will
+        // persist it (persistSession: true) and refresh it automatically.
+        const { data, error } = await supabase.auth.setSession({
+          access_token: body.access_token,
+          refresh_token: body.refresh_token,
         });
 
         if (error) return { error: error.message };
@@ -242,6 +312,91 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const resetPassword = useCallback(
+    async (email: string): Promise<{ error?: string }> => {
+      setLoading(true);
+      try {
+        const origin =
+          typeof window !== "undefined"
+            ? window.location.origin
+            : "https://azimboyevshuxrux-mvp1.rork.app";
+        const redirectTo = `${origin}/reset-password`;
+
+        const { error } = await supabase.auth.resetPasswordForEmail(
+          email.trim(),
+          { redirectTo },
+        );
+
+        if (error) return { error: error.message };
+        return {};
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : "Password reset failed" };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const updateUserPassword = useCallback(
+    async (password: string): Promise<{ error?: string }> => {
+      setLoading(true);
+      try {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) return { error: error.message };
+        return {};
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : "Password update failed" };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const completeOnboarding = useCallback(
+    async (nickname: string, password: string): Promise<{ error?: string }> => {
+      if (!session?.user) return { error: "No active session. Please sign in again." };
+      setLoading(true);
+      try {
+        // 1. Update the Supabase Auth user's password (managed securely by Supabase).
+        const { error: pwError } = await supabase.auth.updateUser({ password });
+        if (pwError) return { error: pwError.message };
+
+        // 2. Update the profile row with the nickname + onboarding flag.
+        //    The DB trigger normalizes nickname → normalized_nickname.
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            nickname: nickname.trim(),
+            full_name: session.user.user_metadata?.full_name ?? null,
+            onboarding_completed: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", session.user.id);
+
+        if (profileError) {
+          // Unique violation → nickname already taken
+          if (profileError.code === "23505") {
+            return { error: "This nickname is already taken. Please choose another." };
+          }
+          return { error: profileError.message };
+        }
+
+        // 3. Refresh local profile state so the UI updates immediately.
+        const p = await ensureProfile(session.user as User);
+        setProfile(p);
+
+        return {};
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : "Onboarding failed" };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [session],
+  );
+
   const signOut = useCallback(async () => {
     setLoading(true);
     try {
@@ -284,8 +439,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, ready, loading, signUp, signIn, signInWithProvider, signOut }),
-    [user, ready, loading, signUp, signIn, signInWithProvider, signOut],
+    () => ({
+      user,
+      ready,
+      loading,
+      signUp,
+      signIn,
+      signInWithNickname,
+      signInWithProvider,
+      resetPassword,
+      updateUserPassword,
+      completeOnboarding,
+      signOut,
+    }),
+    [
+      user,
+      ready,
+      loading,
+      signUp,
+      signIn,
+      signInWithNickname,
+      signInWithProvider,
+      resetPassword,
+      updateUserPassword,
+      completeOnboarding,
+      signOut,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

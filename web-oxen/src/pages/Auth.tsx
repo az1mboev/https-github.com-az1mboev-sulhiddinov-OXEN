@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Mail, Lock, UserRound, Eye, EyeOff, ArrowLeft, Globe, Phone, Sparkles, ExternalLink } from "lucide-react";
+import { Loader2, Mail, Lock, AtSign, Eye, EyeOff, ArrowLeft, Globe, Phone, Sparkles, ExternalLink } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
@@ -17,7 +17,7 @@ export default function Auth() {
   const location = useLocation();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { user, ready, loading, signIn, signUp, signInWithProvider } = useAuth();
+  const { user, ready, loading, signIn, signUp, signInWithNickname, signInWithProvider, resetPassword } = useAuth();
 
   // Determine initial mode from URL or default to signup
   const searchParams = new URLSearchParams(location.search);
@@ -29,22 +29,31 @@ export default function Auth() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [nickname, setNickname] = useState<string>(""); // OXEN account login
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [localLoading, setLocalLoading] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
-  // OAuth URL returned by Supabase — rendered as a manual "Open in New Tab"
-  // fallback button when the automatic top-level redirect is blocked by the
-  // Rork preview iframe sandbox.
   const [oauthFallbackUrl, setOauthFallbackUrl] = useState<string | null>(null);
+
+  // Forgot password modal
+  const [forgotOpen, setForgotOpen] = useState<boolean>(false);
+  const [forgotEmail, setForgotEmail] = useState<string>("");
+  const [forgotLoading, setForgotLoading] = useState<boolean>(false);
+  const [forgotSent, setForgotSent] = useState<boolean>(false);
 
   const formRef = useRef<HTMLFormElement>(null);
 
   // If already signed in (non-guest), redirect to the page they came from
   useEffect(() => {
     if (ready && user && !user.isGuest) {
-      navigate(redirectTarget, { replace: true });
+      // If onboarding not complete, send to complete-profile first
+      if (!user.onboardingCompleted) {
+        navigate("/complete-profile", { replace: true });
+      } else {
+        navigate(redirectTarget, { replace: true });
+      }
     }
   }, [ready, user, navigate, redirectTarget]);
 
@@ -54,11 +63,13 @@ export default function Auth() {
     setEmail("");
     setPassword("");
     setConfirmPassword("");
+    setNickname("");
     setShowPassword(false);
     setShowConfirmPassword(false);
     setOauthError(null);
   }, []);
 
+  // ── Email/password submit (sign-up mode only — signin uses nickname) ──
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -105,6 +116,37 @@ export default function Auth() {
     }
   };
 
+  // ── OXEN nickname + password login ──
+  const handleNicknameLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nickname.trim() || !password) {
+      toast({ title: "Missing details", description: "Enter your nickname and password.", variant: "destructive" });
+      return;
+    }
+    setLocalLoading("nickname");
+    try {
+      const result = await signInWithNickname(nickname, password);
+      if (result.error) {
+        toast({
+          title: "Sign in failed",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Welcome back", description: "The world is yours to explore." });
+      navigate(redirectTarget, { replace: true });
+    } catch (err) {
+      toast({
+        title: "Sign in failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLocalLoading(null);
+    }
+  };
+
   const handleGoogle = async () => {
     setLocalLoading("google");
     setOauthError(null);
@@ -120,15 +162,9 @@ export default function Auth() {
         return;
       }
       if (result.url) {
-        // The context already attempted a top-level redirect / window.open.
-        // Keep the URL around so the user has a manual fallback button if the
-        // iframe sandbox blocked both automatic navigations.
         setOauthFallbackUrl(result.url);
         setLocalLoading(null);
       }
-      // On a successful top-level redirect we never reach here — the browser
-      // is already navigating to Google. onAuthStateChange picks up the
-      // session when the user returns to /auth?redirect=…
     } catch (err) {
       const message = err instanceof Error ? err.message : "Google sign-in failed. Please try again.";
       setOauthError(message);
@@ -142,19 +178,35 @@ export default function Auth() {
     window.open(oauthFallbackUrl, "_blank", "noopener,noreferrer");
   };
 
-  // Show loading state while checking existing session
-  if (ready && user && !user.isGuest) return null; // redirect above handles this
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) return;
+    setForgotLoading(true);
+    try {
+      const result = await resetPassword(forgotEmail);
+      if (result.error) {
+        toast({ title: "Reset failed", description: result.error, variant: "destructive" });
+        return;
+      }
+      setForgotSent(true);
+      toast({ title: "Reset email sent", description: "Check your inbox for the password reset link." });
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  if (ready && user && !user.isGuest) return null;
 
   const isLoading = !ready || loading || localLoading !== null;
 
   return (
     <div className="relative flex min-h-screen flex-col md:flex-row">
-      {/* ── Background ── */}
+      {/* Background */}
       <div className="absolute inset-0 bg-[#0a0f1e]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(37,99,235,0.15),transparent_60%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_90%_80%,rgba(59,130,246,0.08),transparent_50%)]" />
 
-      {/* ── Back link ── */}
+      {/* Back link */}
       <Link
         to="/"
         className="absolute left-6 top-6 z-30 flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
@@ -163,7 +215,7 @@ export default function Auth() {
         <span className="hidden sm:inline">{t("auth.backToGlobe", "Back to Globe")}</span>
       </Link>
 
-      {/* ── Left Panel: Form ── */}
+      {/* Left Panel: Form */}
       <div className="relative z-10 flex w-full items-center justify-center px-6 py-12 md:w-1/2 md:px-12 lg:px-20">
         <motion.div
           key={mode}
@@ -221,7 +273,7 @@ export default function Auth() {
               </motion.div>
             )}
 
-            {/* Google — fully functional */}
+            {/* A. Continue with Google — fully functional */}
             <div className="space-y-3">
               <motion.button
                 type="button"
@@ -238,9 +290,6 @@ export default function Auth() {
                 {t("auth.google", "Continue with Google")}
               </motion.button>
 
-              {/* Fallback: shown when the Rork preview iframe blocks the
-                  automatic top-level redirect. Opens Google OAuth in a new
-                  tab so the user can complete sign-in outside the iframe. */}
               {oauthFallbackUrl && (
                 <motion.button
                   type="button"
@@ -281,9 +330,100 @@ export default function Auth() {
               <div className="h-px flex-1 bg-white/[0.08]" />
             </div>
 
-            {/* Email form */}
-            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-              {mode === "signup" && (
+            {/* B. Sign in with OXEN account (nickname + password) — always available */}
+            {mode === "signin" && (
+              <form ref={formRef} onSubmit={handleNicknameLogin} className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                    Nickname
+                  </label>
+                  <div
+                    className={`flex items-center gap-3 rounded-xl border bg-white/[0.03] px-4 py-3 transition-all duration-200 ${
+                      focusedField === "nickname"
+                        ? "border-blue-500/50 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
+                        : "border-white/[0.08]"
+                    }`}
+                  >
+                    <AtSign className="h-4 w-4 shrink-0 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="alex.42"
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      onFocus={() => setFocusedField("nickname")}
+                      onBlur={() => setFocusedField(null)}
+                      autoComplete="username"
+                      className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                    Password
+                  </label>
+                  <div
+                    className={`flex items-center gap-3 rounded-xl border bg-white/[0.03] px-4 py-3 transition-all duration-200 ${
+                      focusedField === "password"
+                        ? "border-blue-500/50 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
+                        : "border-white/[0.08]"
+                    }`}
+                  >
+                    <Lock className="h-4 w-4 shrink-0 text-slate-500" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onFocus={() => setFocusedField("password")}
+                      onBlur={() => setFocusedField(null)}
+                      autoComplete="current-password"
+                      className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
+                      tabIndex={-1}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <motion.button
+                  type="submit"
+                  disabled={isLoading}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="auth-btn-primary relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl py-3.5 text-sm font-bold text-white disabled:opacity-60"
+                >
+                  {localLoading === "nickname" ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Signing in…
+                    </>
+                  ) : (
+                    "Sign In"
+                  )}
+                </motion.button>
+
+                <div className="flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setForgotOpen(true)}
+                    className="font-medium text-blue-400 transition-colors hover:text-blue-300"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Sign-up mode: email/password form (kept for direct email signup) */}
+            {mode === "signup" && (
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-slate-400">
                     Full Name
@@ -295,7 +435,7 @@ export default function Auth() {
                         : "border-white/[0.08]"
                     }`}
                   >
-                    <UserRound className="h-4 w-4 shrink-0 text-slate-500" />
+                    <AtSign className="h-4 w-4 shrink-0 text-slate-500" />
                     <input
                       type="text"
                       placeholder="John Doe"
@@ -307,69 +447,63 @@ export default function Auth() {
                     />
                   </div>
                 </div>
-              )}
 
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">
-                  Email Address
-                </label>
-                <div
-                  className={`flex items-center gap-3 rounded-xl border bg-white/[0.03] px-4 py-3 transition-all duration-200 ${
-                    focusedField === "email"
-                      ? "border-blue-500/50 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
-                      : "border-white/[0.08]"
-                  }`}
-                >
-                  <Mail className="h-4 w-4 shrink-0 text-slate-500" />
-                  <input
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onFocus={() => setFocusedField("email")}
-                    onBlur={() => setFocusedField(null)}
-                    className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">
-                  Password
-                </label>
-                <div
-                  className={`flex items-center gap-3 rounded-xl border bg-white/[0.03] px-4 py-3 transition-all duration-200 ${
-                    focusedField === "password"
-                      ? "border-blue-500/50 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
-                      : "border-white/[0.08]"
-                  }`}
-                >
-                  <Lock className="h-4 w-4 shrink-0 text-slate-500" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onFocus={() => setFocusedField("password")}
-                    onBlur={() => setFocusedField(null)}
-                    className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
-                    tabIndex={-1}
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                    Email Address
+                  </label>
+                  <div
+                    className={`flex items-center gap-3 rounded-xl border bg-white/[0.03] px-4 py-3 transition-all duration-200 ${
+                      focusedField === "email"
+                        ? "border-blue-500/50 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
+                        : "border-white/[0.08]"
+                    }`}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
+                    <Mail className="h-4 w-4 shrink-0 text-slate-500" />
+                    <input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onFocus={() => setFocusedField("email")}
+                      onBlur={() => setFocusedField(null)}
+                      className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {mode === "signup" && (
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                    Password
+                  </label>
+                  <div
+                    className={`flex items-center gap-3 rounded-xl border bg-white/[0.03] px-4 py-3 transition-all duration-200 ${
+                      focusedField === "password"
+                        ? "border-blue-500/50 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
+                        : "border-white/[0.08]"
+                    }`}
+                  >
+                    <Lock className="h-4 w-4 shrink-0 text-slate-500" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onFocus={() => setFocusedField("password")}
+                      onBlur={() => setFocusedField(null)}
+                      className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-slate-400">
                     Confirm Password
@@ -397,36 +531,29 @@ export default function Auth() {
                       className="shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
                       tabIndex={-1}
                     >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
-              )}
 
-              {/* Submit button */}
-              <motion.button
-                type="submit"
-                disabled={isLoading}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                className="auth-btn-primary relative mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl py-3.5 text-sm font-bold text-white disabled:opacity-60"
-              >
-                {localLoading === "email" ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {mode === "signup" ? "Creating account..." : "Signing in..."}
-                  </>
-                ) : mode === "signup" ? (
-                  "Create Account"
-                ) : (
-                  "Sign In"
-                )}
-              </motion.button>
-            </form>
+                <motion.button
+                  type="submit"
+                  disabled={isLoading}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="auth-btn-primary relative mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl py-3.5 text-sm font-bold text-white disabled:opacity-60"
+                >
+                  {localLoading === "email" ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating account…
+                    </>
+                  ) : (
+                    "Create Account"
+                  )}
+                </motion.button>
+              </form>
+            )}
 
             {/* Bottom switch */}
             <p className="mt-6 text-center text-sm text-slate-400">
@@ -463,13 +590,11 @@ export default function Auth() {
         </motion.div>
       </div>
 
-      {/* ── Right Panel: Illustration ── */}
+      {/* Right Panel: Illustration */}
       <div className="relative z-10 hidden w-1/2 overflow-hidden md:block">
         <TravelIllustration />
 
-        {/* Floating glass cards over the illustration */}
         <div className="absolute inset-0 flex flex-col items-center justify-center px-10">
-          {/* Main tagline card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -482,7 +607,6 @@ export default function Auth() {
             <p className="text-center text-sm text-blue-300">{t("auth.withOxen", "with OXEN")}</p>
           </motion.div>
 
-          {/* Feature cards */}
           <div className="flex flex-wrap justify-center gap-3">
             {[
               { icon: "🌍", label: t("auth.featureCountries", "200+ Countries") },
@@ -503,7 +627,6 @@ export default function Auth() {
             ))}
           </div>
 
-          {/* Bottom tagline */}
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -514,6 +637,89 @@ export default function Auth() {
           </motion.p>
         </div>
       </div>
+
+      {/* ── Forgot password modal ── */}
+      <AnimatePresence>
+        {forgotOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setForgotOpen(false); setForgotSent(false); setForgotEmail(""); }}
+              className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 28 }}
+              className="fixed left-1/2 top-1/2 z-[101] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-white/[0.08] bg-[#0a0f1e]/95 p-6 shadow-2xl backdrop-blur-xl"
+            >
+              {!forgotSent ? (
+                <>
+                  <h3 className="font-display text-lg font-bold text-white">Reset your password</h3>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Enter your Gmail address and we'll send you a secure link to set a new password.
+                  </p>
+                  <form onSubmit={handleForgotPassword} className="mt-4 space-y-3">
+                    <div className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+                      <Mail className="h-4 w-4 shrink-0 text-slate-500" />
+                      <input
+                        type="email"
+                        placeholder="you@gmail.com"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        autoFocus
+                        className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading || !forgotEmail.trim()}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 text-sm font-bold text-white disabled:opacity-60"
+                    >
+                      {forgotLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Sending…
+                        </>
+                      ) : (
+                        "Send reset link"
+                      )}
+                    </button>
+                  </form>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotOpen(false); setForgotEmail(""); }}
+                    className="mt-3 w-full rounded-xl py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/[0.04] hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <div className="text-center">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15">
+                    <Mail className="h-7 w-7 text-emerald-400" />
+                  </div>
+                  <h3 className="font-display text-lg font-bold text-white">Check your inbox</h3>
+                  <p className="mt-2 text-sm text-slate-400">
+                    We've sent a password reset link to <span className="font-semibold text-white">{forgotEmail}</span>.
+                    The link expires in 60 minutes.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotOpen(false); setForgotSent(false); setForgotEmail(""); }}
+                    className="mt-5 w-full rounded-xl bg-white/[0.04] py-3 text-sm font-bold text-white transition hover:bg-white/[0.08]"
+                  >
+                    Got it
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
