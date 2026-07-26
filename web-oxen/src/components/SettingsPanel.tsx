@@ -6,9 +6,10 @@ import {
   Bell, BellRing, Globe2, Moon, Sun, Palette, Ruler, DollarSign,
   Clock, Trash2, Download, FileUp, HelpCircle, MessageCircle,
   AlertTriangle, Info, ChevronRight, Check, Languages, LogOut,
-  Shield, MessageSquare, Wifi, WifiOff, RefreshCw,
+  Shield, MessageSquare, Wifi, WifiOff, RefreshCw, Crown,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage, type Language } from "@/contexts/LanguageContext";
@@ -19,6 +20,7 @@ import { usePreferences, CURRENCIES } from "@/contexts/PreferencesContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import LogoutDialog from "@/components/LogoutDialog";
+import { checkOwnerAccess } from "@/lib/owner-admin";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -147,6 +149,18 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { isOffline, forceOffline, setForceOffline, pendingSync, isOnline, sync, lastSyncedAt } = useOffline();
   const { currency, currencyMeta, distanceUnit, setDistanceUnit, timezone } = usePreferences();
 
+  // Owner access check — only the two seeded owner emails see the Owner Panel button.
+  // The allowlist lives in `owner_admins` (RLS-protected); this query returns
+  // `{ is_owner: false }` for everyone else. Never exposed in the public UI.
+  const { data: ownerAccess } = useQuery({
+    queryKey: ["owner-access-settings", user?.id],
+    queryFn: () => checkOwnerAccess(),
+    enabled: !!user && !user.isGuest,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const isOwner = !!ownerAccess?.is_owner;
+
   // Privacy toggles
   const [privateAccount, setPrivateAccount] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
@@ -245,6 +259,14 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <SettingsRow icon={UserPen} label={t("settings.editProfile", "Edit Profile")} onClick={() => { onClose(); navigate("/profile/edit"); }} />
                 <SettingsRow icon={MessageSquare} label={t("settings.messages", "Messages")} value={totalUnread > 0 ? `${totalUnread} ${t("settings.unread", "unread")}` : t("settings.caughtUp", "All caught up")} onClick={() => { onClose(); navigate("/messages"); }} />
                 <SettingsRow icon={Shield} label={t("settings.admin", "Admin Dashboard")} onClick={() => { onClose(); navigate("/admin"); }} />
+                {isOwner && (
+                  <SettingsRow
+                    icon={Crown}
+                    label="Owner Panel"
+                    value="Private admin access"
+                    onClick={() => { onClose(); navigate("/owner-admin"); }}
+                  />
+                )}
                 <SettingsRow icon={AtSign} label={t("settings.username", "Username")} value={`@${user.name.toLowerCase().replace(/\s+/g, "_")}`} />
                 <SettingsRow icon={Mail} label={t("settings.email", "Email Address")} value={user.email} />
               </div>
