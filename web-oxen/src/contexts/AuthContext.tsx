@@ -98,21 +98,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
 
     void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!active) return;
-      const s = data.session;
-      setSession(s);
-      if (s?.user) {
-        const p = await ensureProfile(s.user as User);
-        if (active) setProfile(p);
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("[Auth] getSession error on mount:", error);
+        }
+        if (!active) return;
+        const s = data.session;
+        console.info(
+          `[Auth] Initial session: ${s ? `user=${s.user.id} email=${s.user.email ?? "none"}` : "none"}`,
+        );
+        setSession(s);
+        if (s?.user) {
+          const p = await ensureProfile(s.user as User);
+          if (!p) {
+            console.error(
+              `[Auth] Profile provisioning failed for user ${s.user.id} during session restore. ` +
+                `The user has a valid Supabase session but no OXEN profile. Check RLS policies (profiles_insert_self) and migration 0009.`,
+            );
+          }
+          if (active) setProfile(p);
+        }
+        setReady(true);
+      } catch (err) {
+        console.error("[Auth] Unexpected error during session restore:", err);
+        if (active) setReady(true);
       }
-      setReady(true);
     })();
 
-    const unsub = onAuthStateChange(async (_event, newSession) => {
+    const unsub = onAuthStateChange(async (event, newSession) => {
+      console.info(
+        `[Auth] State change: event=${event} ${newSession ? `user=${newSession.user.id}` : "session=null"}`,
+      );
       setSession(newSession);
       if (newSession?.user) {
         const p = await ensureProfile(newSession.user as User);
+        if (!p) {
+          console.error(
+            `[Auth] Profile provisioning failed for user ${newSession.user.id} during auth state change (${event}). ` +
+              `Check RLS policies (profiles_insert_self) and migration 0009.`,
+          );
+        }
         setProfile(p);
       } else {
         setProfile(null);

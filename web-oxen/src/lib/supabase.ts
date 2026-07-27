@@ -46,12 +46,27 @@ export interface Profile {
 }
 
 /**
- * Fetch or create a row in the `profiles` table for the given user.
- * Safe to call after sign-up/sign-in even if the row already exists.
+ * Fetch or create the `profiles` row for the given authenticated user.
  *
- * Idempotent: repeated OAuth callbacks / refreshes never create duplicates.
- * The DB trigger `on_auth_user_created` also handles this server-side,
- * so this is a client-side safety net.
+ * GUARANTEE: Every successful Google Sign-In receives exactly one OXEN
+ * profile, linked 1:1 to `auth.users.id`. This function is the single
+ * source of truth for profile provisioning.
+ *
+ * Flow:
+ *   1. Wait for a valid Supabase session (caller's responsibility).
+ *   2. SELECT by id = user.id (the primary key = auth.uid()).
+ *   3. If a row exists → return it (idempotent, no duplicates).
+ *   4. If no row exists → UPSERT with onConflict: "id".
+ *      a. Try the full column set (user_id, full_name, onboarding_completed, …).
+ *      b. If PostgREST rejects a column that doesn't exist yet, fall back
+ *         to base columns only (id, email, name, avatar_url, provider).
+ *   5. Retry up to 3 times on transient network errors.
+ *   6. If RLS blocks the insert (no error, no data), log + throw so the
+ *      caller can surface a meaningful message instead of a silent null.
+ *
+ * Idempotent: repeated OAuth callbacks, refreshes, or button clicks never
+ * create duplicates. The DB trigger `on_auth_user_created` also handles
+ * this server-side, so this is a client-side safety net.
  */
 export async function ensureProfile(user: User): Promise<Profile | null> {
   const name =
@@ -70,52 +85,222 @@ export async function ensureProfile(user: User): Promise<Profile | null> {
     user.app_metadata?.provider ??
     null;
 
-  // 1. Read first — never assume the row is missing
-  const { data: existing, error: fetchErr } = await supabase
+  const userId = user.id;
+  console.info(`[ensureProfile] Provisioning profile for user ${userId} (email=${user.email ?? "none"}, provider=${provider ?? "none"})`);
+
+  // ── 1. Read first — never assume the row is missing ──────────────
+  const existing = await fetchProfileById(userId);
+  if (existing) {
+    console.info(`[ensureProfile] Existing profile found for ${userId}.`);
+    return existing;
+  }
+
+  console.info(`[ensureProfile] No profile for ${userId}. Creating one (idempotent upsert).`);
+
+  // ── 2. Build payloads ─────────────────────────────────────────────
+  // Full set includes onboarding columns added by migrations 0007/0008.
+  const fullPayload = {
+    id: userId,
+    user_id: userId,
+    email: user.email ?? null,
+    name,
+    full_name: name,
+    avatar_url: avatar,
+    provider,
+    onboarding_completed: false,
+  };
+
+  // Base set uses only columns that exist in the original profiles table.
+  const basePayload = {
+    id: userId,
+    email: user.email ?? null,
+    name,
+    avatar_url: avatar,
+    provider,
+  };
+
+  // ── 3. Upsert with retry + column fallback ───────────────────────
+  const MAX_RETRIES = 3;
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    // Try the full column set first.
+    let result = await upsertProfile(fullPayload, "id", attempt);
+
+    // Column-not-found → fall back to base columns (migration not applied).
+    if (result.missingColumn) {
+      console.warn(
+        `[ensureProfile] Onboarding columns missing on profiles (attempt ${attempt}). Falling back to base columns.`,
+      );
+      result = await upsertProfile(basePayload, "id", attempt);
+    }
+
+    if (result.profile) {
+      console.info(`[ensureProfile] Profile created/loaded for ${userId} on attempt ${attempt}.`);
+      return result.profile;
+    }
+
+    // RLS block: no error AND no data. The insert was silently rejected.
+    if (result.rlsBlocked) {
+      console.error(
+        `[ensureProfile] RLS blocked the insert for ${userId}. ` +
+          `Ensure the "profiles_insert_self" policy exists ` +
+          `(migration 0009). Returning null; caller should surface an error.`,
+      );
+      return null;
+    }
+
+    // Unique violation → row was created by a concurrent trigger/insert.
+    // Re-fetch and return it.
+    if (result.uniqueViolation) {
+      console.info(`[ensureProfile] Concurrent insert detected for ${userId}. Re-fetching.`);
+      const refetched = await fetchProfileById(userId);
+      if (refetched) return refetched;
+      // Row vanished (unlikely) — fall through and retry.
+    }
+
+    lastError = result.error;
+
+    // Transient network error → wait and retry.
+    if (result.retryable && attempt < MAX_RETRIES) {
+      const delayMs = 300 * attempt; // 300ms, 600ms
+      console.warn(`[ensureProfile] Transient error on attempt ${attempt}. Retrying in ${delayMs}ms.`, result.error);
+      await sleep(delayMs);
+      continue;
+    }
+
+    // Non-retryable error or out of retries.
+    console.error(
+      `[ensureProfile] Failed to create profile for ${userId} after ${attempt} attempt(s).`,
+      result.error,
+    );
+    break;
+  }
+
+  // ── 4. Final fallback: one last read in case the trigger created it ──
+  const finalCheck = await fetchProfileById(userId);
+  if (finalCheck) {
+    console.info(`[ensureProfile] Profile found on final check for ${userId}.`);
+    return finalCheck;
+  }
+
+  console.error(
+    `[ensureProfile] All attempts exhausted. No profile for ${userId}. Last error:`,
+    lastError,
+  );
+  return null;
+}
+
+/**
+ * Fetch a single profile row by its primary key (id = auth.uid()).
+ * Returns null if not found or on transient error (does not throw).
+ */
+async function fetchProfileById(id: string): Promise<Profile | null> {
+  const { data, error } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", id)
     .maybeSingle();
 
-  if (fetchErr) {
-    console.error("Failed to fetch profile:", fetchErr);
-  }
-
-  if (existing) return existing as Profile;
-
-  // 2. Only insert if no row exists. Normalized columns are filled
-  //    by the `profiles_normalize_email` DB trigger.
-  const { data: created, error: insertErr } = await supabase
-    .from("profiles")
-    .insert({
-      id: user.id,
-      user_id: user.id,
-      email: user.email ?? null,
-      name,
-      full_name: name,
-      avatar_url: avatar,
-      provider,
-      onboarding_completed: false,
-    })
-    .select("*")
-    .single();
-
-  if (insertErr) {
-    // Race condition: trigger may have created the row between our
-    // select and insert. Re-fetch as a fallback.
-    if (insertErr.code === "23505") {
-      const { data: retry } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
-      return retry as Profile | null;
-    }
-    console.error("Failed to create profile:", insertErr);
+  if (error) {
+    console.error(`[fetchProfileById] Error fetching profile ${id}:`, error);
     return null;
   }
+  return (data as Profile) ?? null;
+}
 
-  return created as Profile;
+/**
+ * Result of an upsert attempt.
+ */
+interface UpsertResult {
+  profile: Profile | null;
+  error: unknown;
+  /** True if the error is a missing-column error (PGRST204). */
+  missingColumn: boolean;
+  /** True if the error is a unique-constraint violation (23505). */
+  uniqueViolation: boolean;
+  /** True if the insert returned no data and no error (RLS blocked). */
+  rlsBlocked: boolean;
+  /** True if the error looks transient (network, timeout, 5xx). */
+  retryable: boolean;
+}
+
+/**
+ * Upsert a profile row and classify the result.
+ */
+async function upsertProfile(
+  payload: Record<string, unknown>,
+  conflictKey: string,
+  attempt: number,
+): Promise<UpsertResult> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .upsert(payload, { onConflict: conflictKey })
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    const code = error.code ?? "";
+    const message = error.message ?? "";
+    return {
+      profile: null,
+      error,
+      missingColumn:
+        code === "PGRST204" ||
+        message.includes("Could not find the") ||
+        message.includes("column") && message.includes("does not exist"),
+      uniqueViolation: code === "23505",
+      rlsBlocked: false,
+      retryable: isTransientError(code, message),
+    };
+  }
+
+  // No error but no data → RLS silently blocked the insert.
+  if (!data) {
+    return {
+      profile: null,
+      error: null,
+      missingColumn: false,
+      uniqueViolation: false,
+      rlsBlocked: true,
+      retryable: false,
+    };
+  }
+
+  return {
+    profile: data as Profile,
+    error: null,
+    missingColumn: false,
+    uniqueViolation: false,
+    rlsBlocked: false,
+    retryable: false,
+  };
+}
+
+/**
+ * Determine whether a PostgREST/Supabase error is transient (worth retrying).
+ */
+function isTransientError(code: string, message: string): boolean {
+  // Network / timeout errors
+  if (code === "fetch_failed" || message.includes("fetch") || message.includes("network")) {
+    return true;
+  }
+  // Supabase/PostgREST 5xx-style codes
+  if (code.startsWith("5") || message.includes("timeout") || message.includes("502") || message.includes("503") || message.includes("504")) {
+    return true;
+  }
+  // Connection reset / aborted
+  if (message.includes("abort") || message.includes("reset") || message.includes("ECONNRESET")) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Promise-based delay.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
