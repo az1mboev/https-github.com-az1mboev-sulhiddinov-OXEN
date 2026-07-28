@@ -41,7 +41,7 @@ export default function FollowList() {
       ]);
       if (!active) return;
       setUsers(list);
-      setProfileName(profile?.full_name ?? profile?.name ?? "User");
+      setProfileName(profile?.name ?? "User");
       setLoading(false);
 
       // Check follow status for all listed users (from current user's perspective)
@@ -144,16 +144,16 @@ export default function FollowList() {
                     {u.avatar_url ? (
                       <img
                         src={u.avatar_url}
-                        alt={u.full_name ?? u.name ?? "User"}
+                        alt={u.name ?? "User"}
                         className="h-12 w-12 shrink-0 rounded-full object-cover"
                       />
                     ) : (
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400/30 to-primary/30 text-sm font-bold">
-                        {getInitials(u.full_name ?? u.name)}
+                        {getInitials(u.name)}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="text-sm font-bold truncate">{u.full_name ?? u.name ?? "Explorer"}</p>
+                      <p className="text-sm font-bold truncate">{u.name ?? "Explorer"}</p>
                       {u.username && (
                         <p className="text-xs text-muted-foreground truncate">@{u.username}</p>
                       )}

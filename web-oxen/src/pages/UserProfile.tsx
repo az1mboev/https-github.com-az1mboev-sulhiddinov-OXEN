@@ -77,7 +77,7 @@ export default function UserProfile() {
         } else {
           setFollowing(false);
           setProfile((prev) =>
-            prev ? { ...prev, followers_count: Math.max(prev.followers_count - 1, 0) } : prev,
+            prev ? { ...prev, followers_count: Math.max((prev.followers_count ?? 0) - 1, 0) } : prev,
           );
         }
       } else {
@@ -87,7 +87,7 @@ export default function UserProfile() {
         } else {
           setFollowing(true);
           setProfile((prev) =>
-            prev ? { ...prev, followers_count: prev.followers_count + 1 } : prev,
+            prev ? { ...prev, followers_count: (prev.followers_count ?? 0) + 1 } : prev,
           );
         }
       }
@@ -133,7 +133,7 @@ export default function UserProfile() {
     );
   }
 
-  const displayName = profile.full_name ?? profile.name ?? "Explorer";
+  const displayName = profile.name ?? "Explorer";
 
   return (
     <div className="relative mx-auto max-w-2xl px-4 pt-2 pb-32">
@@ -184,9 +184,7 @@ export default function UserProfile() {
         )}
 
         {/* Bio */}
-        {profile.bio && (
-          <p className="mt-3 text-sm text-foreground/80 leading-relaxed">{profile.bio}</p>
-        )}
+
 
         {/* Stats row */}
         <div className="mt-5 flex items-center justify-center gap-6">
@@ -194,7 +192,7 @@ export default function UserProfile() {
             onClick={() => setShowFollowers(true)}
             className="flex flex-col items-center transition active:scale-95"
           >
-            <span className="font-display text-lg font-extrabold tabular-nums">{profile.followers_count}</span>
+            <span className="font-display text-lg font-extrabold tabular-nums">{profile.followers_count ?? 0}</span>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Followers</span>
           </button>
           <div className="h-8 w-px bg-white/[0.08]" />
@@ -202,7 +200,7 @@ export default function UserProfile() {
             onClick={() => setShowFollowing(true)}
             className="flex flex-col items-center transition active:scale-95"
           >
-            <span className="font-display text-lg font-extrabold tabular-nums">{profile.following_count}</span>
+            <span className="font-display text-lg font-extrabold tabular-nums">{profile.following_count ?? 0}</span>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Following</span>
           </button>
           <div className="h-8 w-px bg-white/[0.08]" />

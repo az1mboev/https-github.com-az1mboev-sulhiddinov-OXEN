@@ -2,20 +2,32 @@ import { supabase, type Profile } from "./supabase";
 
 // ── Types ──────────────────────────────────────────────────
 
-/** Public profile shape for social features (includes social columns). */
+/**
+ * Public profile shape for social features.
+ * Only id, username, name, avatar_url, email, created_at, updated_at
+ * are guaranteed to exist on public.profiles. The remaining fields
+ * are optional — they may exist if migrations 0010 added them, but
+ * the queries below never SELECT them so the app works regardless.
+ */
 export interface SocialProfile {
   id: string;
   username: string | null;
-  full_name: string | null;
   name: string | null;
   avatar_url: string | null;
-  bio: string | null;
   email: string | null;
-  followers_count: number;
-  following_count: number;
-  onboarding_completed: boolean;
   created_at: string;
+  updated_at?: string | null;
+  // Optional — only present if migration 0010 columns exist
+  full_name?: string | null;
+  bio?: string | null;
+  followers_count?: number;
+  following_count?: number;
+  onboarding_completed?: boolean;
 }
+
+/** Columns that exist on public.profiles — used in all select queries. */
+const SOCIAL_PROFILE_COLUMNS =
+  "id, username, name, avatar_url, email, created_at, updated_at";
 
 export interface FollowRecord {
   id: string;
@@ -171,14 +183,18 @@ export async function ensureUsername(userId: string, name: string | null, email:
  * Get a social profile by user ID.
  */
 export async function getSocialProfile(userId: string): Promise<SocialProfile | null> {
+  console.log("[getSocialProfile] route ID:", userId);
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, full_name, name, avatar_url, bio, email, followers_count, following_count, onboarding_completed, created_at")
+    .select(SOCIAL_PROFILE_COLUMNS)
     .eq("id", userId)
     .maybeSingle();
 
   if (error) {
-    console.error("[getSocialProfile] Error:", error);
+    console.error("[getSocialProfile] fetch error:", {
+      code: error.code,
+      message: error.message,
+    });
     return null;
   }
 
@@ -190,8 +206,6 @@ export async function getSocialProfile(userId: string): Promise<SocialProfile | 
  */
 export async function updateMyProfile(updates: {
   username?: string;
-  bio?: string;
-  full_name?: string;
   name?: string;
   avatar_url?: string;
 }): Promise<{ error?: string }> {
@@ -200,8 +214,6 @@ export async function updateMyProfile(updates: {
 
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (updates.username !== undefined) payload.username = updates.username.trim().toLowerCase();
-  if (updates.bio !== undefined) payload.bio = updates.bio;
-  if (updates.full_name !== undefined) payload.full_name = updates.full_name;
   if (updates.name !== undefined) payload.name = updates.name;
   if (updates.avatar_url !== undefined) payload.avatar_url = updates.avatar_url;
 
@@ -234,12 +246,12 @@ export async function searchUsers(
   const q = query.trim();
   if (q.length < 1) return [];
 
-  // Use ilike for case-insensitive partial matching
+  // Use ilike for case-insensitive partial matching on username and name only
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, full_name, name, avatar_url, bio, email, followers_count, following_count, onboarding_completed, created_at")
+    .select(SOCIAL_PROFILE_COLUMNS)
     .neq("id", currentUserId)
-    .or(`username.ilike.%${q}%,full_name.ilike.%${q}%,name.ilike.%${q}%,email.ilike.%${q}%`)
+    .or(`username.ilike.%${q}%,name.ilike.%${q}%`)
     .limit(limit);
 
   if (error) {
@@ -357,7 +369,7 @@ export async function getFollowing(userId: string): Promise<SocialProfile[]> {
     .select(`
       following_id,
       profiles!follows_following_id_fkey (
-        id, username, full_name, name, avatar_url, bio, email, followers_count, following_count, onboarding_completed, created_at
+        ${SOCIAL_PROFILE_COLUMNS}
       )
     `)
     .eq("follower_id", userId)
@@ -382,7 +394,7 @@ export async function getFollowers(userId: string): Promise<SocialProfile[]> {
     .select(`
       follower_id,
       profiles!follows_follower_id_fkey (
-        id, username, full_name, name, avatar_url, bio, email, followers_count, following_count, onboarding_completed, created_at
+        ${SOCIAL_PROFILE_COLUMNS}
       )
     `)
     .eq("following_id", userId)

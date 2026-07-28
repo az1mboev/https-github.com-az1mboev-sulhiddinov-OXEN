@@ -47,7 +47,7 @@ export default function SocialMessages() {
   const filteredConversations = conversations.filter((c) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    const name = (c.other_user?.full_name ?? c.other_user?.name ?? "").toLowerCase();
+    const name = (c.other_user?.name ?? "").toLowerCase();
     const username = (c.other_user?.username ?? "").toLowerCase();
     const lastMsg = (c.last_message?.content ?? "").toLowerCase();
     return name.includes(q) || username.includes(q) || lastMsg.includes(q);
@@ -158,7 +158,7 @@ export default function SocialMessages() {
 
   // ── Chat view (full screen) ──
   if (activeConvId) {
-    const displayName = otherUser?.full_name ?? otherUser?.name ?? "User";
+    const displayName = otherUser?.name ?? "User";
     let lastDateDivider = "";
 
     return createPortal(
@@ -402,7 +402,7 @@ export default function SocialMessages() {
           {filteredConversations.map((conv, i) => {
             const lastMsg = conv.last_message;
             const unread = conv.unread_count;
-            const displayName = conv.other_user?.full_name ?? conv.other_user?.name ?? "User";
+            const displayName = conv.other_user?.name ?? "User";
 
             return (
               <motion.button

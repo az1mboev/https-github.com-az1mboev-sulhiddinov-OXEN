@@ -104,7 +104,7 @@ export default function UserSearchPanel({ onClose, embedded = false }: UserSearc
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by username, name, or email…"
+          placeholder="Search by username or name…"
           autoFocus={!embedded}
           className="w-full rounded-2xl border border-white/[0.06] bg-white/[0.04] py-3 pl-11 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/30 focus:bg-white/[0.06] transition"
         />
@@ -133,7 +133,7 @@ export default function UserSearchPanel({ onClose, embedded = false }: UserSearc
             </div>
             <p className="text-sm font-medium text-muted-foreground">No users found</p>
             <p className="mt-1 text-xs text-muted-foreground/60">
-              Try searching by username, full name, or email
+              Try searching by username or name
             </p>
           </div>
         )}
@@ -145,7 +145,7 @@ export default function UserSearchPanel({ onClose, embedded = false }: UserSearc
             </div>
             <p className="text-sm font-medium text-muted-foreground">Search for people on OXEN</p>
             <p className="mt-1 text-xs text-muted-foreground/60">
-              Find travelers by username, name, or email
+              Find travelers by username or name
             </p>
           </div>
         )}
@@ -168,19 +168,19 @@ export default function UserSearchPanel({ onClose, embedded = false }: UserSearc
                 {profile.avatar_url ? (
                   <img
                     src={profile.avatar_url}
-                    alt={profile.full_name ?? profile.name ?? "User"}
+                    alt={profile.name ?? "User"}
                     className="h-12 w-12 shrink-0 rounded-full object-cover"
                   />
                 ) : (
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400/30 to-primary/30 text-sm font-bold">
-                    {getInitials(profile.full_name ?? profile.name)}
+                    {getInitials(profile.name)}
                   </div>
                 )}
 
                 {/* Name + username */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold truncate">
-                    {profile.full_name ?? profile.name ?? "Explorer"}
+                    {profile.name ?? "Explorer"}
                   </p>
                   {profile.username && (
                     <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>
