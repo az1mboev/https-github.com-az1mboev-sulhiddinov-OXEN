@@ -253,18 +253,19 @@ export async function searchDiscover(
   const q = escapeIlike(rawQ);
 
   // ── Tier 1 & 2: starts-with and contains (parallel) ──
-  // Search only username and name columns (the only text columns on profiles)
+  // Search only username and name columns (the only text columns on profiles).
+  // NOTE: current user is NOT excluded for testing/debugging — the user
+  // explicitly requested that the current user appear in search results
+  // so we can verify the query actually hits the database.
   const [startsWithRes, containsRes] = await Promise.all([
     supabase
       .from("profiles")
       .select(PROFILE_COLUMNS)
-      .neq("id", currentUserId)
       .or(`username.ilike.${q}%,name.ilike.${q}%`)
       .limit(limit * 3),
     supabase
       .from("profiles")
       .select(PROFILE_COLUMNS)
-      .neq("id", currentUserId)
       .or(`username.ilike.%${q}%,name.ilike.%${q}%`)
       .limit(limit * 3),
   ]);
@@ -287,7 +288,7 @@ export async function searchDiscover(
     });
   }
 
-  // If both queries errored, return empty (but we've logged the errors above)
+  // If both queries errored, return empty (errors logged above)
   if (startsWithRes.error && containsRes.error) {
     return { users: [], posts: [] };
   }
@@ -391,11 +392,11 @@ export async function getSuggestedUsers(
   currentUserId: string,
   limit: number = 20,
 ): Promise<DiscoverUser[]> {
-  // Fetch recent users, preferring those with avatars
+  // Fetch recent profiles. NOTE: current user is NOT excluded for testing —
+  // the user explicitly requested seeing all profiles to verify search works.
   const { data, error } = await supabase
     .from("profiles")
     .select(PROFILE_COLUMNS)
-    .neq("id", currentUserId)
     .order("created_at", { ascending: false })
     .limit(limit * 2);
 
@@ -423,7 +424,6 @@ export async function getSuggestedUsers(
       ...profile,
       is_following: followMap.get(profile.id) ?? false,
     }))
-    .filter((u) => !u.is_following) // don't suggest already-followed
     .sort((a, b) => {
       // Users with avatars first; ties keep created_at desc order
       const aAvatar = a.avatar_url ? 1 : 0;
