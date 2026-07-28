@@ -119,7 +119,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
   en: {
     "nav.globe": "Globe", "nav.explore": "Explore", "nav.travel": "Travel",
     "nav.trips": "Trips", "nav.planner": "Planner", "nav.dashboard": "Dashboard",
-    "nav.profile": "Profile",
+    "nav.discover": "Discover", "nav.profile": "Profile",
     "hero.title.line1": "See the world", "hero.title.line2": "from above.",
     "hero.subtitle": "Spin the globe, discover countries, and let AI plan your next great escape.",
     "hero.cta": "Plan a trip with AI",

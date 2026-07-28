@@ -90,6 +90,7 @@ const FollowList = lazy(() => import("./pages/FollowList"));
 const UserSearch = lazy(() => import("./pages/UserSearch"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Planner = lazy(() => import("./pages/Planner"));
+const Discover = lazy(() => import("./pages/Discover"));
 const Profile = lazy(() => import("./pages/Profile"));
 const ServiceDetails = lazy(() => import("./pages/ServiceDetails"));
 const ServiceEditor = lazy(() => import("./pages/ServiceEditor"));
@@ -230,8 +231,10 @@ const App = () => (
                                 <Route path="/travel" element={<Travel />} />
                                 <Route path="/universities" element={<Universities />} />
                                 <Route path="/universities/:universityId" element={<UniversityDetail />} />
-                                <Route path="/trips" element={<Trips />} />
+                                <Route path="/discover" element={<Discover />} />
                                 <Route path="/planner" element={<Planner />} />
+                                {/* Legacy /trips redirect — renders the merged Travel page so old links don't 404 */}
+                                <Route path="/trips" element={<Travel />} />
                                 <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
                                 <Route path="/services" element={<Services />} />
                                 <Route path="/services/:serviceId" element={<ServiceDetails />} />
