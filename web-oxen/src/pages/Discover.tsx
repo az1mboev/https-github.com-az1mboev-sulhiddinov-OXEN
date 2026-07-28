@@ -128,7 +128,7 @@ function PostDetailViewer({
     navigate(`/user/${post.user_id}`);
   }, [post.user_id, navigate, onClose]);
 
-  const authorName = post.author?.full_name ?? post.author?.name ?? "Explorer";
+  const authorName = post.author?.name ?? "Explorer";
   const authorUsername = post.author?.username;
 
   return createPortal(
@@ -247,17 +247,17 @@ function PostDetailViewer({
                       {c.author?.avatar_url ? (
                         <img
                           src={c.author.avatar_url}
-                          alt={c.author?.full_name ?? "User"}
+                          alt={c.author?.name ?? "User"}
                           className="h-8 w-8 shrink-0 rounded-full object-cover"
                         />
                       ) : (
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-xs font-bold">
-                          {getInitials(c.author?.full_name ?? c.author?.name)}
+                          {getInitials(c.author?.name)}
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="text-xs">
-                          <span className="font-bold">{c.author?.username ?? c.author?.full_name ?? "User"}</span>{" "}
+                          <span className="font-bold">{c.author?.username ?? c.author?.name ?? "User"}</span>{" "}
                           <span className="text-muted-foreground">{c.content}</span>
                         </p>
                         <p className="mt-0.5 text-[10px] text-muted-foreground/60">
@@ -363,7 +363,7 @@ function UserResultCard({
     setBusy(false);
   }, [following, u.id, currentUser, toast]);
 
-  const displayName = u.full_name ?? u.name ?? "Explorer";
+  const displayName = u.name ?? "Explorer";
 
   return (
     <motion.button
@@ -390,9 +390,6 @@ function UserResultCard({
         <p className="text-sm font-bold truncate">{displayName}</p>
         {u.username && (
           <p className="text-xs text-muted-foreground truncate">@{u.username}</p>
-        )}
-        {u.bio && (
-          <p className="mt-0.5 text-xs text-muted-foreground/70 line-clamp-1">{u.bio}</p>
         )}
       </div>
       {currentUser && !currentUser.isGuest && currentUser.id !== u.id && (
@@ -645,7 +642,7 @@ export default function Discover() {
                   </div>
                   <p className="text-sm font-medium text-muted-foreground">No users found</p>
                   <p className="mt-1 text-xs text-muted-foreground/60">
-                    Try searching by username or full name
+                    Try searching by username or name
                   </p>
                 </div>
               )}

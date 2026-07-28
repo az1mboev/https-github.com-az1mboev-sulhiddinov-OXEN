@@ -1,8 +1,22 @@
 import { supabase } from "./supabase";
-import { searchUsers, checkFollowStatus, getInitials, type SocialProfile } from "./social";
+import { checkFollowStatus, getInitials } from "./social";
 import { FEED_POSTS } from "@/data/feedData";
 
 // ── Types ──────────────────────────────────────────────────
+
+/**
+ * Minimal profile shape matching the current public.profiles schema.
+ * Only includes columns that exist: id, username, name, avatar_url, created_at, updated_at.
+ * Email is intentionally excluded from search results (never shown to other users).
+ */
+export interface DiscoverProfile {
+  id: string;
+  username: string | null;
+  name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
 
 export interface DiscoverPost {
   id: string;
@@ -21,12 +35,12 @@ export interface DiscoverPost {
   is_private: boolean;
   created_at: string;
   /** Joined author profile */
-  author: SocialProfile | null;
+  author: DiscoverProfile | null;
   /** Whether current user liked this post */
   liked_by_me: boolean;
 }
 
-export interface DiscoverUser extends SocialProfile {
+export interface DiscoverUser extends DiscoverProfile {
   is_following: boolean;
 }
 
@@ -35,6 +49,10 @@ export interface SearchResult {
   /** Matching post captions (optional, shown below users) */
   posts: DiscoverPost[];
 }
+
+/** Profile columns that exist in public.profiles — used in all select queries. */
+const PROFILE_COLUMNS =
+  "id, username, name, avatar_url, created_at, updated_at";
 
 // ── Feed ───────────────────────────────────────────────────
 
@@ -62,17 +80,17 @@ export async function getDiscoverFeed(
       location, country, city, hashtags,
       likes_count, comments_count, views_count, is_private,
       created_at,
-      author:profiles!posts_user_id_fkey (
-        id, username, full_name, name, avatar_url, bio, email,
-        followers_count, following_count, onboarding_completed, created_at
-      )
+      author:profiles!posts_user_id_fkey (${PROFILE_COLUMNS})
     `)
     .eq("is_deleted", false)
     .order("created_at", { ascending: false })
     .range(offset, offset + pageSize - 1);
 
   if (error) {
-    console.error("[getDiscoverFeed] Error:", error);
+    console.error("[getDiscoverFeed] Error:", {
+      code: error.code,
+      message: error.message,
+    });
     return [];
   }
 
@@ -98,7 +116,7 @@ export async function getDiscoverFeed(
   // Score and sort posts
   const now = Date.now();
   const scored = (data as unknown as Array<Record<string, unknown> & { id: string; created_at: string; likes_count: number; comments_count: number; views_count: number; user_id: string }>).map((row) => {
-    const author = row.author as SocialProfile | null;
+    const author = row.author as DiscoverProfile | null;
     const post: DiscoverPost = {
       id: row.id,
       user_id: row.user_id as string,
@@ -151,7 +169,10 @@ export async function getDiscoverFeedTotal(): Promise<number> {
     .eq("is_private", false);
 
   if (error) {
-    console.error("[getDiscoverFeedTotal] Error:", error);
+    console.error("[getDiscoverFeedTotal] Error:", {
+      code: error.code,
+      message: error.message,
+    });
     return 0;
   }
 
@@ -185,35 +206,36 @@ function escapeIlike(str: string): string {
  * Priority (descending):
  *   100 — exact username match
  *   80  — username starts with query
- *   70  — full name starts with query
+ *   70  — name starts with query
  *   50  — username contains query
- *   40  — full name contains query
+ *   40  — name contains query
  *   20  — recommended / weak match
  */
-function scoreUser(profile: SocialProfile, q: string): number {
+function scoreUser(profile: DiscoverProfile, q: string): number {
   const username = (profile.username ?? "").toLowerCase();
-  const fullName = (profile.full_name ?? profile.name ?? "").toLowerCase();
+  const name = (profile.name ?? "").toLowerCase();
 
   if (username === q) return 100;
   if (username.startsWith(q)) return 80;
-  if (fullName.startsWith(q)) return 70;
+  if (name.startsWith(q)) return 70;
   if (username.includes(q)) return 50;
-  if (fullName.includes(q)) return 40;
+  if (name.includes(q)) return 40;
   return 20;
 }
 
 /**
  * Search for users and posts by query.
  *
- * Multi-tier search: fires starts-with and contains queries in parallel,
+ * Multi-tier search: fires starts-with and contains queries in parallel
+ * against public.profiles using only the `username` and `name` columns,
  * merges results without duplicates, scores each user by match quality,
  * and sorts by score descending.
  *
  * Starts searching after 1 character. Debounce is handled by the caller.
  *
- * @param query    Raw search query (will be normalized)
+ * @param query          Raw search query (will be normalized)
  * @param currentUserId  Current user ID (excluded from results)
- * @param limit    Max users to return (default 20)
+ * @param limit          Max users to return (default 20)
  */
 export async function searchDiscover(
   query: string,
@@ -224,39 +246,53 @@ export async function searchDiscover(
   if (rawQ.length < 1) return { users: [], posts: [] };
 
   const q = escapeIlike(rawQ);
-  const selectCols =
-    "id, username, full_name, name, avatar_url, bio, email, followers_count, following_count, onboarding_completed, created_at";
 
   // ── Tier 1 & 2: starts-with and contains (parallel) ──
+  // Search only username and name columns (the only text columns on profiles)
   const [startsWithRes, containsRes] = await Promise.all([
     supabase
       .from("profiles")
-      .select(selectCols)
+      .select(PROFILE_COLUMNS)
       .neq("id", currentUserId)
-      .or(`username.ilike.${q}%,full_name.ilike.${q}%,name.ilike.${q}%`)
+      .or(`username.ilike.${q}%,name.ilike.${q}%`)
       .limit(limit * 3),
     supabase
       .from("profiles")
-      .select(selectCols)
+      .select(PROFILE_COLUMNS)
       .neq("id", currentUserId)
-      .or(`username.ilike.%${q}%,full_name.ilike.%${q}%,name.ilike.%${q}%`)
+      .or(`username.ilike.%${q}%,name.ilike.%${q}%`)
       .limit(limit * 3),
   ]);
 
-  if (startsWithRes.error && containsRes.error) {
-    console.error("[searchDiscover] Both queries failed:", {
-      startsWith: startsWithRes.error.message,
-      contains: containsRes.error.message,
+  // Log errors safely — never log tokens, sessions, or credentials
+  if (startsWithRes.error) {
+    console.error("[searchDiscover] starts-with query error:", {
+      normalizedQuery: rawQ,
+      errorCode: startsWithRes.error.code,
+      errorMessage: startsWithRes.error.message,
+      resultCount: 0,
     });
+  }
+  if (containsRes.error) {
+    console.error("[searchDiscover] contains query error:", {
+      normalizedQuery: rawQ,
+      errorCode: containsRes.error.code,
+      errorMessage: containsRes.error.message,
+      resultCount: 0,
+    });
+  }
+
+  // If both queries errored, return empty (but we've logged the errors above)
+  if (startsWithRes.error && containsRes.error) {
     return { users: [], posts: [] };
   }
 
   // Merge results without duplicates (by id), preferring starts-with hits
-  const userMap = new Map<string, SocialProfile>();
-  for (const row of (startsWithRes.data ?? []) as SocialProfile[]) {
+  const userMap = new Map<string, DiscoverProfile>();
+  for (const row of (startsWithRes.data ?? []) as DiscoverProfile[]) {
     userMap.set(row.id, row);
   }
-  for (const row of (containsRes.data ?? []) as SocialProfile[]) {
+  for (const row of (containsRes.data ?? []) as DiscoverProfile[]) {
     if (!userMap.has(row.id)) userMap.set(row.id, row);
   }
 
@@ -265,11 +301,12 @@ export async function searchDiscover(
     .map((profile) => ({ profile, score: scoreUser(profile, rawQ) }))
     .sort((a, b) => b.score - a.score);
 
-  console.debug("[searchDiscover]", {
-    query: rawQ,
+  const totalResults = scored.length;
+  console.debug("[searchDiscover] search completed:", {
+    normalizedQuery: rawQ,
     startsWithHits: startsWithRes.data?.length ?? 0,
     containsHits: containsRes.data?.length ?? 0,
-    total: scored.length,
+    resultCount: totalResults,
   });
 
   const topUsers = scored.slice(0, limit).map((s) => s.profile);
@@ -288,24 +325,27 @@ export async function searchDiscover(
   // Search posts by caption (optional, limited to 10)
   let posts: DiscoverPost[] = [];
   try {
-    const { data: postData, error } = await supabase
+    const { data: postData, error: postError } = await supabase
       .from("posts")
       .select(`
         id, user_id, caption, media_type, media_url, thumbnail_url,
         location, country, city, hashtags,
         likes_count, comments_count, views_count, is_private,
         created_at,
-        author:profiles!posts_user_id_fkey (
-          id, username, full_name, name, avatar_url, bio, email,
-          followers_count, following_count, onboarding_completed, created_at
-        )
+        author:profiles!posts_user_id_fkey (${PROFILE_COLUMNS})
       `)
       .eq("is_deleted", false)
       .ilike("caption", `%${q}%`)
       .order("likes_count", { ascending: false })
       .limit(10);
 
-    if (!error && postData) {
+    if (postError) {
+      console.error("[searchDiscover] post search error:", {
+        normalizedQuery: rawQ,
+        errorCode: postError.code,
+        errorMessage: postError.message,
+      });
+    } else if (postData) {
       posts = (postData as unknown as Array<Record<string, unknown>>).map((row) => ({
         id: row.id as string,
         user_id: row.user_id as string,
@@ -322,7 +362,7 @@ export async function searchDiscover(
         views_count: row.views_count as number,
         is_private: row.is_private as boolean,
         created_at: row.created_at as string,
-        author: row.author as unknown as SocialProfile | null,
+        author: row.author as unknown as DiscoverProfile | null,
         liked_by_me: false,
       }));
     }
@@ -335,8 +375,7 @@ export async function searchDiscover(
 
 /**
  * Get suggested users for the "Suggested for you" section when search is empty.
- * Returns recently created users with avatars, excluding the current user
- * and users already followed.
+ * Returns recently created users, excluding the current user and users already followed.
  *
  * @param currentUserId  Current user ID (excluded)
  * @param limit          Max suggestions (default 20)
@@ -345,30 +384,33 @@ export async function getSuggestedUsers(
   currentUserId: string,
   limit: number = 20,
 ): Promise<DiscoverUser[]> {
-  const selectCols =
-    "id, username, full_name, name, avatar_url, bio, email, followers_count, following_count, onboarding_completed, created_at";
-
-  // Get users that the current user is NOT already following.
-  // Strategy: fetch recent users with avatars, then filter out followed ones.
+  // Fetch recent users, preferring those with avatars
   const { data, error } = await supabase
     .from("profiles")
-    .select(selectCols)
+    .select(PROFILE_COLUMNS)
     .neq("id", currentUserId)
     .order("created_at", { ascending: false })
     .limit(limit * 2);
 
   if (error) {
-    console.error("[getSuggestedUsers] Error:", error.message);
+    console.error("[getSuggestedUsers] Error:", {
+      errorCode: error.code,
+      errorMessage: error.message,
+      resultCount: 0,
+    });
     return [];
   }
 
-  const allProfiles = (data ?? []) as SocialProfile[];
-  if (allProfiles.length === 0) return [];
+  const allProfiles = (data ?? []) as DiscoverProfile[];
+  if (allProfiles.length === 0) {
+    console.debug("[getSuggestedUsers] No profiles found");
+    return [];
+  }
 
   // Check which of these the current user already follows
   const followMap = await checkFollowStatus(allProfiles.map((u) => u.id));
 
-  // Prefer users with avatars, then by followers_count descending
+  // Prefer users with avatars, then by recency (already sorted by created_at desc)
   const suggestions = allProfiles
     .map((profile) => ({
       ...profile,
@@ -376,13 +418,17 @@ export async function getSuggestedUsers(
     }))
     .filter((u) => !u.is_following) // don't suggest already-followed
     .sort((a, b) => {
-      // Users with avatars first, then more followers first
+      // Users with avatars first; ties keep created_at desc order
       const aAvatar = a.avatar_url ? 1 : 0;
       const bAvatar = b.avatar_url ? 1 : 0;
       if (bAvatar !== aAvatar) return bAvatar - aAvatar;
-      return b.followers_count - a.followers_count;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     })
     .slice(0, limit);
+
+  console.debug("[getSuggestedUsers] completed:", {
+    resultCount: suggestions.length,
+  });
 
   return suggestions;
 }
@@ -404,7 +450,10 @@ export async function likePost(postId: string): Promise<{ error?: string }> {
     );
 
   if (error) {
-    console.error("[likePost] Error:", error);
+    console.error("[likePost] Error:", {
+      code: error.code,
+      message: error.message,
+    });
     return { error: error.message };
   }
 
@@ -425,7 +474,10 @@ export async function unlikePost(postId: string): Promise<{ error?: string }> {
     .eq("user_id", userData.user.id);
 
   if (error) {
-    console.error("[unlikePost] Error:", error);
+    console.error("[unlikePost] Error:", {
+      code: error.code,
+      message: error.message,
+    });
     return { error: error.message };
   }
 
@@ -451,7 +503,7 @@ export interface PostComment {
   content: string;
   created_at: string;
   updated_at: string;
-  author: SocialProfile | null;
+  author: DiscoverProfile | null;
 }
 
 /**
@@ -465,17 +517,17 @@ export async function getPostComments(
     .from("post_comments")
     .select(`
       id, post_id, user_id, content, created_at, updated_at,
-      author:profiles!post_comments_user_id_fkey (
-        id, username, full_name, name, avatar_url, bio, email,
-        followers_count, following_count, onboarding_completed, created_at
-      )
+      author:profiles!post_comments_user_id_fkey (${PROFILE_COLUMNS})
     `)
     .eq("post_id", postId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
   if (error) {
-    console.error("[getPostComments] Error:", error);
+    console.error("[getPostComments] Error:", {
+      code: error.code,
+      message: error.message,
+    });
     return [];
   }
 
@@ -486,7 +538,7 @@ export async function getPostComments(
     content: row.content as string,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
-    author: row.author as SocialProfile | null,
+    author: row.author as unknown as DiscoverProfile | null,
   }));
 }
 
@@ -510,15 +562,15 @@ export async function addComment(
     })
     .select(`
       id, post_id, user_id, content, created_at, updated_at,
-      author:profiles!post_comments_user_id_fkey (
-        id, username, full_name, name, avatar_url, bio, email,
-        followers_count, following_count, onboarding_completed, created_at
-      )
+      author:profiles!post_comments_user_id_fkey (${PROFILE_COLUMNS})
     `)
     .single();
 
   if (error) {
-    console.error("[addComment] Error:", error);
+    console.error("[addComment] Error:", {
+      code: error.code,
+      message: error.message,
+    });
     return { error: error.message };
   }
 
@@ -530,7 +582,7 @@ export async function addComment(
       content: data.content as string,
       created_at: data.created_at as string,
       updated_at: data.updated_at as string,
-      author: data.author as unknown as SocialProfile | null,
+      author: data.author as unknown as DiscoverProfile | null,
     },
   };
 }
@@ -562,14 +614,8 @@ export function getSeedDiscoverPosts(): DiscoverPost[] {
     author: {
       id: fp.userId,
       username: fp.username,
-      full_name: fp.username.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
       name: fp.username.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
       avatar_url: fp.avatarUrl,
-      bio: null,
-      email: null,
-      followers_count: Math.floor(fp.likes * 0.3),
-      following_count: Math.floor(Math.random() * 200) + 50,
-      onboarding_completed: true,
       created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
     },
     liked_by_me: false,
