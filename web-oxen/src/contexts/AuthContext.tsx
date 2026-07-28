@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, ensureProfile, onAuthStateChange, type Profile } from "@/lib/supabase";
+import { ensureUsername } from "@/lib/social";
 
 export interface AuthUser {
   id: string;
@@ -116,6 +117,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               `[Auth] Profile provisioning failed for user ${s.user.id} during session restore. ` +
                 `The user has a valid Supabase session but no OXEN profile. Check RLS policies (profiles_insert_self) and migration 0009.`,
             );
+          } else {
+            // Ensure the profile has a unique username (social feature).
+            // This runs after profile creation and is idempotent.
+            await ensureUsername(
+              s.user.id,
+              s.user.user_metadata?.full_name ?? s.user.user_metadata?.name ?? null,
+              s.user.email ?? null,
+            ).catch((err) =>
+              console.error("[Auth] ensureUsername failed during session restore:", err),
+            );
           }
           if (active) setProfile(p);
         }
@@ -137,6 +148,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error(
             `[Auth] Profile provisioning failed for user ${newSession.user.id} during auth state change (${event}). ` +
               `Check RLS policies (profiles_insert_self) and migration 0009.`,
+          );
+        } else {
+          // Ensure the profile has a unique username (social feature).
+          await ensureUsername(
+            newSession.user.id,
+            newSession.user.user_metadata?.full_name ?? newSession.user.user_metadata?.name ?? null,
+            newSession.user.email ?? null,
+          ).catch((err) =>
+            console.error("[Auth] ensureUsername failed during auth state change:", err),
           );
         }
         setProfile(p);

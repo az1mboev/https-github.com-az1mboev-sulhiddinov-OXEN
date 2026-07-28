@@ -12,6 +12,7 @@ import RequireConsultingMember from "./components/RequireConsultingMember";
 import RequireOwnerAdmin from "./components/RequireOwnerAdmin";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ChatProvider } from "./contexts/ChatContext";
+import { SocialProvider } from "./contexts/SocialContext";
 import { CommentsProvider } from "./contexts/CommentsContext";
 import { ConsultingProvider } from "./contexts/ConsultingContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -83,6 +84,10 @@ const EditProfile = lazy(() => import("./pages/EditProfile"));
 const Explore = lazy(() => import("./pages/Explore"));
 const Index = lazy(() => import("./pages/Index"));
 const Messages = lazy(() => import("./pages/Messages"));
+const SocialMessages = lazy(() => import("./pages/SocialMessages"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
+const FollowList = lazy(() => import("./pages/FollowList"));
+const UserSearch = lazy(() => import("./pages/UserSearch"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Planner = lazy(() => import("./pages/Planner"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -157,6 +162,7 @@ const App = () => (
           <TravelProvider>
             <UniversityProvider>
               <ChatProvider>
+                <SocialProvider>
                 <ReportProvider>
                   <CommentsProvider>
                     <OfflineProvider>
@@ -271,7 +277,10 @@ const App = () => (
                                 <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
                                 <Route path="/profile/edit" element={<RequireAuth><EditProfile /></RequireAuth>} />
                                 <Route path="/support" element={<Support />} />
-                                <Route path="/messages" element={<RequireAuth><Messages /></RequireAuth>} />
+                                <Route path="/messages" element={<RequireAuth><SocialMessages /></RequireAuth>} />
+                                <Route path="/user/:userId" element={<RequireAuth><UserProfile /></RequireAuth>} />
+                                <Route path="/user/:userId/:type" element={<RequireAuth><FollowList /></RequireAuth>} />
+                                <Route path="/people" element={<RequireAuth><UserSearch /></RequireAuth>} />
                                 <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
 
                                 {/* Owner Admin Panel — private, only the two seeded owner accounts can access */}
@@ -317,6 +326,7 @@ const App = () => (
                   </OfflineProvider>
                 </CommentsProvider>
               </ReportProvider>
+                </SocialProvider>
             </ChatProvider>
             </UniversityProvider>
           </TravelProvider>
