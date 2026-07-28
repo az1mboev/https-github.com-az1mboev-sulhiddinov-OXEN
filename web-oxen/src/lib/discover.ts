@@ -161,32 +161,126 @@ export async function getDiscoverFeedTotal(): Promise<number> {
 // ── Search ─────────────────────────────────────────────────
 
 /**
+ * Normalize a search query: trim, lowercase, remove leading @, collapse spaces.
+ * Also sanitizes for safe use in Supabase ilike patterns.
+ */
+function normalizeQuery(query: string): string {
+  return query
+    .trim()
+    .toLowerCase()
+    .replace(/^@/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Escape special LIKE/ILIKE pattern characters (%, _, \) so they match literally.
+ */
+function escapeIlike(str: string): string {
+  return str.replace(/[%_\\]/g, "\\$&");
+}
+
+/**
+ * Score a user profile against the normalized query.
+ * Priority (descending):
+ *   100 — exact username match
+ *   80  — username starts with query
+ *   70  — full name starts with query
+ *   50  — username contains query
+ *   40  — full name contains query
+ *   20  — recommended / weak match
+ */
+function scoreUser(profile: SocialProfile, q: string): number {
+  const username = (profile.username ?? "").toLowerCase();
+  const fullName = (profile.full_name ?? profile.name ?? "").toLowerCase();
+
+  if (username === q) return 100;
+  if (username.startsWith(q)) return 80;
+  if (fullName.startsWith(q)) return 70;
+  if (username.includes(q)) return 50;
+  if (fullName.includes(q)) return 40;
+  return 20;
+}
+
+/**
  * Search for users and posts by query.
- * Users are searched by username and full_name (case-insensitive, partial).
- * Posts are searched by caption (optional, shown below users).
  *
- * @param query Search query
- * @param currentUserId Current user ID (excluded from results)
- * @param limit Max users to return (default 20)
+ * Multi-tier search: fires starts-with and contains queries in parallel,
+ * merges results without duplicates, scores each user by match quality,
+ * and sorts by score descending.
+ *
+ * Starts searching after 1 character. Debounce is handled by the caller.
+ *
+ * @param query    Raw search query (will be normalized)
+ * @param currentUserId  Current user ID (excluded from results)
+ * @param limit    Max users to return (default 20)
  */
 export async function searchDiscover(
   query: string,
   currentUserId: string,
   limit: number = 20,
 ): Promise<SearchResult> {
-  const q = query.trim();
-  if (q.length < 1) return { users: [], posts: [] };
+  const rawQ = normalizeQuery(query);
+  if (rawQ.length < 1) return { users: [], posts: [] };
 
-  // Search users by username and full_name (primary)
-  const users = await searchUsers(q, currentUserId, limit);
+  const q = escapeIlike(rawQ);
+  const selectCols =
+    "id, username, full_name, name, avatar_url, bio, email, followers_count, following_count, onboarding_completed, created_at";
 
-  // Check follow status for all found users
-  let followMap = new Map<string, boolean>();
-  if (users.length > 0) {
-    followMap = await checkFollowStatus(users.map((u) => u.id));
+  // ── Tier 1 & 2: starts-with and contains (parallel) ──
+  const [startsWithRes, containsRes] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(selectCols)
+      .neq("id", currentUserId)
+      .or(`username.ilike.${q}%,full_name.ilike.${q}%,name.ilike.${q}%`)
+      .limit(limit * 3),
+    supabase
+      .from("profiles")
+      .select(selectCols)
+      .neq("id", currentUserId)
+      .or(`username.ilike.%${q}%,full_name.ilike.%${q}%,name.ilike.%${q}%`)
+      .limit(limit * 3),
+  ]);
+
+  if (startsWithRes.error && containsRes.error) {
+    console.error("[searchDiscover] Both queries failed:", {
+      startsWith: startsWithRes.error.message,
+      contains: containsRes.error.message,
+    });
+    return { users: [], posts: [] };
   }
 
-  const discoverUsers: DiscoverUser[] = users.map((u) => ({
+  // Merge results without duplicates (by id), preferring starts-with hits
+  const userMap = new Map<string, SocialProfile>();
+  for (const row of (startsWithRes.data ?? []) as SocialProfile[]) {
+    userMap.set(row.id, row);
+  }
+  for (const row of (containsRes.data ?? []) as SocialProfile[]) {
+    if (!userMap.has(row.id)) userMap.set(row.id, row);
+  }
+
+  // Score and sort
+  const scored = Array.from(userMap.values())
+    .map((profile) => ({ profile, score: scoreUser(profile, rawQ) }))
+    .sort((a, b) => b.score - a.score);
+
+  console.debug("[searchDiscover]", {
+    query: rawQ,
+    startsWithHits: startsWithRes.data?.length ?? 0,
+    containsHits: containsRes.data?.length ?? 0,
+    total: scored.length,
+  });
+
+  const topUsers = scored.slice(0, limit).map((s) => s.profile);
+
+  // Check follow status for found users
+  let followMap = new Map<string, boolean>();
+  if (topUsers.length > 0) {
+    followMap = await checkFollowStatus(topUsers.map((u) => u.id));
+  }
+
+  const discoverUsers: DiscoverUser[] = topUsers.map((u) => ({
     ...u,
     is_following: followMap.get(u.id) ?? false,
   }));
@@ -228,7 +322,7 @@ export async function searchDiscover(
         views_count: row.views_count as number,
         is_private: row.is_private as boolean,
         created_at: row.created_at as string,
-        author: row.author as SocialProfile | null,
+        author: row.author as unknown as SocialProfile | null,
         liked_by_me: false,
       }));
     }
@@ -237,6 +331,60 @@ export async function searchDiscover(
   }
 
   return { users: discoverUsers, posts };
+}
+
+/**
+ * Get suggested users for the "Suggested for you" section when search is empty.
+ * Returns recently created users with avatars, excluding the current user
+ * and users already followed.
+ *
+ * @param currentUserId  Current user ID (excluded)
+ * @param limit          Max suggestions (default 20)
+ */
+export async function getSuggestedUsers(
+  currentUserId: string,
+  limit: number = 20,
+): Promise<DiscoverUser[]> {
+  const selectCols =
+    "id, username, full_name, name, avatar_url, bio, email, followers_count, following_count, onboarding_completed, created_at";
+
+  // Get users that the current user is NOT already following.
+  // Strategy: fetch recent users with avatars, then filter out followed ones.
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(selectCols)
+    .neq("id", currentUserId)
+    .order("created_at", { ascending: false })
+    .limit(limit * 2);
+
+  if (error) {
+    console.error("[getSuggestedUsers] Error:", error.message);
+    return [];
+  }
+
+  const allProfiles = (data ?? []) as SocialProfile[];
+  if (allProfiles.length === 0) return [];
+
+  // Check which of these the current user already follows
+  const followMap = await checkFollowStatus(allProfiles.map((u) => u.id));
+
+  // Prefer users with avatars, then by followers_count descending
+  const suggestions = allProfiles
+    .map((profile) => ({
+      ...profile,
+      is_following: followMap.get(profile.id) ?? false,
+    }))
+    .filter((u) => !u.is_following) // don't suggest already-followed
+    .sort((a, b) => {
+      // Users with avatars first, then more followers first
+      const aAvatar = a.avatar_url ? 1 : 0;
+      const bAvatar = b.avatar_url ? 1 : 0;
+      if (bAvatar !== aAvatar) return bAvatar - aAvatar;
+      return b.followers_count - a.followers_count;
+    })
+    .slice(0, limit);
+
+  return suggestions;
 }
 
 // ── Post interactions ──────────────────────────────────────

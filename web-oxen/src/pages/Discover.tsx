@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSocial } from "@/contexts/SocialContext";
 import { useToast } from "@/hooks/use-toast";
 import {
-  getDiscoverFeed, getSeedDiscoverPosts, searchDiscover,
+  getDiscoverFeed, getSeedDiscoverPosts, searchDiscover, getSuggestedUsers,
   likePost, unlikePost, getPostComments, addComment,
   formatCount, formatRelativeTime, getInitials,
   type DiscoverPost, type DiscoverUser, type PostComment,
@@ -477,6 +477,8 @@ export default function Discover() {
 
   const [searchResults, setSearchResults] = useState<SearchResultData>({ users: [], posts: [] });
   const [loadingSearch, setLoadingSearch] = useState<boolean>(false);
+  const [suggestedUsers, setSuggestedUsers] = useState<DiscoverUser[]>([]);
+  const [loadingSuggested, setLoadingSuggested] = useState<boolean>(true);
 
   const [selectedPost, setSelectedPost] = useState<DiscoverPost | null>(null);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
@@ -490,12 +492,17 @@ export default function Discover() {
     posts: DiscoverPost[];
   }
 
-  // Load initial feed
+  // Load initial feed + suggested users
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoadingFeed(true);
-      const posts = await getDiscoverFeed(0, 24, []);
+      setLoadingSuggested(true);
+
+      const [posts, suggested] = await Promise.all([
+        getDiscoverFeed(0, 24, []),
+        user && !user.isGuest ? getSuggestedUsers(user.id, 20) : Promise.resolve([] as DiscoverUser[]),
+      ]);
 
       if (cancelled) return;
 
@@ -509,9 +516,12 @@ export default function Discover() {
         setHasMore(posts.length >= 24);
       }
       setLoadingFeed(false);
+
+      setSuggestedUsers(suggested);
+      setLoadingSuggested(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [user]);
 
   // Load more feed (infinite scroll)
   const loadMore = useCallback(async () => {
@@ -529,7 +539,7 @@ export default function Discover() {
     setLoadingMore(false);
   }, [page, loadingMore, hasMore]);
 
-  // Debounced search
+  // Debounced search — starts after 1 character, 300ms debounce
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!query.trim()) {
@@ -664,13 +674,75 @@ export default function Discover() {
             )}
           </div>
         ) : (
-          /* ── Default Feed (Instagram-style grid) ── */
+          /* ── Default Feed (Suggested Users + Instagram-style grid) ── */
           <div>
-            {/* Header */}
+            {/* Suggested for you section */}
+            {user && !user.isGuest && (
+              <div className="mb-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05, duration: 0.3 }}
+                  className="mb-3 flex items-center gap-2"
+                >
+                  <Users className="h-4 w-4 text-primary" strokeWidth={2.2} />
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                    Suggested for you
+                  </h2>
+                  {suggestedUsers.length > 0 && (
+                    <span className="ml-auto text-xs text-muted-foreground/60">
+                      {suggestedUsers.length} people
+                    </span>
+                  )}
+                </motion.div>
+
+                {loadingSuggested ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="glass flex items-center gap-3 rounded-2xl p-3"
+                      >
+                        <div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-white/[0.04]" />
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-3.5 w-32 animate-pulse rounded bg-white/[0.04]" />
+                          <div className="h-2.5 w-24 animate-pulse rounded bg-white/[0.03]" />
+                        </div>
+                        <div className="h-7 w-20 animate-pulse rounded-full bg-white/[0.04]" />
+                      </div>
+                    ))}
+                  </div>
+                ) : suggestedUsers.length > 0 ? (
+                  <div className="space-y-2">
+                    <AnimatePresence>
+                      {suggestedUsers.map((u, i) => (
+                        <UserResultCard
+                          key={u.id}
+                          user={u}
+                          index={i}
+                          onSelect={handleSelectUser}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  <div className="glass flex flex-col items-center justify-center rounded-2xl py-8 text-center">
+                    <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.03]">
+                      <Users className="h-6 w-6 text-muted-foreground/30" />
+                    </div>
+                    <p className="text-xs text-muted-foreground/70">
+                      No suggestions yet. New community members will appear here.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Feed Header */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05, duration: 0.3 }}
+              transition={{ delay: 0.1, duration: 0.3 }}
               className="mb-4 flex items-center gap-2"
             >
               <Compass className="h-5 w-5 text-primary" strokeWidth={2.2} />
