@@ -87,10 +87,13 @@ export async function getDiscoverFeed(
     .range(offset, offset + pageSize - 1);
 
   if (error) {
-    console.error("[getDiscoverFeed] Error:", {
-      code: error.code,
-      message: error.message,
-    });
+    // PGRST205 = table not in schema cache (migration not run yet) — expected, fall back to seed
+    if (error.code !== "PGRST205") {
+      console.error("[getDiscoverFeed] Error:", {
+        code: error.code,
+        message: error.message,
+      });
+    }
     return [];
   }
 
@@ -169,10 +172,12 @@ export async function getDiscoverFeedTotal(): Promise<number> {
     .eq("is_private", false);
 
   if (error) {
-    console.error("[getDiscoverFeedTotal] Error:", {
-      code: error.code,
-      message: error.message,
-    });
+    if (error.code !== "PGRST205") {
+      console.error("[getDiscoverFeedTotal] Error:", {
+        code: error.code,
+        message: error.message,
+      });
+    }
     return 0;
   }
 
@@ -340,11 +345,13 @@ export async function searchDiscover(
       .limit(10);
 
     if (postError) {
-      console.error("[searchDiscover] post search error:", {
-        normalizedQuery: rawQ,
-        errorCode: postError.code,
-        errorMessage: postError.message,
-      });
+      if (postError.code !== "PGRST205") {
+        console.error("[searchDiscover] post search error:", {
+          normalizedQuery: rawQ,
+          errorCode: postError.code,
+          errorMessage: postError.message,
+        });
+      }
     } else if (postData) {
       posts = (postData as unknown as Array<Record<string, unknown>>).map((row) => ({
         id: row.id as string,
@@ -450,10 +457,12 @@ export async function likePost(postId: string): Promise<{ error?: string }> {
     );
 
   if (error) {
-    console.error("[likePost] Error:", {
-      code: error.code,
-      message: error.message,
-    });
+    if (error.code !== "PGRST205") {
+      console.error("[likePost] Error:", {
+        code: error.code,
+        message: error.message,
+      });
+    }
     return { error: error.message };
   }
 
@@ -474,10 +483,12 @@ export async function unlikePost(postId: string): Promise<{ error?: string }> {
     .eq("user_id", userData.user.id);
 
   if (error) {
-    console.error("[unlikePost] Error:", {
-      code: error.code,
-      message: error.message,
-    });
+    if (error.code !== "PGRST205") {
+      console.error("[unlikePost] Error:", {
+        code: error.code,
+        message: error.message,
+      });
+    }
     return { error: error.message };
   }
 
@@ -524,10 +535,12 @@ export async function getPostComments(
     .limit(limit);
 
   if (error) {
-    console.error("[getPostComments] Error:", {
-      code: error.code,
-      message: error.message,
-    });
+    if (error.code !== "PGRST205") {
+      console.error("[getPostComments] Error:", {
+        code: error.code,
+        message: error.message,
+      });
+    }
     return [];
   }
 
@@ -567,10 +580,12 @@ export async function addComment(
     .single();
 
   if (error) {
-    console.error("[addComment] Error:", {
-      code: error.code,
-      message: error.message,
-    });
+    if (error.code !== "PGRST205") {
+      console.error("[addComment] Error:", {
+        code: error.code,
+        message: error.message,
+      });
+    }
     return { error: error.message };
   }
 
