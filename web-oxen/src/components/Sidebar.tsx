@@ -127,7 +127,7 @@ export default function Sidebar() {
     : "OX";
 
   const menuItems: MenuItem[] = [
-    { id: "explore", label: t("nav.explore", "Explore"), icon: Compass, to: "/" },
+    { id: "explore", label: t("nav.explore", "CRM"), icon: Compass, to: "/" },
     { id: "services", label: t("nav.services", "Travel Services"), icon: BriefcaseBusiness, to: "/services" },
     { id: "premium", label: t("nav.premium", "Premium Membership"), icon: Crown, to: "/profile" },
     { id: "trips", label: t("nav.trips", "My Trips"), icon: Briefcase, to: "/dashboard" },

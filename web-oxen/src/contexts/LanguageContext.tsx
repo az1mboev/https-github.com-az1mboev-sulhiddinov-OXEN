@@ -117,7 +117,7 @@ export function useLanguage(): LanguageContextValue {
 
 const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
   en: {
-    "nav.globe": "Globe", "nav.explore": "Explore", "nav.travel": "Travel",
+    "nav.globe": "Globe", "nav.explore": "CRM", "nav.travel": "Travel",
     "nav.trips": "Trips", "nav.planner": "Planner", "nav.dashboard": "Dashboard",
     "nav.discover": "Discover", "nav.profile": "Profile",
     "hero.title.line1": "See the world", "hero.title.line2": "from above.",
@@ -605,7 +605,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "uni.video.events": "Events",
   },
   uz: {
-    "nav.globe": "Globus", "nav.explore": "Kashf qilish", "nav.travel": "Sayohat",
+    "nav.globe": "Globus", "nav.explore": "CRM", "nav.travel": "Sayohat",
     "nav.trips": "Sayohatlar", "nav.planner": "Rejalashtiruvchi", "nav.dashboard": "Panel",
     "nav.profile": "Profil", "nav.universities": "Universitetlar",
     "hero.title.line1": "Dunyoni yuqoridan", "hero.title.line2": "tomosha qiling.",
@@ -918,7 +918,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.showLess": "Kamroq ko'rsatish",
   },
   tr: {
-    "nav.globe": "Küre", "nav.explore": "Keşfet", "nav.travel": "Seyahat",
+    "nav.globe": "Küre", "nav.explore": "CRM", "nav.travel": "Seyahat",
     "nav.trips": "Geziler", "nav.planner": "Planlayıcı", "nav.dashboard": "Panel",
     "nav.profile": "Profil",
     "hero.title.line1": "Dünyayı yukarıdan", "hero.title.line2": "keşfedin.",
@@ -996,7 +996,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "dashboard.deleteItinerary": "Rota sil",
   },
   ru: {
-    "nav.globe": "Глобус", "nav.explore": "Исследовать", "nav.travel": "Путешествия",
+    "nav.globe": "Глобус", "nav.explore": "CRM", "nav.travel": "Путешествия",
     "nav.trips": "Поездки", "nav.planner": "Планировщик", "nav.dashboard": "Панель",
     "nav.profile": "Профиль", "nav.universities": "Университеты",
     "hero.title.line1": "Узнай мир", "hero.title.line2": "свысоты.",
@@ -1229,7 +1229,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.showLess": "Свернуть",
   },
   ar: {
-    "nav.globe": "الكرة الأرضية", "nav.explore": "استكشف", "nav.travel": "سفر",
+    "nav.globe": "الكرة الأرضية", "nav.explore": "CRM", "nav.travel": "سفر",
     "nav.trips": "رحلات", "nav.planner": "مخطط", "nav.dashboard": "لوحة التحكم",
     "nav.profile": "الملف الشخصي",
     "hero.title.line1": "شاهد العالم", "hero.title.line2": "من الأعلى.",
@@ -1307,7 +1307,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "dashboard.deleteItinerary": "حذف مسار الرحلة",
   },
   de: {
-    "nav.globe": "Globus", "nav.explore": "Entdecken", "nav.travel": "Reisen",
+    "nav.globe": "Globus", "nav.explore": "CRM", "nav.travel": "Reisen",
     "nav.trips": "Reisen", "nav.planner": "Planer", "nav.dashboard": "Dashboard",
     "nav.profile": "Profil",
     "hero.title.line1": "Sieh die Welt", "hero.title.line2": "von oben.",
@@ -1322,7 +1322,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.save": "Speichern", "common.cancel": "Abbrechen",
   },
   fr: {
-    "nav.globe": "Globe", "nav.explore": "Explorer", "nav.travel": "Voyager",
+    "nav.globe": "Globe", "nav.explore": "CRM", "nav.travel": "Voyager",
     "nav.trips": "Voyages", "nav.planner": "Planificateur", "nav.dashboard": "Tableau",
     "nav.profile": "Profil",
     "hero.title.line1": "Voyez le monde", "hero.title.line2": "d'en haut.",
@@ -1340,7 +1340,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "Quelque chose s'est mal passé", "common.save": "Enregistrer", "common.cancel": "Annuler",
   },
   es: {
-    "nav.globe": "Globo", "nav.explore": "Explorar", "nav.travel": "Viajar",
+    "nav.globe": "Globo", "nav.explore": "CRM", "nav.travel": "Viajar",
     "nav.trips": "Viajes", "nav.planner": "Planificador", "nav.dashboard": "Panel",
     "nav.profile": "Perfil",
     "hero.title.line1": "Ve el mundo", "hero.title.line2": "desde arriba.",
@@ -1358,7 +1358,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "Algo salió mal", "common.save": "Guardar", "common.cancel": "Cancelar",
   },
   it: {
-    "nav.globe": "Globo", "nav.explore": "Esplora", "nav.travel": "Viaggi",
+    "nav.globe": "Globo", "nav.explore": "CRM", "nav.travel": "Viaggi",
     "nav.trips": "Itinerari", "nav.planner": "Pianificatore", "nav.dashboard": "Cruscotto",
     "nav.profile": "Profilo",
     "hero.title.line1": "Guarda il mondo", "hero.title.line2": "dall'alto.",
@@ -1376,7 +1376,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "Si è verificato un errore", "common.save": "Salva", "common.cancel": "Annulla",
   },
   pt: {
-    "nav.globe": "Globo", "nav.explore": "Explorar", "nav.travel": "Viajar",
+    "nav.globe": "Globo", "nav.explore": "CRM", "nav.travel": "Viajar",
     "nav.trips": "Viagens", "nav.planner": "Planejador", "nav.dashboard": "Painel",
     "nav.profile": "Perfil",
     "hero.title.line1": "Veja o mundo", "hero.title.line2": "de cima.",
@@ -1394,7 +1394,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "Algo deu errado", "common.save": "Salvar", "common.cancel": "Cancelar",
   },
   zh: {
-    "nav.globe": "地球仪", "nav.explore": "探索", "nav.travel": "旅行",
+    "nav.globe": "地球仪", "nav.explore": "CRM", "nav.travel": "旅行",
     "nav.trips": "行程", "nav.planner": "规划器", "nav.dashboard": "仪表板",
     "nav.profile": "个人资料",
     "hero.title.line1": "从上方", "hero.title.line2": "看世界。",
@@ -1412,7 +1412,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "出错了", "common.save": "保存", "common.cancel": "取消",
   },
   ja: {
-    "nav.globe": "地球儀", "nav.explore": "探検", "nav.travel": "旅行",
+    "nav.globe": "地球儀", "nav.explore": "CRM", "nav.travel": "旅行",
     "nav.trips": "旅", "nav.planner": "プランナー", "nav.dashboard": "ダッシュボード",
     "nav.profile": "プロフィール",
     "hero.title.line1": "世界を眺めよう", "hero.title.line2": "上空から。",
@@ -1427,7 +1427,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.save": "保存", "common.cancel": "キャンセル",
   },
   ko: {
-    "nav.globe": "지구본", "nav.explore": "탐험", "nav.travel": "여행",
+    "nav.globe": "지구본", "nav.explore": "CRM", "nav.travel": "여행",
     "nav.trips": "여행", "nav.planner": "플래너", "nav.dashboard": "대시보드",
     "nav.profile": "프로필",
     "hero.title.line1": "세상을 위에서", "hero.title.line2": "바라봐요.",
@@ -1442,7 +1442,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.save": "저장", "common.cancel": "취소",
   },
   hi: {
-    "nav.globe": "ग्लोब", "nav.explore": "खोज", "nav.travel": "यात्रा",
+    "nav.globe": "ग्लोब", "nav.explore": "CRM", "nav.travel": "यात्रा",
     "nav.trips": "यात्राएं", "nav.planner": "योजनाकार", "nav.dashboard": "डैशबोर्ड",
     "nav.profile": "प्रोफ़ाइल",
     "hero.title.line1": "दुनिया को ऊपर से", "hero.title.line2": "देखें।",
@@ -1460,7 +1460,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "कुछ गलत हो गया", "common.save": "सहेजें", "common.cancel": "रद्द करें",
   },
   fa: {
-    "nav.globe": "کره زمین", "nav.explore": "کاوش", "nav.travel": "سفر",
+    "nav.globe": "کره زمین", "nav.explore": "CRM", "nav.travel": "سفر",
     "nav.trips": "سفرها", "nav.planner": "برنامه‌ریز", "nav.dashboard": "داشبورد",
     "nav.profile": "پروفایل",
     "hero.title.line1": "جهان را از بالا", "hero.title.line2": "ببینید.",
@@ -1478,7 +1478,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "خطایی رخ داد", "common.save": "ذخیره", "common.cancel": "لغو",
   },
   kk: {
-    "nav.globe": "Глобус", "nav.explore": "Зерттеу", "nav.travel": "Саяхат",
+    "nav.globe": "Глобус", "nav.explore": "CRM", "nav.travel": "Саяхат",
     "nav.trips": "Саяхаттар", "nav.planner": "Жоспарлаушы", "nav.dashboard": "Басқару тақтасы",
     "nav.profile": "Профиль",
     "hero.title.line1": "Әлемді жоғарыдан", "hero.title.line2": "көріңіз.",
@@ -1496,7 +1496,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "Қате орын алды", "common.save": "Сақтау", "common.cancel": "Бас тарту",
   },
   ky: {
-    "nav.globe": "Глобус", "nav.explore": "Изилдөө", "nav.travel": "Саякат",
+    "nav.globe": "Глобус", "nav.explore": "CRM", "nav.travel": "Саякат",
     "nav.trips": "Саякаттар", "nav.planner": "Планлоочу", "nav.dashboard": "Башкаруу панели",
     "nav.profile": "Профиль",
     "hero.title.line1": "Дүйнөнү үстүнөн", "hero.title.line2": "көрүңүз.",
@@ -1514,7 +1514,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "Бир нерсеси ката кетти", "common.save": "Сактоо", "common.cancel": "Жокко чыгаруу",
   },
   tg: {
-    "nav.globe": "Глобус", "nav.explore": "Таҳқиқ", "nav.travel": "Сафар",
+    "nav.globe": "Глобус", "nav.explore": "CRM", "nav.travel": "Сафар",
     "nav.trips": "Сафарҳо", "nav.planner": "Нақшабанд", "nav.dashboard": "Панел",
     "nav.profile": "Профил",
     "hero.title.line1": "Ҷаҳонро аз боло", "hero.title.line2": "бубинед.",
@@ -1532,7 +1532,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "Хато рух дод", "common.save": "Нигоҳ доштан", "common.cancel": "Бекор кардан",
   },
   uk: {
-    "nav.globe": "Глобус", "nav.explore": "Досліджувати", "nav.travel": "Подорожі",
+    "nav.globe": "Глобус", "nav.explore": "CRM", "nav.travel": "Подорожі",
     "nav.trips": "Поїздки", "nav.planner": "Планувальник", "nav.dashboard": "Панель",
     "nav.profile": "Профіль",
     "hero.title.line1": "Побач світ", "hero.title.line2": "згори.",
@@ -1550,7 +1550,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "Щось пішло не так", "common.save": "Зберегти", "common.cancel": "Скасувати",
   },
   az: {
-    "nav.globe": "Kürə", "nav.explore": "Kəşf et", "nav.travel": "Səyahət",
+    "nav.globe": "Kürə", "nav.explore": "CRM", "nav.travel": "Səyahət",
     "nav.trips": "Səfərlər", "nav.planner": "Planlayıcı", "nav.dashboard": "Panel",
     "nav.profile": "Profil",
     "hero.title.line1": "Dünyanı yuxarıdan", "hero.title.line2": "gör.",
@@ -1568,7 +1568,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "common.error": "Bir xəta baş verdi", "common.save": "Saxla", "common.cancel": "Ləğv et",
   },
   id: {
-    "nav.globe": "Globe", "nav.explore": "Jelajahi", "nav.travel": "Perjalanan", "nav.trips": "Perjalanan", "nav.planner": "Perencana", "nav.dashboard": "Dasbor", "nav.profile": "Profil",
+    "nav.globe": "Globe", "nav.explore": "CRM", "nav.travel": "Perjalanan", "nav.trips": "Perjalanan", "nav.planner": "Perencana", "nav.dashboard": "Dasbor", "nav.profile": "Profil",
     "hero.title.line1": "Lihat dunia", "hero.title.line2": "dari atas.",
     "hero.subtitle": "Putar globe, temukan negara, dan biarkan AI merencanakan perjalanan besar berikutnya.",
     "hero.cta": "Rencanakan perjalanan dengan AI",
@@ -1601,7 +1601,7 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "dashboard.deleteItinerary": "Hapus itinerary",
   },
   ms: {
-    "nav.globe": "Globe", "nav.explore": "Terokai", "nav.travel": "Perjalanan", "nav.trips": "Perjalanan", "nav.planner": "Perancang", "nav.dashboard": "Papan Pemuka", "nav.profile": "Profil",
+    "nav.globe": "Globe", "nav.explore": "CRM", "nav.travel": "Perjalanan", "nav.trips": "Perjalanan", "nav.planner": "Perancang", "nav.dashboard": "Papan Pemuka", "nav.profile": "Profil",
     "hero.title.line1": "Lihat dunia", "hero.title.line2": "dari atas.",
     "hero.subtitle": "Putar globe, terokai negara, dan biarkan AI merancang perjalanan hebat seterusnya.",
     "hero.cta": "Rancang perjalanan dengan AI",

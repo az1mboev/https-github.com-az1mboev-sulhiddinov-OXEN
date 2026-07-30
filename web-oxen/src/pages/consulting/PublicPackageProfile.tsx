@@ -363,7 +363,7 @@ function NotAvailable() {
         to="/explore"
         className="gold-gradient mt-2 rounded-2xl px-5 py-2.5 text-sm font-bold text-primary-foreground transition active:scale-95"
       >
-        Back to Explore
+        Back to CRM
       </Link>
     </div>
   );
