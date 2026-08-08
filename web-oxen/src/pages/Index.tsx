@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import CommentsSheet from "@/components/CommentsSheet";
 import DestinationModal from "@/components/DestinationModal";
+import GlobeFilterPanel, { FilterButton } from "@/components/GlobeFilterPanel";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import ReportModal from "@/components/ReportModal";
 import TravelOptionsPanel from "@/components/TravelOptionsPanel";
@@ -354,6 +355,7 @@ export default function Index() {
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [zoomTarget, setZoomTarget] = useState<{ lat: number; lng: number } | null>(null);
+  const [filterOpen, setFilterOpen] = useState<boolean>(false);
 
   const handleCountrySelect = useCallback((country: Country) => {
     setSelectedCountry(country);
@@ -428,15 +430,18 @@ export default function Index() {
             <span className="font-display text-xl font-extrabold tracking-wide">OXEN</span>
           </div>
 
-          {/* Search button */}
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="pointer-events-auto flex items-center gap-2 rounded-full bg-white/[0.06] px-4 py-2 backdrop-blur-xl border border-white/10 text-sm text-white/60 transition hover:bg-white/12 hover:text-white active:scale-95"
-            aria-label="Search destinations"
-          >
-            <Search className="h-4 w-4" strokeWidth={2} />
-            <span className="hidden sm:inline">Search destinations</span>
-          </button>
+          {/* Search + Filter buttons */}
+          <div className="pointer-events-auto flex items-center gap-2">
+            <FilterButton onClick={() => setFilterOpen(true)} />
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2 rounded-full bg-white/[0.06] px-4 py-2 backdrop-blur-xl border border-white/10 text-sm text-white/60 transition hover:bg-white/12 hover:text-white active:scale-95"
+              aria-label="Search destinations"
+            >
+              <Search className="h-4 w-4" strokeWidth={2} />
+              <span className="hidden sm:inline">Search destinations</span>
+            </button>
+          </div>
         </motion.div>
 
         {/* Bottom hero copy */}
@@ -487,6 +492,17 @@ export default function Index() {
           </div>
         </div>
       </section>
+
+      {/* ── Globe filter panel ─────────────────────── */}
+      <GlobeFilterPanel
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        onViewGlobe={(country) => {
+          setSelectedCountry(country);
+          setModalStep("destination");
+          setZoomTarget({ lat: country.lat, lng: country.lng });
+        }}
+      />
 
       {/* ── Search overlay ─────────────────────────── */}
       <AnimatePresence>
