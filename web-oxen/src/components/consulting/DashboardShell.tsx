@@ -73,7 +73,7 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { company, member, isTestMode, subscriptionPlan, subscriptionEndDate, subscriptionAccess, agencies, activeAgencyId, switchAgency } = useConsulting();
+  const { company, member, subscriptionPlan, subscriptionEndDate, subscriptionAccess, agencies, activeAgencyId, switchAgency } = useConsulting();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -242,13 +242,6 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
           })}
         </ul>
       </nav>
-
-      {/* Test-mode badge */}
-      {isTestMode && !collapsed && (
-        <div className="mx-3 mb-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.06] px-2.5 py-1.5 text-center text-[10px] font-semibold text-amber-200/90">
-          Test Mode — DB not connected
-        </div>
-      )}
 
       {/* User + logout */}
       <div className="border-t border-white/[0.06] p-3">

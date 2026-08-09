@@ -4,7 +4,6 @@ import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useConsulting } from "@/contexts/ConsultingContext";
-import { CONSULTING_OPEN_PREVIEW_MODE } from "@/lib/consulting-preview";
 
 /**
  * RequireConsultingMember — wraps protected consulting routes.
@@ -30,12 +29,9 @@ interface Props {
 
 function Inner({ children, allowExpired = false, allowOnboarding = false }: Props) {
   const { user, ready: authReady } = useAuth();
-  const { isMember, loading, subscriptionAccess, hasNoAgencies, agencies } = useConsulting();
+  const { isMember, loading, subscriptionAccess, hasNoAgencies } = useConsulting();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Determine if user has at least one real agency (not preview/synthesized)
-  const hasRealAgencies = agencies.length > 0;
 
   useEffect(() => {
     if (!authReady) return;
@@ -43,8 +39,6 @@ function Inner({ children, allowExpired = false, allowOnboarding = false }: Prop
       navigate("/auth?redirect=" + encodeURIComponent(location.pathname), { replace: true });
       return;
     }
-    // Preview mode: bypass membership + subscription checks entirely.
-    if (CONSULTING_OPEN_PREVIEW_MODE) return;
     if (loading) return;
 
     // Zero agencies → redirect to workspace onboarding (unless this IS the workspace route)
@@ -65,7 +59,7 @@ function Inner({ children, allowExpired = false, allowOnboarding = false }: Prop
     }
   }, [authReady, user, isMember, loading, subscriptionAccess, allowExpired, allowOnboarding, hasNoAgencies, navigate, location.pathname]);
 
-  if (!authReady || (!CONSULTING_OPEN_PREVIEW_MODE && loading)) {
+  if (!authReady || loading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -75,11 +69,6 @@ function Inner({ children, allowExpired = false, allowOnboarding = false }: Prop
 
   if (!user || user.isGuest) {
     return null;
-  }
-
-  // Preview mode: any signed-in user can view the dashboard.
-  if (CONSULTING_OPEN_PREVIEW_MODE) {
-    return <>{children}</>;
   }
 
   // Onboarding routes are accessible even with zero agencies
