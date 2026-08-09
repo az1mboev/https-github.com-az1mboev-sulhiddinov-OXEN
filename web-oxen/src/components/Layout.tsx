@@ -1,22 +1,105 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, Globe2, Compass, Plane, User, WifiOff, RefreshCw, GraduationCap, Search } from "lucide-react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import Sidebar from "@/components/Sidebar";
 import Starfield from "@/components/Starfield";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useOffline } from "@/contexts/OfflineContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useConsulting } from "@/contexts/ConsultingContext";
 import { cn } from "@/lib/utils";
+import { useCallback, useMemo, type ComponentType } from "react";
 
-const TABS = [
+interface LucideIconProps {
+  className?: string;
+  strokeWidth?: number;
+}
+
+type LucideIcon = ComponentType<LucideIconProps>;
+
+interface TabDef {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  end: boolean;
+  /** CRM tab uses smart multi-agency routing instead of a static NavLink. */
+  isCrm?: boolean;
+}
+
+const TABS: TabDef[] = [
   { to: "/", label: "nav.globe", icon: Globe2, end: true },
-  { to: "/explore", label: "nav.explore", icon: Compass, end: false },
+  { to: "/explore", label: "nav.explore", icon: Compass, end: false, isCrm: true },
   { to: "/travel", label: "nav.travel", icon: Plane, end: false },
   { to: "/discover", label: "nav.discover", icon: Search, end: false },
   { to: "/universities", label: "nav.universities", icon: GraduationCap, end: false },
   { to: "/profile", label: "nav.profile", icon: User, end: false },
 ];
+
+/**
+ * CRM tab — smart multi-agency entry point.
+ *
+ * Zero agencies  → /consulting/workspace (Create / Join onboarding)
+ * One+ agencies  → /consulting/dashboard (active agency dashboard)
+ * Guest          → /auth (with redirect back to workspace)
+ * Loading        → navigate to dashboard (RequireConsultingMember handles redirect)
+ *
+ * Active state highlights on /explore and any /consulting/* route.
+ */
+function CrmTab({ label, icon: Icon }: { label: string; icon: LucideIcon }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, ready: authReady } = useAuth();
+  const { agencies, loading } = useConsulting();
+
+  const isActive = useMemo(
+    () =>
+      location.pathname === "/explore" ||
+      location.pathname.startsWith("/consulting"),
+    [location.pathname],
+  );
+
+  const handleClick = useCallback(() => {
+    if (!authReady) return;
+    if (!user || user.isGuest) {
+      navigate(`/auth?redirect=${encodeURIComponent("/consulting/workspace")}`);
+      return;
+    }
+    // If agencies are still loading, go to dashboard — RequireConsultingMember
+    // will redirect to workspace if zero agencies resolve.
+    if (loading) {
+      navigate("/consulting/dashboard");
+      return;
+    }
+    if (agencies.length === 0) {
+      navigate("/consulting/workspace");
+    } else {
+      navigate("/consulting/dashboard");
+    }
+  }, [authReady, user, agencies, loading, navigate]);
+
+  return (
+    <button
+      onClick={handleClick}
+      className={cn(
+        "group relative flex flex-1 flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 transition-all",
+        isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <motion.span
+        layout
+        className={cn(
+          "flex h-9 w-9 items-center justify-center rounded-xl transition-all",
+          isActive && "bg-primary/15 glow-gold",
+        )}
+      >
+        <Icon className="h-[18px] w-[18px]" strokeWidth={2.2} />
+      </motion.span>
+      <span className="text-[9px] font-semibold tracking-wide">{label}</span>
+    </button>
+  );
+}
 
 const overlayVariants = {
   hidden: { opacity: 0 },
@@ -109,6 +192,14 @@ export default function Layout() {
         >
           {TABS.map((tab) => {
             const Icon = tab.icon;
+
+            // CRM tab — smart multi-agency routing (not a static NavLink)
+            if (tab.isCrm) {
+              return (
+                <CrmTab key={tab.to} label={t(tab.label)} icon={Icon} />
+              );
+            }
+
             return (
               <NavLink
                 key={tab.to}
