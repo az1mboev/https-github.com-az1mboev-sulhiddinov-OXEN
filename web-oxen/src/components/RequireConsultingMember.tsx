@@ -29,9 +29,13 @@ interface Props {
 
 function Inner({ children, allowExpired = false, allowOnboarding = false }: Props) {
   const { user, ready: authReady } = useAuth();
-  const { isMember, loading, subscriptionAccess, hasNoAgencies } = useConsulting();
+  const { isMember, loading, subscriptionAccess, hasNoAgencies, isAdmin } = useConsulting();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Owner/admin bypasses subscription paywall for testing.
+  // Onboarding routes (workspace/create/join) also bypass subscription checks.
+  const bypassSubscription = isAdmin || allowOnboarding;
 
   useEffect(() => {
     if (!authReady) return;
@@ -51,13 +55,14 @@ function Inner({ children, allowExpired = false, allowOnboarding = false }: Prop
       navigate("/consulting/workspace", { replace: true });
       return;
     }
-    if (!allowExpired && subscriptionAccess === "expired") {
+    // Subscription gate — skipped for owner/admin and onboarding routes
+    if (!bypassSubscription && !allowExpired && subscriptionAccess === "expired") {
       navigate("/consulting/expired", { replace: true });
     }
-    if (!allowExpired && subscriptionAccess === "none") {
+    if (!bypassSubscription && !allowExpired && subscriptionAccess === "none") {
       navigate("/consulting/plans", { replace: true });
     }
-  }, [authReady, user, isMember, loading, subscriptionAccess, allowExpired, allowOnboarding, hasNoAgencies, navigate, location.pathname]);
+  }, [authReady, user, isMember, loading, subscriptionAccess, allowExpired, allowOnboarding, hasNoAgencies, bypassSubscription, navigate, location.pathname]);
 
   if (!authReady || loading) {
     return (
@@ -80,8 +85,9 @@ function Inner({ children, allowExpired = false, allowOnboarding = false }: Prop
     return null;
   }
 
-  // Block operational pages for expired/none unless explicitly allowed.
-  if (!allowExpired && (subscriptionAccess === "expired" || subscriptionAccess === "none")) {
+  // Subscription gate — owner/admin bypasses for testing.
+  // Production users with no/expired subscription are blocked.
+  if (!bypassSubscription && !allowExpired && (subscriptionAccess === "expired" || subscriptionAccess === "none")) {
     return null;
   }
 
