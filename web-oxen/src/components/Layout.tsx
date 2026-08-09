@@ -8,7 +8,6 @@ import { useSidebar } from "@/contexts/SidebarContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useOffline } from "@/contexts/OfflineContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useConsulting } from "@/contexts/ConsultingContext";
 import { cn } from "@/lib/utils";
 import { useCallback, useMemo, type ComponentType } from "react";
 
@@ -38,20 +37,13 @@ const TABS: TabDef[] = [
 ];
 
 /**
- * CRM tab — smart multi-agency entry point.
- *
- * Zero agencies  → /consulting/workspace (Create / Join onboarding)
- * One+ agencies  → /consulting/dashboard (active agency dashboard)
- * Guest          → /auth (with redirect back to workspace)
- * Loading        → navigate to dashboard (RequireConsultingMember handles redirect)
- *
+ * CRM tab — always opens the multi-agency workspace onboarding page.
  * Active state highlights on /explore and any /consulting/* route.
  */
 function CrmTab({ label, icon: Icon }: { label: string; icon: LucideIcon }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, ready: authReady } = useAuth();
-  const { agencies, loading } = useConsulting();
 
   const isActive = useMemo(
     () =>
@@ -66,18 +58,8 @@ function CrmTab({ label, icon: Icon }: { label: string; icon: LucideIcon }) {
       navigate(`/auth?redirect=${encodeURIComponent("/consulting/workspace")}`);
       return;
     }
-    // If agencies are still loading, go to dashboard — RequireConsultingMember
-    // will redirect to workspace if zero agencies resolve.
-    if (loading) {
-      navigate("/consulting/dashboard");
-      return;
-    }
-    if (agencies.length === 0) {
-      navigate("/consulting/workspace");
-    } else {
-      navigate("/consulting/dashboard");
-    }
-  }, [authReady, user, agencies, loading, navigate]);
+    navigate("/consulting/workspace");
+  }, [authReady, user, navigate]);
 
   return (
     <button
