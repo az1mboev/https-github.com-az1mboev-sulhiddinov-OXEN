@@ -203,6 +203,10 @@ export interface ConsultingCompany {
   short_description: string | null;
   /** Agency specialties (e.g. visa, tours, education) */
   specialties: string[] | null;
+  /** Human-friendly unique agency code (e.g. OX-TRV-7K29Q) for joining */
+  agency_code: string | null;
+  /** Soft-delete flag — false means deactivated */
+  is_active: boolean;
   subscription_status: SubscriptionStatus | "none";
   subscription_plan: SubscriptionPlan | null;
   subscription_start_date: string | null;
@@ -2087,4 +2091,384 @@ export async function duplicatePackage(
   }
 
   return newPkg;
+}
+
+/* ============================================================
+   Multi-Agency Workspace — Types + Data Access
+   Reuses consulting_members (unique per company+user) for
+   multi-agency membership. Adds agency_code lookup, join
+   requests, and workspace management.
+   ============================================================ */
+
+// ── Agency join request ─────────────────────────────────────
+
+export type JoinRequestStatus = "pending" | "approved" | "rejected";
+export type JoinRequestRole = "admin" | "manager" | "employee";
+
+export interface AgencyJoinRequest {
+  id: string;
+  agency_id: string;
+  user_id: string;
+  requested_role: JoinRequestRole;
+  status: JoinRequestStatus;
+  message: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Joined profile fields */
+  user?: { name: string | null; email: string | null; avatar_url: string | null } | null;
+}
+
+// ── Agency with membership info (for workspace lists) ───────
+
+export interface AgencyMembership {
+  company: ConsultingCompany;
+  member: ConsultingMember;
+}
+
+/** Fetch ALL agencies the current user belongs to (active memberships only). */
+export async function fetchUserAgencies(
+  userId: string,
+): Promise<AgencyMembership[]> {
+  const { data: members, error: mErr } = await supabase
+    .from("consulting_members")
+    .select("*")
+    .eq("user_id", userId)
+    .neq("status", "removed")
+    .order("created_at", { ascending: true });
+  if (mErr) {
+    console.error("fetchUserAgencies members error:", mErr);
+    return [];
+  }
+  if (!members || members.length === 0) return [];
+
+  const companyIds = (members as unknown as ConsultingMember[]).map(
+    (m) => m.consulting_company_id,
+  );
+  const { data: companies, error: cErr } = await supabase
+    .from("consulting_companies")
+    .select("*")
+    .in("id", companyIds);
+  if (cErr) {
+    console.error("fetchUserAgencies companies error:", cErr);
+    return [];
+  }
+
+  const companyMap = new Map<string, ConsultingCompany>();
+  for (const c of (companies ?? []) as unknown as ConsultingCompany[]) {
+    companyMap.set(c.id, c);
+  }
+
+  const result: AgencyMembership[] = [];
+  for (const m of members as unknown as ConsultingMember[]) {
+    const company = companyMap.get(m.consulting_company_id);
+    if (company) result.push({ company, member: m });
+  }
+  return result;
+}
+
+/** Fetch a single agency by ID (for active agency context). */
+export async function fetchAgencyById(
+  agencyId: string,
+): Promise<ConsultingCompany | null> {
+  const { data, error } = await supabase
+    .from("consulting_companies")
+    .select("*")
+    .eq("id", agencyId)
+    .maybeSingle();
+  if (error) console.error("fetchAgencyById error:", error);
+  return data as unknown as ConsultingCompany | null;
+}
+
+/** Fetch membership for a specific user+agency pair. */
+export async function fetchMembership(
+  userId: string,
+  agencyId: string,
+): Promise<ConsultingMember | null> {
+  const { data, error } = await supabase
+    .from("consulting_members")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("consulting_company_id", agencyId)
+    .maybeSingle();
+  if (error) console.error("fetchMembership error:", error);
+  return data as unknown as ConsultingMember | null;
+}
+
+/** Look up an agency by its public agency code (for joining). */
+export async function findAgencyByCode(
+  code: string,
+): Promise<{
+  agency: Pick<
+    ConsultingCompany,
+    "id" | "name" | "logo_url" | "city" | "country" | "agency_code"
+  > | null;
+  error: string | null;
+}> {
+  const cleanCode = code.trim().toUpperCase();
+  if (!cleanCode) return { agency: null, error: "Enter an agency code." };
+  const { data, error } = await supabase
+    .from("consulting_companies")
+    .select("id, name, logo_url, city, country, agency_code")
+    .eq("agency_code", cleanCode)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) {
+    console.error("findAgencyByCode error:", error);
+    return { agency: null, error: error.message };
+  }
+  if (!data) {
+    return { agency: null, error: "No agency found with that code." };
+  }
+  return { agency: data as unknown as ConsultingCompany, error: null };
+}
+
+/** Request to join an agency (creates a pending join request). */
+export async function requestJoinAgency(
+  input: {
+    agencyId: string;
+    userId: string;
+    requestedRole: JoinRequestRole;
+    message?: string;
+  },
+): Promise<{ ok: boolean; error: string | null }> {
+  // Check if already a member
+  const existing = await fetchMembership(input.userId, input.agencyId);
+  if (existing && existing.status === "active") {
+    return { ok: false, error: "You are already a member of this agency." };
+  }
+
+  // Check if already has a pending request
+  const { data: existingReq } = await supabase
+    .from("agency_join_requests")
+    .select("id, status")
+    .eq("agency_id", input.agencyId)
+    .eq("user_id", input.userId)
+    .eq("status", "pending")
+    .maybeSingle();
+  if (existingReq) {
+    return { ok: false, error: "You already have a pending request for this agency." };
+  }
+
+  const { error } = await supabase.from("agency_join_requests").insert({
+    agency_id: input.agencyId,
+    user_id: input.userId,
+    requested_role: input.requestedRole,
+    message: input.message ?? null,
+    status: "pending",
+  });
+  if (error) {
+    console.error("requestJoinAgency error:", error);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, error: null };
+}
+
+/** Fetch join requests for an agency (owner/admin view). */
+export async function fetchJoinRequests(
+  agencyId: string,
+): Promise<AgencyJoinRequest[]> {
+  const { data, error } = await supabase
+    .from("agency_join_requests")
+    .select("*, user:profiles!agency_join_requests_user_id_fkey(name,email,avatar_url)")
+    .eq("agency_id", agencyId)
+    .order("created_at", { ascending: false });
+  if (error) console.error("fetchJoinRequests error:", error);
+  return (data ?? []) as unknown as AgencyJoinRequest[];
+}
+
+/** Fetch the current user's join requests (all agencies). */
+export async function fetchMyJoinRequests(
+  userId: string,
+): Promise<AgencyJoinRequest[]> {
+  const { data, error } = await supabase
+    .from("agency_join_requests")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) console.error("fetchMyJoinRequests error:", error);
+  return (data ?? []) as unknown as AgencyJoinRequest[];
+}
+
+/** Approve a join request — creates a consulting_members row + marks request approved. */
+export async function approveJoinRequest(
+  requestId: string,
+  reviewerId: string,
+): Promise<{ ok: boolean; error: string | null }> {
+  const { data: req, error: fErr } = await supabase
+    .from("agency_join_requests")
+    .select("*")
+    .eq("id", requestId)
+    .maybeSingle();
+  if (fErr || !req) {
+    return { ok: false, error: "Join request not found." };
+  }
+  const r = req as unknown as AgencyJoinRequest;
+
+  // Map join-request role to consulting_members role
+  const memberRole: MemberRole =
+    r.requested_role === "admin" ? "administrator"
+    : r.requested_role === "manager" ? "manager"
+    : "consultant";
+
+  // Insert member row (upsert in case of re-join)
+  const { error: mErr } = await supabase
+    .from("consulting_members")
+    .upsert({
+      consulting_company_id: r.agency_id,
+      user_id: r.user_id,
+      role: memberRole,
+      status: "active",
+      invited_by: reviewerId,
+    }, { onConflict: "consulting_company_id,user_id" });
+  if (mErr) {
+    console.error("approveJoinRequest member insert error:", mErr);
+    return { ok: false, error: mErr.message };
+  }
+
+  // Mark request approved
+  const { error: uErr } = await supabase
+    .from("agency_join_requests")
+    .update({
+      status: "approved",
+      reviewed_by: reviewerId,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", requestId);
+  if (uErr) console.error("approveJoinRequest update error:", uErr);
+
+  return { ok: true, error: null };
+}
+
+/** Reject a join request. */
+export async function rejectJoinRequest(
+  requestId: string,
+  reviewerId: string,
+): Promise<{ ok: boolean; error: string | null }> {
+  const { error } = await supabase
+    .from("agency_join_requests")
+    .update({
+      status: "rejected",
+      reviewed_by: reviewerId,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", requestId);
+  if (error) {
+    console.error("rejectJoinRequest error:", error);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, error: null };
+}
+
+/** Create a new agency — the creator becomes the owner. */
+export async function createNewAgency(
+  input: {
+    ownerId: string;
+    name: string;
+    logoUrl?: string | null;
+    country?: string;
+    city?: string;
+  },
+): Promise<{ company: ConsultingCompany | null; error: string | null }> {
+  // 1. Create the company (agency_code is auto-generated by the DB trigger)
+  const { data: company, error: cErr } = await supabase
+    .from("consulting_companies")
+    .insert({
+      owner_id: input.ownerId,
+      name: input.name,
+      logo_url: input.logoUrl ?? null,
+      country: input.country || null,
+      city: input.city || null,
+      verification_status: "not_submitted",
+      is_published: false,
+      is_active: true,
+      subscription_status: "active",
+      subscription_plan: "monthly",
+      subscription_start_date: new Date().toISOString(),
+      subscription_end_date: computeEndDate(new Date(), "monthly").toISOString(),
+    })
+    .select("*")
+    .single();
+  if (cErr || !company) {
+    console.error("createNewAgency error:", cErr);
+    return { company: null, error: cErr?.message ?? "Failed to create agency" };
+  }
+
+  const companyId = (company as ConsultingCompany).id;
+
+  // 2. Create owner member row
+  const { error: mErr } = await supabase.from("consulting_members").insert({
+    consulting_company_id: companyId,
+    user_id: input.ownerId,
+    role: "owner",
+    status: "active",
+    invited_by: input.ownerId,
+  });
+  if (mErr) console.error("createNewAgency member insert error:", mErr);
+
+  return { company: company as ConsultingCompany, error: null };
+}
+
+/** Leave an agency — removes the user's membership. Does NOT delete the agency. */
+export async function leaveAgency(
+  userId: string,
+  agencyId: string,
+): Promise<{ ok: boolean; error: string | null }> {
+  // Check if user is the only owner
+  const { data: member } = await supabase
+    .from("consulting_members")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("consulting_company_id", agencyId)
+    .eq("status", "active")
+    .maybeSingle();
+  const userRole = (member as { role: MemberRole } | null)?.role;
+
+  if (userRole === "owner") {
+    // Count active owners
+    const { count } = await supabase
+      .from("consulting_members")
+      .select("*", { count: "exact", head: true })
+      .eq("consulting_company_id", agencyId)
+      .eq("role", "owner")
+      .eq("status", "active");
+    if ((count ?? 0) <= 1) {
+      return {
+        ok: false,
+        error: "You are the only owner. Transfer ownership before leaving.",
+      };
+    }
+  }
+
+  // Set membership status to removed
+  const { error } = await supabase
+    .from("consulting_members")
+    .update({ status: "removed", updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("consulting_company_id", agencyId);
+  if (error) {
+    console.error("leaveAgency error:", error);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, error: null };
+}
+
+/** Deactivate an agency (soft delete — owner only). */
+export async function deactivateAgency(
+  agencyId: string,
+): Promise<{ ok: boolean; error: string | null }> {
+  const { error } = await supabase
+    .from("consulting_companies")
+    .update({
+      is_active: false,
+      is_published: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", agencyId);
+  if (error) {
+    console.error("deactivateAgency error:", error);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, error: null };
 }

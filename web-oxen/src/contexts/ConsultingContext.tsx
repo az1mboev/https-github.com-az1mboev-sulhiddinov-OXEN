@@ -1,10 +1,13 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import createContextHook from "@nkzw/create-context-hook";
 
 import {
   fetchMyConsultingCompany,
   fetchMyMembership,
+  fetchUserAgencies,
+  fetchAgencyById,
+  fetchMembership,
   updateMemberRole as apiUpdateMemberRole,
   updateMemberStatus as apiUpdateMemberStatus,
   removeMember as apiRemoveMember,
@@ -16,6 +19,7 @@ import {
   type MemberStatus,
   type SubscriptionPlan,
   type SubscriptionStatus,
+  type AgencyMembership,
 } from "@/lib/consulting";
 import {
   testUpdateMemberRole,
@@ -388,6 +392,33 @@ interface ConsultingContextValue {
   }) => Promise<boolean>;
   /** Test-mode helper: force the current subscription into "expired" state (for testing the renewal flow). */
   simulateExpiration: () => void;
+  // ── Multi-Agency Workspace ──
+  /** All agencies the current user belongs to. */
+  agencies: AgencyMembership[];
+  /** The active agency ID (persisted in localStorage). */
+  activeAgencyId: string | null;
+  /** Switch the active agency context. */
+  switchAgency: (agencyId: string) => void;
+  /** True if user belongs to zero agencies (first-time CRM experience). */
+  hasNoAgencies: boolean;
+}
+
+const ACTIVE_AGENCY_KEY = "oxen.consulting.activeAgencyId";
+
+function readActiveAgencyId(userId: string): string | null {
+  try {
+    return localStorage.getItem(`${ACTIVE_AGENCY_KEY}.${userId}`);
+  } catch {
+    return null;
+  }
+}
+
+function writeActiveAgencyId(userId: string, agencyId: string): void {
+  try {
+    localStorage.setItem(`${ACTIVE_AGENCY_KEY}.${userId}`, agencyId);
+  } catch {
+    /* ignore */
+  }
 }
 
 function useConsultingState() {
@@ -396,20 +427,62 @@ function useConsultingState() {
 
   const isEnabled = !!user && !user.isGuest && authReady;
 
-  const { data: membership, isLoading: mbLoading } = useQuery({
-    queryKey: ["consulting-membership", user?.id],
-    queryFn: () => fetchMyMembership(user!.id),
+  // ── Multi-agency: fetch ALL agencies the user belongs to ──
+  const { data: agencies, isLoading: agenciesLoading } = useQuery({
+    queryKey: ["consulting-agencies", user?.id],
+    queryFn: () => fetchUserAgencies(user!.id),
     enabled: isEnabled,
     staleTime: 30_000,
     retry: false,
   });
 
-  const companyId = membership?.consulting_company_id ?? null;
+  const agencyList = agencies ?? [];
+  const hasNoAgencies = isEnabled && !agenciesLoading && agencyList.length === 0;
 
-  const { data: company, isLoading: coLoading } = useQuery({
-    queryKey: ["consulting-company", companyId ?? "none", user?.id],
+  // Determine the active agency ID
+  const storedActiveId = useMemo(
+    () => (isEnabled && user ? readActiveAgencyId(user.id) : null),
+    [isEnabled, user],
+  );
+
+  const activeAgencyId = useMemo(() => {
+    if (!agencyList.length) return null;
+    // If stored ID is in the list, use it
+    if (storedActiveId && agencyList.some((a) => a.company.id === storedActiveId)) {
+      return storedActiveId;
+    }
+    // Default to first agency
+    return agencyList[0].company.id;
+  }, [agencyList, storedActiveId]);
+
+  // Persist active agency ID
+  useEffect(() => {
+    if (activeAgencyId && user) {
+      writeActiveAgencyId(user.id, activeAgencyId);
+    }
+  }, [activeAgencyId, user]);
+
+  // Find the active agency's company + member from the list
+  const activeAgency = useMemo(() => {
+    if (!activeAgencyId) return null;
+    return agencyList.find((a) => a.company.id === activeAgencyId) ?? null;
+  }, [agencyList, activeAgencyId]);
+
+  // Legacy single-membership query (kept for backward compat with test mode)
+  const { data: legacyMembership, isLoading: mbLoading } = useQuery({
+    queryKey: ["consulting-membership", user?.id],
+    queryFn: () => fetchMyMembership(user!.id),
+    enabled: isEnabled && !agencyList.length,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  const legacyCompanyId = legacyMembership?.consulting_company_id ?? null;
+
+  const { data: legacyCompany, isLoading: coLoading } = useQuery({
+    queryKey: ["consulting-company", legacyCompanyId ?? "none", user?.id],
     queryFn: () => fetchMyConsultingCompany(user!.id),
-    enabled: isEnabled,
+    enabled: isEnabled && !agencyList.length,
     staleTime: 30_000,
     retry: false,
   });
@@ -418,7 +491,7 @@ function useConsultingState() {
   // an onboarding snapshot in localStorage, synthesize a test company so the
   // dashboard renders without crashing.
   const snapshot = useMemo(() => (isEnabled ? readOnboarding() : null), [isEnabled]);
-  const useFallback = isEnabled && !membership && !company && !!snapshot;
+  const useFallback = isEnabled && !agencyList.length && !legacyMembership && !legacyCompany && !!snapshot;
 
   // Preview mode: when the flag is on and the user has no real membership and
   // no onboarding snapshot, synthesize a preview company so every signed-in
@@ -426,7 +499,7 @@ function useConsultingState() {
   // fallback so a brand-new user (who never went through checkout) still sees
   // the dashboard.
   const usePreview =
-    CONSULTING_OPEN_PREVIEW_MODE && isEnabled && !membership && !company && !useFallback;
+    CONSULTING_OPEN_PREVIEW_MODE && isEnabled && !agencyList.length && !legacyMembership && !legacyCompany && !useFallback;
 
   const previewSynthesized = useMemo(() => {
     if (!usePreview || !user) return null;
@@ -445,11 +518,12 @@ function useConsultingState() {
     return synthesizeFromSnapshot(user.id, snapshot, testSub);
   }, [usePreview, previewSynthesized, useFallback, snapshot, user, testSub]);
 
-  const effectiveCompany = company ?? synthesized?.company ?? null;
-  const effectiveMember = membership ?? synthesized?.member ?? null;
-  const isTestMode = !!synthesized;
+  // Use active agency if available, otherwise fall back to legacy/synthesized
+  const effectiveCompany = activeAgency?.company ?? legacyCompany ?? synthesized?.company ?? null;
+  const effectiveMember = activeAgency?.member ?? legacyMembership ?? synthesized?.member ?? null;
+  const isTestMode = !!synthesized && !activeAgency;
 
-  const loading = !authReady || (isEnabled && !useFallback && (mbLoading || coLoading));
+  const loading = !authReady || (isEnabled && !useFallback && !activeAgency && (agenciesLoading || mbLoading || coLoading));
 
   const role = effectiveMember?.role ?? null;
   const isMember = !!effectiveMember;
@@ -533,9 +607,20 @@ function useConsultingState() {
   );
 
   const refresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["consulting-agencies"] });
     queryClient.invalidateQueries({ queryKey: ["consulting-membership"] });
     queryClient.invalidateQueries({ queryKey: ["consulting-company"] });
   }, [queryClient]);
+
+  // ── Multi-Agency: switch active agency context ──
+  const switchAgency = useCallback(
+    (agencyId: string) => {
+      if (!user) return;
+      writeActiveAgencyId(user.id, agencyId);
+      queryClient.invalidateQueries({ queryKey: ["consulting-agencies"] });
+    },
+    [user, queryClient],
+  );
 
   const changeMemberRole = useCallback(
     async (memberId: string, newRole: MemberRole): Promise<boolean> => {
@@ -726,12 +811,17 @@ function useConsultingState() {
       logActivity,
       renewSubscription,
       simulateExpiration,
+      agencies: agencyList,
+      activeAgencyId,
+      switchAgency,
+      hasNoAgencies,
     }),
     [
       effectiveCompany, effectiveMember, role, loading, isTestMode, isMember, isAdmin,
       subscriptionAccess, hasActiveSubscription, hasExpiredSubscription, subscriptionEndDate,
       subscriptionPlan, can, refresh, changeMemberRole, changeMemberStatus, removeMember,
       logActivity, renewSubscription, simulateExpiration,
+      agencyList, activeAgencyId, switchAgency, hasNoAgencies,
     ],
   );
 }
