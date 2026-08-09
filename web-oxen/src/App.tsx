@@ -42,6 +42,7 @@ const OwnerRevenue = lazy(() => import("./pages/owner/OwnerRevenue"));
 const OwnerNotifications = lazy(() => import("./pages/owner/OwnerNotifications"));
 const OwnerSubscriptions = lazy(() => import("./pages/owner/OwnerSubscriptions"));
 const OwnerApplications = lazy(() => import("./pages/owner/OwnerApplications"));
+const OwnerAgencyApplications = lazy(() => import("./pages/owner/OwnerAgencyApplications"));
 const OwnerSettings = lazy(() => import("./pages/owner/OwnerSettings"));
 const Auth = lazy(() => import("./pages/Auth"));
 const CompleteProfile = lazy(() => import("./pages/CompleteProfile"));
@@ -53,6 +54,8 @@ const ConsultingSetupSuccess = lazy(() => import("./pages/consulting/SetupSucces
 const ConsultingWorkspace = lazy(() => import("./pages/consulting/WorkspaceOnboarding"));
 const ConsultingCreateAgency = lazy(() => import("./pages/consulting/CreateAgency"));
 const ConsultingJoinAgency = lazy(() => import("./pages/consulting/JoinAgency"));
+const ConsultingAgencyApplicationForm = lazy(() => import("./pages/consulting/AgencyApplicationForm"));
+const ConsultingApplicationStatus = lazy(() => import("./pages/consulting/ApplicationStatus"));
 const ConsultingPlans = lazy(() => import("./pages/consulting/Plans"));
 const ConsultingSubscriptionExpired = lazy(() => import("./pages/consulting/SubscriptionExpired"));
 const ConsultingRenew = lazy(() => import("./pages/consulting/Renew"));
@@ -277,6 +280,8 @@ const App = () => (
                                 <Route path="/consulting/subscription" element={<RequireAuth><RequireConsultingMember allowExpired><ConsultingSubscriptionComingSoon /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/settings" element={<RequireAuth><RequireConsultingMember><ConsultingSettingsComingSoon /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/support" element={<RequireAuth><RequireConsultingMember allowExpired><ConsultingSupportComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/apply" element={<RequireAuth><RequireConsultingMember allowOnboarding><ConsultingAgencyApplicationForm /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/application-status" element={<RequireAuth><RequireConsultingMember allowOnboarding><ConsultingApplicationStatus /></RequireConsultingMember></RequireAuth>} />
                                 <Route
                                   path="/dashboard/services/new"
                                   element={<RequireAuth><ServiceEditor /></RequireAuth>}
@@ -306,6 +311,7 @@ const App = () => (
                                 <Route path="/owner-admin/notifications" element={<RequireAuth><RequireOwnerAdmin><OwnerNotifications /></RequireOwnerAdmin></RequireAuth>} />
                                 <Route path="/owner-admin/subscriptions" element={<RequireAuth><RequireOwnerAdmin><OwnerSubscriptions /></RequireOwnerAdmin></RequireAuth>} />
                                 <Route path="/owner-admin/applications" element={<RequireAuth><RequireOwnerAdmin><OwnerApplications /></RequireOwnerAdmin></RequireAuth>} />
+                                <Route path="/owner-admin/agency-applications" element={<RequireAuth><RequireOwnerAdmin><OwnerAgencyApplications /></RequireOwnerAdmin></RequireAuth>} />
                                 <Route path="/owner-admin/settings" element={<RequireAuth><RequireOwnerAdmin><OwnerSettings /></RequireOwnerAdmin></RequireAuth>} />
 
                                 {/* Settings sub-pages */}

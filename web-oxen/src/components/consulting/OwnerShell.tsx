@@ -20,6 +20,7 @@ import {
   Shield,
   Crown,
   ArrowLeft,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,6 +36,7 @@ interface OwnerNavItem {
 const NAV_ITEMS: OwnerNavItem[] = [
   { to: "/owner-admin", label: "Overview", icon: LayoutDashboard },
   { to: "/owner-admin/users", label: "Users", icon: Users },
+  { to: "/owner-admin/agency-applications", label: "Tour Agency Applications", icon: Briefcase },
   { to: "/owner-admin/applications", label: "Consulting Applications", icon: FileStack },
   { to: "/owner-admin/payments", label: "Payment Requests", icon: CreditCard },
   { to: "/owner-admin/accounts", label: "Premium Consulting Accounts", icon: Building2 },
