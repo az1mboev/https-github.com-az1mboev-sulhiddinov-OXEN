@@ -23,6 +23,7 @@ import {
   submitAgencyApplication,
   notifyAdminOfApplication,
   uploadAgencyDocument,
+  getSignedDocumentUrl,
   type AgencyApplication,
   type AgencyApplicationInput,
   type AgencyApplicationStatus,
@@ -89,6 +90,8 @@ export default function AgencyApplicationForm() {
   // Selected file metadata for display (filename, size, status)
   const [licenseFileMeta, setLicenseFileMeta] = useState<{ name: string; size: number; status: "uploading" | "uploaded" | "error" } | null>(null);
   const [regFileMeta, setRegFileMeta] = useState<{ name: string; size: number; status: "uploading" | "uploaded" | "error" } | null>(null);
+  // Signed URL for logo preview (private bucket)
+  const [logoSignedUrl, setLogoSignedUrl] = useState<string | null>(null);
 
   useSEO({
     title: "Apply for OXEN CRM Access",
@@ -136,6 +139,20 @@ export default function AgencyApplicationForm() {
     })();
   }, [user]);
 
+  // Fetch signed URL for logo preview whenever logo_url (storage path) changes
+  useEffect(() => {
+    if (!form.logo_url) {
+      setLogoSignedUrl(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const signed = await getSignedDocumentUrl(form.logo_url!);
+      if (!cancelled) setLogoSignedUrl(signed);
+    })();
+    return () => { cancelled = true; };
+  }, [form.logo_url]);
+
   const status: AgencyApplicationStatus | null = existingApp?.status ?? null;
   const isEditable = !status || canEditApplication(status);
 
@@ -177,9 +194,9 @@ export default function AgencyApplicationForm() {
     }
     setUploadingLogo(true);
     try {
-      const { url, error: uploadError } = await uploadAgencyDocument(file, user.id, "logo");
-      if (url) {
-        set("logo_url", url);
+      const { path, error: uploadError } = await uploadAgencyDocument(file, user.id, "logo");
+      if (path) {
+        set("logo_url", path);
         toast({ title: "Logo uploaded" });
       } else {
         toast({ title: "Logo upload failed", description: uploadError ?? "Unknown error", variant: "destructive" });
@@ -208,9 +225,9 @@ export default function AgencyApplicationForm() {
     }
     setUploadingLicense(true);
     try {
-      const { url, error: uploadError } = await uploadAgencyDocument(file, user.id, "license");
-      if (url) {
-        set("license_document_url", url);
+      const { path, error: uploadError } = await uploadAgencyDocument(file, user.id, "license");
+      if (path) {
+        set("license_document_url", path);
         setLicenseFileMeta({ name: file.name, size: file.size, status: "uploaded" });
         toast({ title: "License document uploaded" });
       } else {
@@ -234,9 +251,9 @@ export default function AgencyApplicationForm() {
     setRegFileMeta({ name: file.name, size: file.size, status: "uploading" });
     setUploadingReg(true);
     try {
-      const { url, error: uploadError } = await uploadAgencyDocument(file, user.id, "registration");
-      if (url) {
-        set("registration_document_url", url);
+      const { path, error: uploadError } = await uploadAgencyDocument(file, user.id, "registration");
+      if (path) {
+        set("registration_document_url", path);
         setRegFileMeta({ name: file.name, size: file.size, status: "uploaded" });
         toast({ title: "Registration document uploaded" });
       } else {
@@ -434,8 +451,8 @@ export default function AgencyApplicationForm() {
                 disabled={uploadingLogo || !isEditable}
                 className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-white/10 bg-white/[0.02] transition hover:border-primary/30 disabled:opacity-50"
               >
-                {form.logo_url ? (
-                  <img src={form.logo_url} alt="" className="h-full w-full object-cover" />
+                {logoSignedUrl ? (
+                  <img src={logoSignedUrl} alt="" className="h-full w-full object-cover" />
                 ) : uploadingLogo ? (
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 ) : (
@@ -620,7 +637,7 @@ export default function AgencyApplicationForm() {
                 label="Tourism License Document"
                 required
                 error={errors.license_document}
-                uploadedUrl={form.license_document_url ?? null}
+                hasFile={!!form.license_document_url}
                 uploading={uploadingLicense}
                 disabled={!isEditable}
                 fileMeta={licenseFileMeta}
@@ -646,7 +663,7 @@ export default function AgencyApplicationForm() {
               {/* Registration document */}
               <DocumentUpload
                 label="Company Registration Document"
-                uploadedUrl={form.registration_document_url ?? null}
+                hasFile={!!form.registration_document_url}
                 uploading={uploadingReg}
                 disabled={!isEditable}
                 fileMeta={regFileMeta}
@@ -789,7 +806,7 @@ function DocumentUpload({
   label,
   required,
   error,
-  uploadedUrl,
+  hasFile,
   uploading,
   disabled,
   fileMeta,
@@ -799,16 +816,16 @@ function DocumentUpload({
   label: string;
   required?: boolean;
   error?: string;
-  uploadedUrl: string | null;
+  hasFile: boolean;
   uploading: boolean;
   disabled: boolean;
   fileMeta: { name: string; size: number; status: "uploading" | "uploaded" | "error" } | null;
   onUpload: () => void;
   onClear: () => void;
 }) {
-  // A file is present if we have a URL OR file metadata
-  const hasFile = !!uploadedUrl || (fileMeta && fileMeta.status !== "error");
-  const showError = error && !hasFile;
+  // A file is present if hasFile is true AND fileMeta is not in error state
+  const filePresent = hasFile && (!fileMeta || fileMeta.status !== "error");
+  const showError = error && !filePresent;
 
   return (
     <div>
@@ -818,10 +835,10 @@ function DocumentUpload({
       <div
         className={cn(
           "flex items-center gap-3 rounded-xl border p-3 transition-colors",
-          showError ? "border-destructive/40" : hasFile ? "border-emerald-500/30" : "border-white/[0.06]",
+          showError ? "border-destructive/40" : filePresent ? "border-emerald-500/30" : "border-white/[0.06]",
         )}
       >
-        {hasFile ? (
+        {filePresent ? (
           <>
             {/* Status icon */}
             {fileMeta?.status === "uploading" || uploading ? (
@@ -835,7 +852,7 @@ function DocumentUpload({
             {/* Filename + size + status */}
             <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
               <span className="truncate text-xs font-medium text-foreground">
-                {fileMeta?.name ?? uploadedUrl?.split("/").pop() ?? "Document"}
+                {fileMeta?.name ?? "Document uploaded"}
               </span>
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                 {fileMeta && <span>{formatFileSize(fileMeta.size)}</span>}

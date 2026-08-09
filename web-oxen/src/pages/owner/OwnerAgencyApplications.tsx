@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -32,6 +32,7 @@ import {
   rejectAgencyApplication,
   requestMoreInfo,
   setUnderReview,
+  getSignedDocumentUrl,
   STATUS_LABELS,
   STATUS_STYLE,
   type AgencyApplication,
@@ -234,7 +235,7 @@ export default function OwnerAgencyApplications() {
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-amber-500/10">
                     {app.logo_url ? (
-                      <img src={app.logo_url} alt="" className="h-full w-full object-cover" />
+                      <PrivateImage path={app.logo_url} alt="" className="h-full w-full object-cover" fallback={<Building2 className="h-6 w-6 text-amber-300" />} />
                     ) : (
                       <Building2 className="h-6 w-6 text-amber-300" />
                     )}
@@ -480,11 +481,11 @@ function ReviewModal({
             <div className="space-y-2">
               <DocumentRow
                 label="Tourism License Document"
-                url={application.license_document_url}
+                path={application.license_document_url}
               />
               <DocumentRow
                 label="Company Registration Document"
-                url={application.registration_document_url}
+                path={application.registration_document_url}
               />
               {application.additional_documents && application.additional_documents.length > 0 && (
                 <>
@@ -492,7 +493,7 @@ function ReviewModal({
                     <DocumentRow
                       key={idx}
                       label={doc.name ?? `Additional Document ${idx + 1}`}
-                      url={doc.url}
+                      path={doc.url}
                     />
                   ))}
                 </>
@@ -509,15 +510,7 @@ function ReviewModal({
                   {showDocs && (
                     <div className="mt-2 grid grid-cols-3 gap-2">
                       {application.agency_photos.map((photo, idx) => (
-                        <a
-                          key={idx}
-                          href={photo.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="overflow-hidden rounded-lg border border-white/[0.06]"
-                        >
-                          <img src={photo.url} alt={photo.name ?? ""} className="h-20 w-full object-cover" />
-                        </a>
+                        <SignedPhotoLink key={idx} path={photo.url} name={photo.name ?? ""} />
                       ))}
                     </div>
                   )}
@@ -754,8 +747,25 @@ function DetailItem({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-function DocumentRow({ label, url }: { label: string; url: string | null }) {
-  if (!url) {
+function DocumentRow({ label, path }: { label: string; path: string | null }) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!path) return;
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      const url = await getSignedDocumentUrl(path);
+      if (!cancelled) {
+        setSignedUrl(url);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [path]);
+
+  if (!path) {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
         <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -764,21 +774,87 @@ function DocumentRow({ label, url }: { label: string; url: string | null }) {
       </div>
     );
   }
-  const isImage = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+
+  if (loading || !signedUrl) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-3">
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-amber-300" />
+        <span className="flex-1 text-xs font-semibold text-foreground">{label}</span>
+        <span className="text-[10px] text-muted-foreground/60">Generating link…</span>
+      </div>
+    );
+  }
+
+  const isImage = path.match(/\.(jpg|jpeg|png|gif|webp)$/i);
   return (
     <a
-      href={url}
+      href={signedUrl}
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center gap-3 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-3 transition hover:bg-amber-500/[0.08]"
     >
       {isImage ? (
-        <img src={url} alt={label} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+        <img src={signedUrl} alt={label} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
       ) : (
         <FileText className="h-4 w-4 shrink-0 text-amber-300" />
       )}
       <span className="flex-1 text-xs font-semibold text-foreground">{label}</span>
       <ExternalLink className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+    </a>
+  );
+}
+
+/** Renders an <img> from a private storage path via signed URL. */
+function PrivateImage({
+  path,
+  alt,
+  className,
+  fallback,
+}: {
+  path: string;
+  alt: string;
+  className?: string;
+  fallback?: React.ReactNode;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const signed = await getSignedDocumentUrl(path);
+      if (!cancelled) setUrl(signed);
+    })();
+    return () => { cancelled = true; };
+  }, [path]);
+  if (!url) return <>{fallback ?? null}</>;
+  return <img src={url} alt={alt} className={className} />;
+}
+
+/** Renders a signed-URL photo link from a private storage path. */
+function SignedPhotoLink({ path, name }: { path: string; name: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const signed = await getSignedDocumentUrl(path);
+      if (!cancelled) setUrl(signed);
+    })();
+    return () => { cancelled = true; };
+  }, [path]);
+  if (!url) {
+    return (
+      <div className="flex h-20 w-full items-center justify-center overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.02]">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="overflow-hidden rounded-lg border border-white/[0.06]"
+    >
+      <img src={url} alt={name} className="h-20 w-full object-cover" />
     </a>
   );
 }

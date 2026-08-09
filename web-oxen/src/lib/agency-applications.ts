@@ -406,23 +406,41 @@ export async function setUnderReview(
 
 // ── Document upload helper ─────────────────────────────────
 
-/** Upload a document to the private consulting storage bucket.
- *  Returns `{ url, error }` — url is null on failure, error contains the Supabase message. */
+/** Upload a document to the PRIVATE consulting storage bucket.
+ *  Returns `{ path, error }` — path is the storage object path (NOT a public URL).
+ *  Use `getSignedDocumentUrl(path)` to generate a time-limited signed URL for viewing. */
 export async function uploadAgencyDocument(
   file: File,
   userId: string,
   docType: string,
-): Promise<{ url: string | null; error: string | null }> {
+): Promise<{ path: string | null; error: string | null }> {
   const path = `agency-applications/${userId}/${docType}-${Date.now()}`;
   const { data, error } = await supabase.storage
     .from("consulting")
     .upload(path, file, { upsert: true });
   if (error) {
     console.error("uploadAgencyDocument error:", error);
-    return { url: null, error: error.message };
+    return { path: null, error: error.message };
   }
-  const { data: pub } = supabase.storage.from("consulting").getPublicUrl(data.path);
-  return { url: pub.publicUrl, error: null };
+  // Return the storage object path — NOT a public URL.
+  // The bucket is private; signed URLs are generated on demand.
+  return { path: data.path, error: null };
+}
+
+/** Generate a signed URL (5-minute expiry) for a private storage object.
+ *  Used by applicants viewing their own documents and by OXEN owners reviewing applications. */
+export async function getSignedDocumentUrl(
+  path: string,
+  seconds: number = 300,
+): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from("consulting")
+    .createSignedUrl(path, seconds);
+  if (error || !data?.signedUrl) {
+    console.error("getSignedDocumentUrl error:", error);
+    return null;
+  }
+  return data.signedUrl;
 }
 
 // ── Status helpers ─────────────────────────────────────────
