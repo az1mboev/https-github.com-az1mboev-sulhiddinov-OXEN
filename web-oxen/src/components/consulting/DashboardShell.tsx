@@ -51,7 +51,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/consulting/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/consulting/activity", label: "Activity Log", icon: Activity },
   { to: "/consulting/reviews", label: "Reviews", icon: Star, comingNext: true },
-  { to: "/consulting/company-profile", label: "Company Profile", icon: Building2 },
+  { to: "/consulting/company-profile", label: "Profile", icon: Building2 },
   { to: "/consulting/subscription", label: "Subscription", icon: SubscriptionIcon, comingNext: true },
   { to: "/consulting/settings", label: "Settings", icon: SettingsIcon, comingNext: true },
   { to: "/consulting/support", label: "Help & Support", icon: LifeBuoy, comingNext: true },

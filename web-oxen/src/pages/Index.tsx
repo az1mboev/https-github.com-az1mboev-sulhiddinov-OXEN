@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, Search, X } from "lucide-react";
+import { Sparkles, Search, X, Building2, ShieldCheck, MapPin, Package as PackageIcon, ArrowRight } from "lucide-react";
 import { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
 import DestinationModal from "@/components/DestinationModal";
 import GlobeFilterPanel, { FilterButton } from "@/components/GlobeFilterPanel";
@@ -10,6 +11,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useTravel } from "@/contexts/TravelContext";
 import { COUNTRIES, type Country } from "@/data/countries";
+import { fetchPublishedAgencies, fetchAgencyServiceCount, type ConsultingCompany } from "@/lib/consulting";
 
 const OXEN_LOGO = "/logo.png";
 
@@ -20,6 +22,134 @@ const Globe = lazy(() => import("@/components/Globe"));
 /* ------------------------------------------------------------------ */
 
 type ModalStep = "closed" | "destination" | "options";
+
+/* ── Tour Agencies section ─────────────────────────────────────────── */
+
+function AgencyCard({ agency, index }: { agency: ConsultingCompany; index: number }) {
+  const navigate = useNavigate();
+  const { data: serviceCount } = useQuery({
+    queryKey: ["agency-service-count", agency.id],
+    queryFn: () => fetchAgencyServiceCount(agency.id),
+    staleTime: 60_000,
+  });
+
+  const specialties = agency.specialties ?? [];
+  const isVerified = agency.verification_status === "verified";
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 24, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay: index * 0.06, type: "spring" as const, stiffness: 260, damping: 24, mass: 0.8 }}
+      whileTap={{ scale: 0.97 }}
+      onClick={() => navigate(`/agency/${agency.id}`)}
+      className="group relative w-[280px] shrink-0 cursor-pointer overflow-hidden rounded-3xl"
+    >
+      <div className="glass-card overflow-hidden rounded-3xl">
+        {/* Cover image */}
+        <div className="relative h-32 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-transparent">
+          {agency.cover_image_url ? (
+            <img src={agency.cover_image_url} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground/30">
+              <Building2 className="h-8 w-8" />
+            </div>
+          )}
+        </div>
+
+        {/* Logo + name */}
+        <div className="relative px-4 pb-4">
+          <div className="-mt-8 flex items-end gap-3">
+            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border-3 border-card bg-card" style={{ borderWidth: 3 }}>
+              {agency.logo_url ? (
+                <img src={agency.logo_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-primary/15 text-primary">
+                  <Building2 className="h-6 w-6" />
+                </div>
+              )}
+            </div>
+            <div className="mb-1 flex flex-col gap-1">
+              {isVerified && (
+                <span className="inline-flex w-fit items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                  <ShieldCheck className="h-2.5 w-2.5" /> Verified
+                </span>
+              )}
+            </div>
+          </div>
+
+          <h3 className="mt-2 truncate font-display text-sm font-bold text-foreground">{agency.name}</h3>
+          <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <MapPin className="h-3 w-3" />
+            {[agency.city, agency.country].filter(Boolean).join(", ") || "Location not set"}
+          </div>
+
+          {agency.short_description && (
+            <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{agency.short_description}</p>
+          )}
+
+          {specialties.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {specialties.slice(0, 3).map((s) => (
+                <span key={s} className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{s}</span>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-3 flex items-center justify-between">
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
+              <PackageIcon className="h-3 w-3" />
+              {serviceCount ?? 0} {(serviceCount ?? 0) === 1 ? "service" : "services"}
+            </span>
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-primary transition group-hover:gap-1.5">
+              View Agency <ArrowRight className="h-3 w-3" />
+            </span>
+          </div>
+        </div>
+      </div>
+    </motion.article>
+  );
+}
+
+function TourAgenciesSection() {
+  const { t } = useLanguage();
+  const { data: agencies, isLoading } = useQuery({
+    queryKey: ["published-agencies"],
+    queryFn: () => fetchPublishedAgencies(),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  // Don't render the section at all if there are no agencies
+  if (!isLoading && (!agencies || agencies.length === 0)) return null;
+
+  return (
+    <section className="relative z-10 pt-6 pb-10">
+      <div className="mb-4 flex items-center justify-between px-5">
+        <div>
+          <h2 className="font-display text-lg font-bold">{t("home.tourAgencies", "Trusted Travel Agencies")}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("home.tourAgenciesDesc", "Real agencies you can trust for your next trip")}</p>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center gap-3 px-5">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-[260px] w-[280px] shrink-0 animate-pulse rounded-3xl bg-white/[0.04]" />
+          ))}
+        </div>
+      ) : (
+        <div className="-mx-0 overflow-x-auto no-scrollbar">
+          <div className="flex gap-4 px-5">
+            {agencies!.map((agency, i) => (
+              <AgencyCard key={agency.id} agency={agency} index={i} />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
 
 /* ── Search overlay ────────────────────────────────────────────────── */
 
@@ -250,6 +380,9 @@ export default function Index() {
           </button>
         </motion.div>
       </section>
+
+      {/* ── Tour Agencies ──────────────────────────── */}
+      <TourAgenciesSection />
 
       {/* ── Globe filter panel ─────────────────────── */}
       <GlobeFilterPanel

@@ -243,6 +243,21 @@ export async function fetchRelatedServices(
   return [...companyResults, ...categoryResults];
 }
 
+/** Fetch all active services for a specific consulting company (agency). */
+export async function fetchServicesByConsulting(consultingId: string): Promise<Service[]> {
+  const { data, error } = await supabase
+    .from("services")
+    .select("*")
+    .eq("consulting_id", consultingId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("fetchServicesByConsulting error:", error);
+    return [];
+  }
+  return (data ?? []) as unknown as Service[];
+}
+
 /** Fetch reviews for a service with pagination */
 export async function fetchServiceReviews(
   serviceId: string,

@@ -220,6 +220,8 @@ const App = () => (
                               />
                               {/* Public company profile — visible only when published */}
                               <Route path="/consulting/company/:companyId" element={<ConsultingPublicCompanyProfile />} />
+                              {/* Public agency page — alias for /consulting/company/:companyId */}
+                              <Route path="/agency/:companyId" element={<ConsultingPublicCompanyProfile />} />
                               <Route element={<Layout />}>
                                 <Route path="/" element={<Index />} />
                                 <Route path="/country/:countryId" element={<Country />} />

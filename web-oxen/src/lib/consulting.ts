@@ -65,7 +65,7 @@ export type ApplicationStatus =
 
 export type FinalResult = "pending" | "success" | "unsuccessful" | "cancelled";
 
-export type VerificationStatus = "pending" | "verified" | "rejected";
+export type VerificationStatus = "not_submitted" | "pending" | "verified" | "rejected";
 
 // ── Plan pricing (single source of truth) ───────────────────
 
@@ -170,6 +170,39 @@ export interface ConsultingCompany {
   is_published: boolean;
   is_verified: boolean;
   verification_status: VerificationStatus;
+  // ── Agency enhancement fields (migration 0013) ──
+  /** WhatsApp contact number */
+  whatsapp: string | null;
+  /** Telegram handle or URL */
+  telegram: string | null;
+  /** Additional phone number */
+  additional_phone: string | null;
+  /** Social links as jsonb {instagram, facebook, tiktok, youtube, telegram} */
+  social_links: Record<string, string> | null;
+  /** Google Maps or similar location link */
+  map_link: string | null;
+  /** Year the agency was founded */
+  founded_year: number | null;
+  /** Array of agency photo URLs (office, team, etc.) */
+  agency_photos: string[] | null;
+  /** Array of branch objects {name, address, phone, working_hours, map_link} */
+  branches: Array<{ name: string; address: string; phone: string; working_hours: string; map_link: string }> | null;
+  /** Tourism license number */
+  license_number: string | null;
+  /** URL to license document (private, not shown publicly) */
+  license_document_url: string | null;
+  /** License issue date */
+  license_issue_date: string | null;
+  /** License expiry date */
+  license_expiry_date: string | null;
+  /** Organization that issued the license */
+  license_issuing_org: string | null;
+  /** URL to registration document (private) */
+  registration_document_url: string | null;
+  /** Short tagline-style description */
+  short_description: string | null;
+  /** Agency specialties (e.g. visa, tours, education) */
+  specialties: string[] | null;
   subscription_status: SubscriptionStatus | "none";
   subscription_plan: SubscriptionPlan | null;
   subscription_start_date: string | null;
@@ -414,20 +447,37 @@ export async function fetchMyMembership(
 export interface CompanyProfileUpdate {
   name?: string;
   description?: string | null;
+  short_description?: string | null;
   country?: string | null;
   city?: string | null;
   address?: string | null;
   contact_phone?: string | null;
+  additional_phone?: string | null;
   contact_email?: string | null;
   website?: string | null;
+  whatsapp?: string | null;
+  telegram?: string | null;
   working_hours?: string | null;
   supported_languages?: string[] | null;
   destination_countries?: string[] | null;
+  specialties?: string[] | null;
   years_experience?: number;
+  founded_year?: number | null;
   license_info?: string | null;
+  license_number?: string | null;
+  license_document_url?: string | null;
+  license_issue_date?: string | null;
+  license_expiry_date?: string | null;
+  license_issuing_org?: string | null;
+  registration_document_url?: string | null;
+  verification_status?: VerificationStatus;
   logo_url?: string | null;
   cover_image_url?: string | null;
   is_published?: boolean;
+  social_links?: Record<string, string> | null;
+  map_link?: string | null;
+  agency_photos?: string[] | null;
+  branches?: Array<{ name: string; address: string; phone: string; working_hours: string; map_link: string }> | null;
 }
 
 /** Update the current user's consulting company profile. RLS requires admin/owner. */
@@ -469,6 +519,36 @@ export async function fetchPublicConsultingCompany(
   if (!company) return null;
   if (!company.is_published && company.verification_status !== "verified") return null;
   return company;
+}
+
+// ── Agency discovery (public) ────────────────────────────────
+
+/** Fetch all published agencies for public display. Returns only safe public fields. */
+export async function fetchPublishedAgencies(): Promise<ConsultingCompany[]> {
+  const { data, error } = await supabase
+    .from("consulting_companies")
+    .select("*")
+    .eq("is_published", true)
+    .order("updated_at", { ascending: false });
+  if (error) {
+    console.error("fetchPublishedAgencies error:", error);
+    return [];
+  }
+  return (data ?? []) as unknown as ConsultingCompany[];
+}
+
+/** Count active services for a given agency (for agency cards). */
+export async function fetchAgencyServiceCount(agencyId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("services")
+    .select("*", { count: "exact", head: true })
+    .eq("consulting_id", agencyId)
+    .eq("is_active", true);
+  if (error) {
+    console.error("fetchAgencyServiceCount error:", error);
+    return 0;
+  }
+  return count ?? 0;
 }
 
 // ── Onboarding (Checkout) ───────────────────────────────────
