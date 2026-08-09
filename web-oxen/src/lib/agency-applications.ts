@@ -80,6 +80,23 @@ export interface AgencyApplicationInput {
 
 // ── User-facing functions ──────────────────────────────────
 
+/** Normalize a date field: empty string → null, otherwise the value as-is.
+ *  PostgreSQL date columns reject "" — only null or "YYYY-MM-DD" are valid. */
+function normalizeDate(value: string | null | undefined): string | null {
+  if (!value || value.trim() === "") return null;
+  return value.trim();
+}
+
+/** Normalize all date fields in an application input to be DB-safe.
+ *  Converts empty strings to null so PostgreSQL date columns don't reject them. */
+function normalizeInputDates<T extends Partial<AgencyApplicationInput>>(input: T): T {
+  return {
+    ...input,
+    license_issue_date: normalizeDate(input.license_issue_date),
+    license_expiry_date: normalizeDate(input.license_expiry_date),
+  };
+}
+
 /** Fetch the current user's latest application (if any). */
 export async function fetchMyAgencyApplication(
   userId: string,
@@ -121,8 +138,8 @@ export async function createAgencyApplication(
       social_links: input.social_links ?? null,
       license_number: input.license_number ?? null,
       license_issuing_org: input.license_issuing_org ?? null,
-      license_issue_date: input.license_issue_date ?? null,
-      license_expiry_date: input.license_expiry_date ?? null,
+      license_issue_date: normalizeDate(input.license_issue_date),
+      license_expiry_date: normalizeDate(input.license_expiry_date),
       license_document_url: input.license_document_url ?? null,
       registration_document_url: input.registration_document_url ?? null,
       additional_documents: input.additional_documents ?? null,
@@ -145,7 +162,7 @@ export async function updateAgencyApplication(
   const { data, error } = await supabase
     .from("agency_applications")
     .update({
-      ...input,
+      ...normalizeInputDates(input),
       updated_at: new Date().toISOString(),
     })
     .eq("id", applicationId)
