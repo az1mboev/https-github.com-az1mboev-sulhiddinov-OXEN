@@ -59,15 +59,6 @@ export type DestinationCategory =
   | "modern-cities"
   | "historical";
 
-/* ── Sample video URLs (Google sample videos — reliable for testing) ── */
-const SAMPLE_VIDEOS = [
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-];
-
 /* ── Horizontal feed posts ────────────────────────────────────────── */
 
 export const FEED_POSTS: FeedPost[] = [
@@ -96,8 +87,6 @@ export const FEED_POSTS: FeedPost[] = [
     caption: "Golden hour over the Seine — the city of light never disappoints 🌅",
     likes: 5123,
     comments: 297,
-    isVideo: true,
-    videoUrl: SAMPLE_VIDEOS[0],
   },
   {
     id: "fp-3",
@@ -124,8 +113,6 @@ export const FEED_POSTS: FeedPost[] = [
     caption: "Temple hopping in Northern Thailand 🙏 The detail is unreal.",
     likes: 1932,
     comments: 88,
-    isVideo: true,
-    videoUrl: SAMPLE_VIDEOS[1],
   },
   {
     id: "fp-5",
@@ -152,8 +139,6 @@ export const FEED_POSTS: FeedPost[] = [
     caption: "The desert at dusk — golden dunes meet a golden skyline 🏜️",
     likes: 3921,
     comments: 201,
-    isVideo: true,
-    videoUrl: SAMPLE_VIDEOS[2],
   },
   {
     id: "fp-7",
@@ -180,8 +165,6 @@ export const FEED_POSTS: FeedPost[] = [
     caption: "Lions in the wild — an unforgettable safari experience 🦁",
     likes: 5678,
     comments: 289,
-    isVideo: true,
-    videoUrl: SAMPLE_VIDEOS[3],
   },
   {
     id: "fp-9",
@@ -208,8 +191,6 @@ export const FEED_POSTS: FeedPost[] = [
     caption: "Standing before the Pyramids of Giza — 4500 years of history 🏛️",
     likes: 7201,
     comments: 378,
-    isVideo: true,
-    videoUrl: SAMPLE_VIDEOS[4],
   },
 ];
 
@@ -225,7 +206,7 @@ export const DESTINATIONS: TrendingDestination[] = [
     city: "Kyoto",
     visitors: "12.4M",
     rating: 4.9,
-    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    videoUrl: null,
     description: "Ancient temples, bamboo forests, and the serene beauty of geisha districts.",
     category: "trending",
   },
@@ -261,7 +242,7 @@ export const DESTINATIONS: TrendingDestination[] = [
     city: "Dubai",
     visitors: "17.1M",
     rating: 4.6,
-    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    videoUrl: null,
     description: "Futuristic skyline meets ancient desert culture in this dynamic metropolis.",
     category: "trending",
   },
@@ -275,7 +256,7 @@ export const DESTINATIONS: TrendingDestination[] = [
     city: "Paris",
     visitors: "38.1M",
     rating: 4.8,
-    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+    videoUrl: null,
     description: "The Eiffel Tower, world-class museums, and timeless café culture.",
     category: "most-visited",
   },
@@ -337,7 +318,7 @@ export const DESTINATIONS: TrendingDestination[] = [
     city: "Masai Mara",
     visitors: "1.5M",
     rating: 4.9,
-    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+    videoUrl: null,
     description: "The world's greatest wildlife spectacle — the Great Migration awaits.",
     category: "most-loved",
   },
@@ -349,7 +330,7 @@ export const DESTINATIONS: TrendingDestination[] = [
     city: "Malé",
     visitors: "1.9M",
     rating: 4.9,
-    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+    videoUrl: null,
     description: "Overwater villas, coral reefs, and the bluest waters on Earth.",
     category: "most-loved",
   },
