@@ -9,31 +9,33 @@ import { CONSULTING_OPEN_PREVIEW_MODE } from "@/lib/consulting-preview";
 /**
  * RequireConsultingMember — wraps protected consulting routes.
  *
- * Redirects:
+ * Multi-agency flow:
  *   - Guests → /auth (with redirect back)
- *   - Non-members (no company at all) → /explore
- *   - Expired subscriptions → /consulting/expired
+ *   - Zero agencies (no memberships at all) → /consulting/workspace
+ *   - Has agencies but no active subscription → /consulting/plans or /consulting/expired
  *
  * Routes that must remain accessible when the subscription is EXPIRED
  * (renew, billing, support, security) should set `allowExpired`.
  *
- * When `CONSULTING_OPEN_PREVIEW_MODE` is `true`, membership + subscription
- * checks are bypassed so every signed-in user can preview the dashboard.
- * Set the flag to `false` to restore the full payment-gated flow.
- *
- * Relies on the single top-level ConsultingProvider in App.tsx.
+ * The workspace onboarding route itself is wrapped with `allowOnboarding`
+ * so it renders even when the user has zero agencies.
  */
 interface Props {
   children: React.ReactNode;
   /** When true, allows access even with an expired subscription (renew/billing/support routes). */
   allowExpired?: boolean;
+  /** When true, renders even if the user has zero agencies (workspace/create/join routes). */
+  allowOnboarding?: boolean;
 }
 
-function Inner({ children, allowExpired = false }: Props) {
+function Inner({ children, allowExpired = false, allowOnboarding = false }: Props) {
   const { user, ready: authReady } = useAuth();
-  const { isMember, loading, subscriptionAccess } = useConsulting();
+  const { isMember, loading, subscriptionAccess, hasNoAgencies, agencies } = useConsulting();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Determine if user has at least one real agency (not preview/synthesized)
+  const hasRealAgencies = agencies.length > 0;
 
   useEffect(() => {
     if (!authReady) return;
@@ -44,8 +46,15 @@ function Inner({ children, allowExpired = false }: Props) {
     // Preview mode: bypass membership + subscription checks entirely.
     if (CONSULTING_OPEN_PREVIEW_MODE) return;
     if (loading) return;
-    if (!isMember) {
-      navigate("/explore", { replace: true });
+
+    // Zero agencies → redirect to workspace onboarding (unless this IS the workspace route)
+    if (hasNoAgencies && !allowOnboarding) {
+      navigate("/consulting/workspace", { replace: true });
+      return;
+    }
+
+    if (!isMember && !allowOnboarding) {
+      navigate("/consulting/workspace", { replace: true });
       return;
     }
     if (!allowExpired && subscriptionAccess === "expired") {
@@ -54,7 +63,7 @@ function Inner({ children, allowExpired = false }: Props) {
     if (!allowExpired && subscriptionAccess === "none") {
       navigate("/consulting/plans", { replace: true });
     }
-  }, [authReady, user, isMember, loading, subscriptionAccess, allowExpired, navigate, location.pathname]);
+  }, [authReady, user, isMember, loading, subscriptionAccess, allowExpired, allowOnboarding, hasNoAgencies, navigate, location.pathname]);
 
   if (!authReady || (!CONSULTING_OPEN_PREVIEW_MODE && loading)) {
     return (
@@ -73,6 +82,11 @@ function Inner({ children, allowExpired = false }: Props) {
     return <>{children}</>;
   }
 
+  // Onboarding routes are accessible even with zero agencies
+  if (allowOnboarding) {
+    return <>{children}</>;
+  }
+
   if (!isMember) {
     return null;
   }
@@ -85,6 +99,10 @@ function Inner({ children, allowExpired = false }: Props) {
   return <>{children}</>;
 }
 
-export default function RequireConsultingMember({ children, allowExpired }: Props) {
-  return <Inner allowExpired={allowExpired}>{children}</Inner>;
+export default function RequireConsultingMember({ children, allowExpired, allowOnboarding }: Props) {
+  return (
+    <Inner allowExpired={allowExpired} allowOnboarding={allowOnboarding}>
+      {children}
+    </Inner>
+  );
 }

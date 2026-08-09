@@ -50,6 +50,9 @@ const Checkout = lazy(() => import("./pages/Checkout"));
 const City = lazy(() => import("./pages/City"));
 const ConsultingDashboard = lazy(() => import("./pages/ConsultingDashboard"));
 const ConsultingSetupSuccess = lazy(() => import("./pages/consulting/SetupSuccess"));
+const ConsultingWorkspace = lazy(() => import("./pages/consulting/WorkspaceOnboarding"));
+const ConsultingCreateAgency = lazy(() => import("./pages/consulting/CreateAgency"));
+const ConsultingJoinAgency = lazy(() => import("./pages/consulting/JoinAgency"));
 const ConsultingPlans = lazy(() => import("./pages/consulting/Plans"));
 const ConsultingSubscriptionExpired = lazy(() => import("./pages/consulting/SubscriptionExpired"));
 const ConsultingRenew = lazy(() => import("./pages/consulting/Renew"));
@@ -185,6 +188,10 @@ const App = () => (
                               <Route path="/consulting/plans" element={<ConsultingPlans />} />
                               <Route path="/consulting/checkout" element={<Checkout />} />
                               <Route path="/consulting/setup-success" element={<ConsultingSetupSuccess />} />
+                              {/* Multi-Agency Workspace routes */}
+                              <Route path="/consulting/workspace" element={<RequireAuth><RequireConsultingMember allowOnboarding><ConsultingWorkspace /></RequireConsultingMember></RequireAuth>} />
+                              <Route path="/consulting/create-agency" element={<RequireAuth><RequireConsultingMember allowOnboarding><ConsultingCreateAgency /></RequireConsultingMember></RequireAuth>} />
+                              <Route path="/consulting/join-agency" element={<RequireAuth><RequireConsultingMember allowOnboarding><ConsultingJoinAgency /></RequireConsultingMember></RequireAuth>} />
                               {/* Subscription-expired screen — only consulting members with expired subs can see this */}
                               <Route
                                 path="/consulting/expired"
