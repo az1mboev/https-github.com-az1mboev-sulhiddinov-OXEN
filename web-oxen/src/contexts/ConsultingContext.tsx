@@ -18,6 +18,7 @@ import {
   type AgencyMembership,
 } from "@/lib/consulting";
 import { useAuth } from "@/contexts/AuthContext";
+import { checkApprovedApplication } from "@/lib/agency-applications";
 
 /* ============================================================
    ConsultingContext — current company, membership, RBAC,
@@ -92,6 +93,8 @@ interface ConsultingContextValue {
   switchAgency: (agencyId: string) => void;
   /** True if user belongs to zero agencies (first-time CRM experience). */
   hasNoAgencies: boolean;
+  /** True if the user has an approved agency application (via RPC). CRM access depends on this. */
+  isApproved: boolean;
 }
 
 const ACTIVE_AGENCY_KEY = "oxen.consulting.activeAgencyId";
@@ -143,6 +146,19 @@ function useConsultingState() {
     retry: false,
   });
 
+  // ── Agency application approval check ──
+  // CRM access is granted ONLY when this returns true.
+  // Uses the security-definer RPC has_approved_agency_application().
+  const { data: isApprovedData, isLoading: approvalLoading } = useQuery({
+    queryKey: ["agency-application-approved", user?.id],
+    queryFn: () => checkApprovedApplication(user!.id),
+    enabled: isEnabled,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const isApproved = isApprovedData === true;
+
   const agencyList = agencies ?? [];
   const hasNoAgencies = isEnabled && !agenciesLoading && agencyList.length === 0;
 
@@ -180,7 +196,7 @@ function useConsultingState() {
   const effectiveMember = activeAgency?.member ?? null;
   const isTestMode = false;
 
-  const loading = !authReady || (isEnabled && !agenciesLoading && !activeAgency && agencyList.length === 0 && agenciesLoading);
+  const loading = !authReady || (isEnabled && approvalLoading) || (isApproved && agenciesLoading);
 
   const role = effectiveMember?.role ?? null;
   const isMember = !!effectiveMember;
@@ -392,13 +408,14 @@ function useConsultingState() {
       activeAgencyId,
       switchAgency,
       hasNoAgencies,
+      isApproved,
     }),
     [
       effectiveCompany, effectiveMember, role, loading, isTestMode, isMember, isAdmin,
       subscriptionAccess, hasActiveSubscription, hasExpiredSubscription, subscriptionEndDate,
       subscriptionPlan, can, refresh, changeMemberRole, changeMemberStatus, removeMember,
       logActivity, renewSubscription, simulateExpiration,
-      agencyList, activeAgencyId, switchAgency, hasNoAgencies,
+      agencyList, activeAgencyId, switchAgency, hasNoAgencies, isApproved,
     ],
   );
 }

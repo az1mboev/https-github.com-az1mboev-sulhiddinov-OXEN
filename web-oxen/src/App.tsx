@@ -193,8 +193,8 @@ const App = () => (
                               <Route path="/consulting/setup-success" element={<ConsultingSetupSuccess />} />
                               {/* Multi-Agency Workspace routes */}
                               <Route path="/consulting/workspace" element={<RequireAuth><RequireConsultingMember allowOnboarding><ConsultingWorkspace /></RequireConsultingMember></RequireAuth>} />
-                              <Route path="/consulting/create-agency" element={<RequireAuth><RequireConsultingMember allowOnboarding><ConsultingCreateAgency /></RequireConsultingMember></RequireAuth>} />
-                              <Route path="/consulting/join-agency" element={<RequireAuth><RequireConsultingMember allowOnboarding><ConsultingJoinAgency /></RequireConsultingMember></RequireAuth>} />
+                              <Route path="/consulting/create-agency" element={<RequireAuth><RequireConsultingMember allowNoAgency><ConsultingCreateAgency /></RequireConsultingMember></RequireAuth>} />
+                              <Route path="/consulting/join-agency" element={<RequireAuth><RequireConsultingMember allowNoAgency><ConsultingJoinAgency /></RequireConsultingMember></RequireAuth>} />
                               {/* Subscription-expired screen — only consulting members with expired subs can see this */}
                               <Route
                                 path="/consulting/expired"

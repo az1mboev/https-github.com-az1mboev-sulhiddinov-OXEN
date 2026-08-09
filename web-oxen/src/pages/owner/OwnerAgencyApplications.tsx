@@ -305,7 +305,7 @@ export default function OwnerAgencyApplications() {
 
 // ── Review Modal (slide-over) ──────────────────────────────
 
-type ReviewAction = "approve" | "reject" | "request_info";
+type ReviewAction = "approve" | "reject" | "request_info" | "start_review";
 
 function ReviewModal({
   application,
@@ -327,6 +327,21 @@ function ReviewModal({
   const [showDocs, setShowDocs] = useState(false);
 
   const isFinal = application.status === "approved" || application.status === "rejected";
+  const canStartReview = application.status === "submitted";
+
+  const handleStartReview = async () => {
+    setProcessing(true);
+    try {
+      const result = await setUnderReview(application.id, reviewerId);
+      if (result.ok) {
+        onAction("Review started — status set to Under Review");
+      } else {
+        toast({ title: "Failed to start review", description: result.error ?? undefined, variant: "destructive" });
+      }
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const handleApprove = async () => {
     setProcessing(true);
@@ -542,6 +557,18 @@ function ReviewModal({
           {/* Owner Actions */}
           {!isFinal && (
             <Section title="Owner Actions">
+              {/* Start Review button — only when status is submitted */}
+              {canStartReview && !action && (
+                <button
+                  onClick={handleStartReview}
+                  disabled={processing}
+                  className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500/15 py-2.5 text-sm font-bold text-amber-300 transition hover:bg-amber-500/25 disabled:opacity-50"
+                >
+                  {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                  Start Review
+                </button>
+              )}
+
               {/* Action selector */}
               {!action && (
                 <div className="grid gap-2 sm:grid-cols-3">

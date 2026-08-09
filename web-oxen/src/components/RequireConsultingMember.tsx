@@ -8,34 +8,36 @@ import { useConsulting } from "@/contexts/ConsultingContext";
 /**
  * RequireConsultingMember — wraps protected consulting routes.
  *
- * Multi-agency flow:
+ * CRM access is granted ONLY when the user has an approved agency
+ * application (checked via has_approved_agency_application RPC).
+ * The old subscription/payment gate has been removed — approval
+ * is the sole authorization mechanism for CRM access.
+ *
+ * Flow:
  *   - Guests → /auth (with redirect back)
- *   - Zero agencies (no memberships at all) → /consulting/workspace
- *   - Has agencies but no active subscription → /consulting/plans or /consulting/expired
+ *   - allowOnboarding routes (workspace, apply, application-status) → always render
+ *   - No approved application → /consulting/workspace (shows application gate)
+ *   - Approved but zero agencies → /consulting/workspace (unless allowNoAgency)
+ *   - Approved + has agencies → full CRM access
  *
- * Routes that must remain accessible when the subscription is EXPIRED
- * (renew, billing, support, security) should set `allowExpired`.
- *
- * The workspace onboarding route itself is wrapped with `allowOnboarding`
- * so it renders even when the user has zero agencies.
+ * The `allowExpired` prop is kept for backward compatibility but no longer
+ * affects access (subscription gate removed).
  */
 interface Props {
   children: React.ReactNode;
-  /** When true, allows access even with an expired subscription (renew/billing/support routes). */
+  /** Kept for backward compatibility — no longer affects access. */
   allowExpired?: boolean;
-  /** When true, renders even if the user has zero agencies (workspace/create/join routes). */
+  /** When true, renders even without approval (workspace, apply, application-status routes). */
   allowOnboarding?: boolean;
+  /** When true, renders for approved users even if they have zero agencies (create/join routes). */
+  allowNoAgency?: boolean;
 }
 
-function Inner({ children, allowExpired = false, allowOnboarding = false }: Props) {
+function Inner({ children, allowOnboarding = false, allowNoAgency = false }: Props) {
   const { user, ready: authReady } = useAuth();
-  const { isMember, loading, subscriptionAccess, hasNoAgencies, isAdmin } = useConsulting();
+  const { loading, isApproved, hasNoAgencies } = useConsulting();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Owner/admin bypasses subscription paywall for testing.
-  // Onboarding routes (workspace/create/join) also bypass subscription checks.
-  const bypassSubscription = isAdmin || allowOnboarding;
 
   useEffect(() => {
     if (!authReady) return;
@@ -45,24 +47,22 @@ function Inner({ children, allowExpired = false, allowOnboarding = false }: Prop
     }
     if (loading) return;
 
-    // Zero agencies → redirect to workspace onboarding (unless this IS the workspace route)
-    if (hasNoAgencies && !allowOnboarding) {
+    // Onboarding routes (workspace, apply, application-status) are always accessible
+    if (allowOnboarding) return;
+
+    // No approved application → redirect to workspace (shows application gate)
+    if (!isApproved) {
       navigate("/consulting/workspace", { replace: true });
       return;
     }
 
-    if (!isMember && !allowOnboarding) {
+    // Approved but zero agencies → redirect to workspace (shows Create/Join)
+    // unless this is a create/join route (allowNoAgency)
+    if (hasNoAgencies && !allowNoAgency) {
       navigate("/consulting/workspace", { replace: true });
       return;
     }
-    // Subscription gate — skipped for owner/admin and onboarding routes
-    if (!bypassSubscription && !allowExpired && subscriptionAccess === "expired") {
-      navigate("/consulting/expired", { replace: true });
-    }
-    if (!bypassSubscription && !allowExpired && subscriptionAccess === "none") {
-      navigate("/consulting/plans", { replace: true });
-    }
-  }, [authReady, user, isMember, loading, subscriptionAccess, allowExpired, allowOnboarding, hasNoAgencies, bypassSubscription, navigate, location.pathname]);
+  }, [authReady, user, loading, isApproved, hasNoAgencies, allowOnboarding, allowNoAgency, navigate, location.pathname]);
 
   if (!authReady || loading) {
     return (
@@ -76,27 +76,27 @@ function Inner({ children, allowExpired = false, allowOnboarding = false }: Prop
     return null;
   }
 
-  // Onboarding routes are accessible even with zero agencies
+  // Onboarding routes are accessible even without approval
   if (allowOnboarding) {
     return <>{children}</>;
   }
 
-  if (!isMember) {
+  // No approved application → blocked (redirect happens in useEffect)
+  if (!isApproved) {
     return null;
   }
 
-  // Subscription gate — owner/admin bypasses for testing.
-  // Production users with no/expired subscription are blocked.
-  if (!bypassSubscription && !allowExpired && (subscriptionAccess === "expired" || subscriptionAccess === "none")) {
+  // Approved but no agencies → blocked unless allowNoAgency
+  if (hasNoAgencies && !allowNoAgency) {
     return null;
   }
 
   return <>{children}</>;
 }
 
-export default function RequireConsultingMember({ children, allowExpired, allowOnboarding }: Props) {
+export default function RequireConsultingMember({ children, allowExpired, allowOnboarding, allowNoAgency }: Props) {
   return (
-    <Inner allowExpired={allowExpired} allowOnboarding={allowOnboarding}>
+    <Inner allowExpired={allowExpired} allowOnboarding={allowOnboarding} allowNoAgency={allowNoAgency}>
       {children}
     </Inner>
   );
