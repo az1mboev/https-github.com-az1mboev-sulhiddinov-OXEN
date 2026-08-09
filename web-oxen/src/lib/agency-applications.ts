@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase";
-import { uploadConsultingAsset } from "@/lib/consulting";
 
 /* ============================================================
    Agency Applications — Tour Agency CRM Access Application
@@ -407,14 +406,23 @@ export async function setUnderReview(
 
 // ── Document upload helper ─────────────────────────────────
 
-/** Upload a document to the private consulting storage bucket. */
+/** Upload a document to the private consulting storage bucket.
+ *  Returns `{ url, error }` — url is null on failure, error contains the Supabase message. */
 export async function uploadAgencyDocument(
   file: File,
   userId: string,
   docType: string,
-): Promise<string | null> {
+): Promise<{ url: string | null; error: string | null }> {
   const path = `agency-applications/${userId}/${docType}-${Date.now()}`;
-  return uploadConsultingAsset(file, path);
+  const { data, error } = await supabase.storage
+    .from("consulting")
+    .upload(path, file, { upsert: true });
+  if (error) {
+    console.error("uploadAgencyDocument error:", error);
+    return { url: null, error: error.message };
+  }
+  const { data: pub } = supabase.storage.from("consulting").getPublicUrl(data.path);
+  return { url: pub.publicUrl, error: null };
 }
 
 // ── Status helpers ─────────────────────────────────────────

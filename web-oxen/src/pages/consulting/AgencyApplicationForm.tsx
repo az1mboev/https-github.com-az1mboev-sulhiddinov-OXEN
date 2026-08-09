@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Save,
   Send,
+  X,
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -85,6 +86,9 @@ export default function AgencyApplicationForm() {
   const [uploadingLicense, setUploadingLicense] = useState(false);
   const [uploadingReg, setUploadingReg] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Selected file metadata for display (filename, size, status)
+  const [licenseFileMeta, setLicenseFileMeta] = useState<{ name: string; size: number; status: "uploading" | "uploaded" | "error" } | null>(null);
+  const [regFileMeta, setRegFileMeta] = useState<{ name: string; size: number; status: "uploading" | "uploaded" | "error" } | null>(null);
 
   useSEO({
     title: "Apply for OXEN CRM Access",
@@ -173,10 +177,12 @@ export default function AgencyApplicationForm() {
     }
     setUploadingLogo(true);
     try {
-      const url = await uploadAgencyDocument(file, user.id, "logo");
+      const { url, error: uploadError } = await uploadAgencyDocument(file, user.id, "logo");
       if (url) {
         set("logo_url", url);
         toast({ title: "Logo uploaded" });
+      } else {
+        toast({ title: "Logo upload failed", description: uploadError ?? "Unknown error", variant: "destructive" });
       }
     } catch {
       toast({ title: "Upload failed", variant: "destructive" });
@@ -191,14 +197,28 @@ export default function AgencyApplicationForm() {
       toast({ title: "File too large", description: "Max 10 MB.", variant: "destructive" });
       return;
     }
+    // Immediately store file metadata and clear validation error
+    setLicenseFileMeta({ name: file.name, size: file.size, status: "uploading" });
+    if (errors.license_document) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.license_document;
+        return next;
+      });
+    }
     setUploadingLicense(true);
     try {
-      const url = await uploadAgencyDocument(file, user.id, "license");
+      const { url, error: uploadError } = await uploadAgencyDocument(file, user.id, "license");
       if (url) {
         set("license_document_url", url);
+        setLicenseFileMeta({ name: file.name, size: file.size, status: "uploaded" });
         toast({ title: "License document uploaded" });
+      } else {
+        setLicenseFileMeta({ name: file.name, size: file.size, status: "error" });
+        toast({ title: "License document upload failed", description: uploadError ?? "Unknown error", variant: "destructive" });
       }
     } catch {
+      setLicenseFileMeta({ name: file.name, size: file.size, status: "error" });
       toast({ title: "Upload failed", variant: "destructive" });
     } finally {
       setUploadingLicense(false);
@@ -211,14 +231,20 @@ export default function AgencyApplicationForm() {
       toast({ title: "File too large", description: "Max 10 MB.", variant: "destructive" });
       return;
     }
+    setRegFileMeta({ name: file.name, size: file.size, status: "uploading" });
     setUploadingReg(true);
     try {
-      const url = await uploadAgencyDocument(file, user.id, "registration");
+      const { url, error: uploadError } = await uploadAgencyDocument(file, user.id, "registration");
       if (url) {
         set("registration_document_url", url);
+        setRegFileMeta({ name: file.name, size: file.size, status: "uploaded" });
         toast({ title: "Registration document uploaded" });
+      } else {
+        setRegFileMeta({ name: file.name, size: file.size, status: "error" });
+        toast({ title: "Registration document upload failed", description: uploadError ?? "Unknown error", variant: "destructive" });
       }
     } catch {
+      setRegFileMeta({ name: file.name, size: file.size, status: "error" });
       toast({ title: "Upload failed", variant: "destructive" });
     } finally {
       setUploadingReg(false);
@@ -597,17 +623,23 @@ export default function AgencyApplicationForm() {
                 uploadedUrl={form.license_document_url ?? null}
                 uploading={uploadingLicense}
                 disabled={!isEditable}
+                fileMeta={licenseFileMeta}
                 onUpload={() => licenseRef.current?.click()}
-                onClear={() => set("license_document_url", null)}
+                onClear={() => {
+                  set("license_document_url", null);
+                  setLicenseFileMeta(null);
+                }}
               />
               <input
                 ref={licenseRef}
                 type="file"
-                accept="image/*,.pdf"
+                accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleLicenseUpload(file);
+                  // Reset input so selecting the same file again still fires onChange
+                  e.target.value = "";
                 }}
               />
 
@@ -617,17 +649,22 @@ export default function AgencyApplicationForm() {
                 uploadedUrl={form.registration_document_url ?? null}
                 uploading={uploadingReg}
                 disabled={!isEditable}
+                fileMeta={regFileMeta}
                 onUpload={() => registrationRef.current?.click()}
-                onClear={() => set("registration_document_url", null)}
+                onClear={() => {
+                  set("registration_document_url", null);
+                  setRegFileMeta(null);
+                }}
               />
               <input
                 ref={registrationRef}
                 type="file"
-                accept="image/*,.pdf"
+                accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleRegistrationUpload(file);
+                  e.target.value = "";
                 }}
               />
             </div>
@@ -742,6 +779,12 @@ function FormField({
   );
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function DocumentUpload({
   label,
   required,
@@ -749,6 +792,7 @@ function DocumentUpload({
   uploadedUrl,
   uploading,
   disabled,
+  fileMeta,
   onUpload,
   onClear,
 }: {
@@ -758,9 +802,14 @@ function DocumentUpload({
   uploadedUrl: string | null;
   uploading: boolean;
   disabled: boolean;
+  fileMeta: { name: string; size: number; status: "uploading" | "uploaded" | "error" } | null;
   onUpload: () => void;
   onClear: () => void;
 }) {
+  // A file is present if we have a URL OR file metadata
+  const hasFile = !!uploadedUrl || (fileMeta && fileMeta.status !== "error");
+  const showError = error && !hasFile;
+
   return (
     <div>
       <p className="mb-1.5 text-sm font-semibold text-muted-foreground">
@@ -768,29 +817,64 @@ function DocumentUpload({
       </p>
       <div
         className={cn(
-          "flex items-center gap-3 rounded-xl border p-3",
-          error ? "border-destructive/40" : "border-white/[0.06]",
+          "flex items-center gap-3 rounded-xl border p-3 transition-colors",
+          showError ? "border-destructive/40" : hasFile ? "border-emerald-500/30" : "border-white/[0.06]",
         )}
       >
-        {uploadedUrl ? (
+        {hasFile ? (
           <>
-            <Check className="h-4 w-4 shrink-0 text-emerald-400" />
-            <span className="flex-1 truncate text-xs text-muted-foreground">
-              {uploadedUrl.split("/").pop() ?? "Document uploaded"}
-            </span>
-            {!disabled && (
-              <button
-                onClick={onClear}
-                className="text-xs font-semibold text-destructive transition hover:text-destructive/80"
-              >
-                Remove
-              </button>
+            {/* Status icon */}
+            {fileMeta?.status === "uploading" || uploading ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-amber-400" />
+            ) : fileMeta?.status === "error" ? (
+              <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+            ) : (
+              <Check className="h-4 w-4 shrink-0 text-emerald-400" />
             )}
-          </>
-        ) : uploading ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Uploading…</span>
+
+            {/* Filename + size + status */}
+            <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
+              <span className="truncate text-xs font-medium text-foreground">
+                {fileMeta?.name ?? uploadedUrl?.split("/").pop() ?? "Document"}
+              </span>
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                {fileMeta && <span>{formatFileSize(fileMeta.size)}</span>}
+                <span
+                  className={cn(
+                    "font-semibold",
+                    fileMeta?.status === "uploading" || uploading
+                      ? "text-amber-400"
+                      : fileMeta?.status === "error"
+                        ? "text-destructive"
+                        : "text-emerald-400",
+                  )}
+                >
+                  {fileMeta?.status === "uploading" || uploading
+                    ? "Uploading…"
+                    : fileMeta?.status === "error"
+                      ? "Upload failed"
+                      : "Uploaded"}
+                </span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            {!disabled && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onUpload}
+                  className="text-xs font-semibold text-primary transition hover:text-primary/80"
+                >
+                  Replace
+                </button>
+                <button
+                  onClick={onClear}
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition hover:text-destructive"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <button
@@ -800,10 +884,11 @@ function DocumentUpload({
           >
             <Upload className="h-4 w-4" />
             Upload document
+            <span className="ml-1 text-[10px] font-normal text-muted-foreground">PNG, JPG, JPEG, or PDF · Max 10 MB</span>
           </button>
         )}
       </div>
-      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+      {showError && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   );
 }
