@@ -536,10 +536,11 @@ function ClientFormModal({
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 26 }}
-        className="fixed left-1/2 top-1/2 z-[81] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2"
+        className="fixed left-1/2 top-1/2 z-[90] w-[calc(100%-1rem)] max-w-[640px] -translate-x-1/2 -translate-y-1/2 sm:w-[calc(100%-2rem)]"
       >
-        <div className="glass-strong rounded-3xl p-6 shadow-2xl">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="glass-strong flex max-h-[calc(100vh-32px)] flex-col overflow-hidden rounded-3xl shadow-2xl">
+          {/* Sticky header */}
+          <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-6 py-4">
             <h3 className="font-display text-lg font-bold">{initial ? "Edit Client" : "Add Client"}</h3>
             <button
               onClick={onClose}
@@ -548,7 +549,8 @@ function ClientFormModal({
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+          {/* Scrollable form body */}
+          <div className="flex-1 space-y-3 overflow-y-auto px-6 py-4">
             <Field
               label="Full name"
               value={form.full_name}
@@ -617,7 +619,8 @@ function ClientFormModal({
               />
             </div>
           </div>
-          <div className="mt-5 flex gap-3">
+          {/* Sticky footer */}
+          <div className="flex shrink-0 gap-3 border-t border-white/[0.06] bg-background/80 px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-md">
             <button
               onClick={onClose}
               className="glass flex-1 rounded-2xl py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
