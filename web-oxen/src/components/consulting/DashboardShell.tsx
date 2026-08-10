@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -20,13 +20,18 @@ import {
   Menu,
   X,
   Bell,
-  Search,
+  Search as SearchIcon,
   ChevronLeft,
   ChevronDown,
   Sparkles,
   CalendarClock,
   Plus,
   Check,
+  LogIn,
+  ShieldCheck,
+  Clock,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,7 +78,14 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { company, member, subscriptionPlan, subscriptionEndDate, subscriptionAccess, agencies, activeAgencyId, switchAgency } = useConsulting();
+  const { company, member, subscriptionPlan, subscriptionEndDate, subscriptionAccess, agencies, activeAgencyId, switchAgency, isSwitching } = useConsulting();
+  const [switcherSearch, setSwitcherSearch] = useState("");
+
+  const filteredAgencies = useMemo(() => {
+    if (!switcherSearch.trim()) return agencies;
+    const q = switcherSearch.toLowerCase();
+    return agencies.filter((am) => am.company.name.toLowerCase().includes(q));
+  }, [agencies, switcherSearch]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -101,17 +113,19 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
     <div className="flex h-full flex-col">
       {/* Agency Switcher + subscription block */}
       <div className="border-b border-white/[0.06] px-4 py-4">
-        {/* Agency Switcher button */}
+        {/* Agency Switcher button — always clickable (even with 1 agency, to access Add/Join) */}
         <button
           onClick={() => !collapsed && setSwitcherOpen((s) => !s)}
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-xl transition",
+            "flex w-full items-center gap-2.5 rounded-xl px-2 py-2 transition",
             collapsed && "justify-center",
             switcherOpen ? "bg-white/[0.06]" : "hover:bg-white/[0.04]",
           )}
         >
           <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/15 text-primary">
-            {logoUrl ? (
+            {isSwitching ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : logoUrl ? (
               <img src={logoUrl} alt="" className="h-full w-full object-cover" />
             ) : (
               <Building2 className="h-5 w-5" />
@@ -121,63 +135,125 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
             <>
               <div className="min-w-0 flex-1 text-left">
                 <p className="truncate font-display text-sm font-bold text-foreground">{companyName}</p>
-                <p className="truncate text-[10px] capitalize text-muted-foreground">
-                  {member?.role ?? "—"}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate text-[10px] capitalize text-muted-foreground">
+                    {member?.role ?? "—"}
+                  </p>
+                  {company?.verification_status === "verified" && (
+                    <ShieldCheck className="h-3 w-3 shrink-0 text-emerald-400" />
+                  )}
+                  {company?.verification_status === "pending" && (
+                    <Clock className="h-3 w-3 shrink-0 text-amber-400" />
+                  )}
+                </div>
               </div>
-              {agencies.length > 1 && (
-                <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", switcherOpen && "rotate-180")} />
-              )}
+              <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", switcherOpen && "rotate-180")} />
             </>
           )}
         </button>
 
-        {/* Agency Switcher dropdown */}
-        {switcherOpen && !collapsed && agencies.length > 1 && (
-          <div className="mt-2 space-y-1 rounded-xl border border-white/[0.06] bg-popover/95 p-1.5 backdrop-blur-xl">
-            {agencies.map((am) => {
-              const isActive = am.company.id === activeAgencyId;
-              return (
-                <button
-                  key={am.company.id}
-                  onClick={() => {
-                    switchAgency(am.company.id);
-                    setSwitcherOpen(false);
-                    setMobileOpen(false);
-                  }}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition",
-                    isActive ? "bg-primary/10" : "hover:bg-white/[0.04]",
-                  )}
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10">
-                    {am.company.logo_url ? (
-                      <img src={am.company.logo_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <Building2 className="h-3.5 w-3.5 text-primary" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
-                    {am.company.name}
-                  </span>
-                  {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
-                </button>
-              );
-            })}
-            {/* Add Agency link */}
-            <button
-              onClick={() => {
-                navigate("/consulting/workspace");
-                setSwitcherOpen(false);
-                setMobileOpen(false);
-              }}
-              className="flex w-full items-center gap-2 rounded-lg border-t border-white/[0.06] px-2 py-2 text-left text-xs font-semibold text-primary transition hover:bg-primary/5"
+        {/* Agency Switcher dropdown — Telegram-style */}
+        <AnimatePresence>
+          {switcherOpen && !collapsed && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="overflow-hidden"
             >
-              <Plus className="h-3.5 w-3.5 shrink-0" />
-              Add Agency
-            </button>
-          </div>
-        )}
+              <div className="mt-2 rounded-xl border border-white/[0.06] bg-popover/95 backdrop-blur-xl">
+                {/* Search (when > 3 agencies) */}
+                {agencies.length > 3 && (
+                  <div className="relative border-b border-white/[0.04] p-2">
+                    <SearchIcon className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      value={switcherSearch}
+                      onChange={(e) => setSwitcherSearch(e.target.value)}
+                      placeholder="Search agencies…"
+                      className="w-full rounded-lg border border-white/[0.06] bg-white/[0.03] py-1.5 pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary/40 focus:outline-none"
+                    />
+                  </div>
+                )}
+
+                {/* Agency list */}
+                <div className="max-h-64 overflow-y-auto p-1.5">
+                  {filteredAgencies.length === 0 && switcherSearch.trim() && (
+                    <p className="py-4 text-center text-xs text-muted-foreground">No agencies found</p>
+                  )}
+                  {filteredAgencies.map((am) => {
+                    const isActive = am.company.id === activeAgencyId;
+                    const vStatus = am.company.verification_status;
+                    return (
+                      <button
+                        key={am.company.id}
+                        onClick={() => {
+                          if (!isActive) {
+                            switchAgency(am.company.id);
+                          }
+                          setSwitcherOpen(false);
+                          setMobileOpen(false);
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-2.5 rounded-lg px-2 py-2.5 text-left transition",
+                          isActive ? "bg-primary/10" : "hover:bg-white/[0.04]",
+                        )}
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10">
+                          {am.company.logo_url ? (
+                            <img src={am.company.logo_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <Building2 className="h-4 w-4 text-primary" />
+                          )}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-bold text-foreground">{am.company.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] capitalize text-muted-foreground">{am.member.role}</span>
+                            {vStatus === "verified" && <ShieldCheck className="h-2.5 w-2.5 text-emerald-400" />}
+                            {vStatus === "pending" && <Clock className="h-2.5 w-2.5 text-amber-400" />}
+                            {vStatus === "rejected" && <AlertCircle className="h-2.5 w-2.5 text-destructive" />}
+                          </div>
+                        </div>
+                        {isActive && (
+                          <span className="flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+                            <Check className="h-2.5 w-2.5" /> Active
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Bottom actions — Add Agency + Join Agency */}
+                <div className="border-t border-white/[0.06] p-1.5">
+                  <button
+                    onClick={() => {
+                      navigate("/consulting/create-agency");
+                      setSwitcherOpen(false);
+                      setMobileOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-bold text-primary transition hover:bg-primary/5"
+                  >
+                    <Plus className="h-3.5 w-3.5 shrink-0" />
+                    Add Agency
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate("/consulting/join-agency");
+                      setSwitcherOpen(false);
+                      setMobileOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-bold text-primary transition hover:bg-primary/5"
+                  >
+                    <LogIn className="h-3.5 w-3.5 shrink-0" />
+                    Join Existing Agency
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Subscription info */}
         {!collapsed && (
@@ -367,7 +443,7 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
 
           <div className="hidden items-center gap-2 md:flex">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <SearchIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <input
                 placeholder="Search…"
                 className="w-44 rounded-xl border border-white/[0.06] bg-white/[0.03] py-2 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary/40 focus:outline-none lg:w-56"

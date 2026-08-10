@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import createContextHook from "@nkzw/create-context-hook";
 
@@ -95,6 +95,8 @@ interface ConsultingContextValue {
   hasNoAgencies: boolean;
   /** True if the user has an approved agency application (via RPC). CRM access depends on this. */
   isApproved: boolean;
+  /** True while agency context is switching (for skeleton loaders). */
+  isSwitching: boolean;
 }
 
 const ACTIVE_AGENCY_KEY = "oxen.consulting.activeAgencyId";
@@ -277,11 +279,21 @@ function useConsultingState() {
   }, [queryClient]);
 
   // ── Multi-Agency: switch active agency context ──
+  const [isSwitching, setIsSwitching] = useState(false);
+
   const switchAgency = useCallback(
     (agencyId: string) => {
       if (!user) return;
       writeActiveAgencyId(user.id, agencyId);
+      // Invalidate ALL consulting/CRM queries so data refetches for the new agency.
+      // Every CRM query key starts with "consulting" — this broad invalidation
+      // ensures clients, applications, packages, members, analytics, activity, etc.
+      // all reload with the new activeAgencyId context.
+      setIsSwitching(true);
+      queryClient.removeQueries({ queryKey: ["consulting"] });
       queryClient.invalidateQueries({ queryKey: ["consulting-agencies"] });
+      // Clear switching state after a brief delay to allow refetches to start
+      setTimeout(() => setIsSwitching(false), 600);
     },
     [user, queryClient],
   );
@@ -409,13 +421,14 @@ function useConsultingState() {
       switchAgency,
       hasNoAgencies,
       isApproved,
+      isSwitching,
     }),
     [
       effectiveCompany, effectiveMember, role, loading, isTestMode, isMember, isAdmin,
       subscriptionAccess, hasActiveSubscription, hasExpiredSubscription, subscriptionEndDate,
       subscriptionPlan, can, refresh, changeMemberRole, changeMemberStatus, removeMember,
       logActivity, renewSubscription, simulateExpiration,
-      agencyList, activeAgencyId, switchAgency, hasNoAgencies, isApproved,
+      agencyList, activeAgencyId, switchAgency, hasNoAgencies, isApproved, isSwitching,
     ],
   );
 }
