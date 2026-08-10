@@ -66,7 +66,9 @@ const ConsultingPublicCompanyProfile = lazy(() => import("./pages/consulting/Pub
 const ConsultingClients = lazy(() => import("./pages/consulting/Clients"));
 const ConsultingApplications = lazy(() => import("./pages/consulting/Applications"));
 const ConsultingPackages = lazy(() => import("./pages/consulting/Packages"));
+const ConsultingPosts = lazy(() => import("./pages/consulting/Posts"));
 const ConsultingPublicPackage = lazy(() => import("./pages/consulting/PublicPackageProfile"));
+const TourPostDetail = lazy(() => import("./pages/TourPostDetail"));
 const ConsultingEmployees = lazy(() => import("./pages/consulting/Employees"));
 const ConsultingAnalytics = lazy(() => import("./pages/consulting/Analytics"));
 const ConsultingActivityLog = lazy(() => import("./pages/consulting/ActivityLog"));
@@ -268,8 +270,11 @@ const App = () => (
                                 <Route path="/consulting/clients" element={<RequireAuth><RequireConsultingMember><ConsultingClients /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/applications" element={<RequireAuth><RequireConsultingMember><ConsultingApplications /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/packages" element={<RequireAuth><RequireConsultingMember><ConsultingPackages /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/posts" element={<RequireAuth><RequireConsultingMember><ConsultingPosts /></RequireConsultingMember></RequireAuth>} />
                                 {/* Public package route — visible only when published */}
                                 <Route path="/consulting/package/:packageId" element={<ConsultingPublicPackage />} />
+                                {/* Public tour post detail — visible to everyone */}
+                                <Route path="/tour/:postId" element={<TourPostDetail />} />
                                 <Route path="/consulting/employees" element={<RequireAuth><RequireConsultingMember><ConsultingEmployees /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/pos" element={<RequireAuth><RequireConsultingMember><ConsultingPOS /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/cashier" element={<RequireAuth><RequireConsultingMember><ConsultingCashier /></RequireConsultingMember></RequireAuth>} />

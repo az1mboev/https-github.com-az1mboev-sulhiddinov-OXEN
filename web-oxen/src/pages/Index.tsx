@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, Search, X, Building2, ShieldCheck, MapPin, Package as PackageIcon, ArrowRight } from "lucide-react";
-import { Suspense, lazy, useCallback, useMemo, useState } from "react";
+import { Sparkles, Search, X, Building2, ShieldCheck, MapPin, Package as PackageIcon, ArrowRight, Calendar, Clock, Users, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Suspense, lazy, useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -12,6 +12,7 @@ import { useSidebar } from "@/contexts/SidebarContext";
 import { useTravel } from "@/contexts/TravelContext";
 import { COUNTRIES, type Country } from "@/data/countries";
 import { fetchPublishedAgencies, fetchAgencyServiceCount, type ConsultingCompany } from "@/lib/consulting";
+import { fetchPublishedTourPosts, formatPrice, calculateDiscount, calculateDuration, type TourPost } from "@/lib/tour-posts";
 
 const OXEN_LOGO = "/logo.png";
 
@@ -145,6 +146,249 @@ function TourAgenciesSection() {
               <AgencyCard key={agency.id} agency={agency} index={i} />
             ))}
           </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ── Tour Packages section (below globe) ────────────────────────────── */
+
+type TourFilter = "all" | "popular" | "upcoming" | "budget";
+
+function TourPackageCard({ post, index }: { post: TourPost; index: number }) {
+  const navigate = useNavigate();
+  const duration = calculateDuration(post.departure_date, post.return_date);
+  const discount = calculateDiscount(post.price ?? 0, post.old_price);
+  const company = post.company;
+  const isVerified = company?.verification_status === "verified";
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 24, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay: index * 0.06, type: "spring" as const, stiffness: 260, damping: 24, mass: 0.8 }}
+      whileTap={{ scale: 0.97 }}
+      onClick={() => navigate(`/tour/${post.id}`)}
+      className="group relative w-[300px] shrink-0 cursor-pointer overflow-hidden rounded-3xl"
+    >
+      <div className="glass-card overflow-hidden rounded-3xl">
+        {/* Cover image */}
+        <div className="relative h-44 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-transparent">
+          {post.cover_image ? (
+            <img src={post.cover_image} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground/30">
+              <ImageIcon className="h-8 w-8" />
+            </div>
+          )}
+          {discount && (
+            <div className="absolute right-2 top-2 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-bold text-white">
+              -{discount}%
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="p-4">
+          {post.destination_country && (
+            <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-primary">
+              <MapPin className="h-3 w-3" />
+              {[post.destination_city, post.destination_country].filter(Boolean).join(", ")}
+            </p>
+          )}
+          <h3 className="truncate font-display text-sm font-bold text-foreground">{post.title}</h3>
+
+          <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+            {duration && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{duration}</span>}
+            {post.departure_date && (
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {new Date(post.departure_date).toLocaleDateString("en", { month: "short", day: "numeric" })}
+              </span>
+            )}
+          </div>
+
+          {/* Price */}
+          <div className="mt-3 flex items-end justify-between">
+            <div>
+              {post.old_price && post.old_price > (post.price ?? 0) && (
+                <span className="mr-1.5 text-[11px] text-muted-foreground line-through">
+                  {formatPrice(post.old_price, post.currency)}
+                </span>
+              )}
+              <span className="font-display text-lg font-bold text-foreground">
+                {post.price ? formatPrice(post.price, post.currency) : "—"}
+              </span>
+            </div>
+            {post.available_seats !== null && post.available_seats <= 5 && (
+              <span className={"rounded-full px-2 py-0.5 text-[9px] font-bold " + (post.available_seats === 0 ? "bg-red-500/15 text-red-400" : "bg-amber-500/15 text-amber-400")}>
+                {post.available_seats === 0 ? "Sold out" : `${post.available_seats} left`}
+              </span>
+            )}
+          </div>
+
+          {/* Agency */}
+          {company && (
+            <div className="mt-3 flex items-center gap-2 border-t border-white/[0.06] pt-3">
+              <div className="h-7 w-7 shrink-0 overflow-hidden rounded-lg bg-primary/15">
+                {company.logo_url ? (
+                  <img src={company.logo_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-primary">
+                    <Building2 className="h-3.5 w-3.5" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <p className="truncate text-[11px] font-semibold text-foreground">{company.name}</p>
+                  {isVerified && <ShieldCheck className="h-3 w-3 shrink-0 text-emerald-400" />}
+                </div>
+              </div>
+              <span className="flex items-center gap-0.5 text-[11px] font-semibold text-primary transition group-hover:gap-1.5">
+                View Tour <ArrowRight className="h-3 w-3" />
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.article>
+  );
+}
+
+function TourPackagesSection({
+  selectedCountry,
+  onClearCountry,
+}: {
+  selectedCountry: string | null;
+  onClearCountry: () => void;
+}) {
+  const navigate = useNavigate();
+  const [filter, setFilter] = useState<TourFilter>("all");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch published tour posts (filtered by selected country from globe)
+  const { data: posts, isLoading } = useQuery({
+    queryKey: ["tour-posts-published", selectedCountry],
+    queryFn: () => fetchPublishedTourPosts(selectedCountry ?? undefined, 24),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  // Apply lightweight filters on the client side
+  const filtered = useMemo(() => {
+    if (!posts || posts.length === 0) return [];
+    const now = Date.now();
+    switch (filter) {
+      case "popular":
+        return [...posts].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 12);
+      case "upcoming":
+        return posts
+          .filter((p) => p.departure_date && new Date(p.departure_date).getTime() > now)
+          .sort((a, b) => new Date(a.departure_date!).getTime() - new Date(b.departure_date!).getTime())
+          .slice(0, 12);
+      case "budget":
+        return [...posts].sort((a, b) => (a.price ?? 0) - (b.price ?? 0)).slice(0, 12);
+      default:
+        return posts.slice(0, 12);
+    }
+  }, [posts, filter]);
+
+  const scrollBy = (dir: number) => {
+    scrollRef.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
+  };
+
+  // Don't render the section if there are no published posts (and not loading)
+  if (!isLoading && (!filtered || filtered.length === 0)) return null;
+
+  const filters: { key: TourFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "popular", label: "Popular" },
+    { key: "upcoming", label: "Upcoming" },
+    { key: "budget", label: "Budget" },
+  ];
+
+  return (
+    <section className="relative z-10 pt-6 pb-10">
+      {/* Header */}
+      <div className="mb-4 flex items-center justify-between px-5">
+        <div>
+          <h2 className="font-display text-lg font-bold">
+            {selectedCountry ? `Tours in ${selectedCountry}` : "Tour Packages"}
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {selectedCountry
+              ? "Discover offers for your selected destination"
+              : "Discover offers from travel agencies on OXEN."}
+          </p>
+        </div>
+        {/* Scroll arrows (desktop) */}
+        <div className="hidden items-center gap-1.5 sm:flex">
+          <button onClick={() => scrollBy(-1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground transition hover:bg-white/12 hover:text-foreground">
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button onClick={() => scrollBy(1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground transition hover:bg-white/12 hover:text-foreground">
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Country filter banner */}
+      {selectedCountry && (
+        <div className="mb-3 flex items-center gap-2 px-5">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
+            <MapPin className="h-3 w-3" /> {selectedCountry}
+            <button onClick={onClearCountry} className="ml-1 text-primary/70 hover:text-primary">
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        </div>
+      )}
+
+      {/* Filter chips */}
+      {!selectedCountry && (
+        <div className="mb-3 flex gap-1.5 px-5">
+          {filters.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={
+                "rounded-full px-3 py-1 text-xs font-semibold transition " +
+                (filter === f.key ? "bg-primary/15 text-primary" : "bg-white/[0.04] text-muted-foreground hover:text-foreground")
+              }
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Loading skeletons */}
+      {isLoading && (
+        <div className="flex items-center gap-3 px-5">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-[340px] w-[300px] shrink-0 animate-pulse rounded-3xl bg-white/[0.04]" />
+          ))}
+        </div>
+      )}
+
+      {/* Cards carousel */}
+      {!isLoading && filtered.length > 0 && (
+        <div ref={scrollRef} className="-mx-0 overflow-x-auto no-scrollbar">
+          <div className="flex gap-4 px-5">
+            {filtered.map((post, i) => (
+              <TourPackageCard key={post.id} post={post} index={i} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state — no fake tours */}
+      {!isLoading && (!posts || posts.length === 0) && (
+        <div className="px-5 py-12 text-center">
+          <p className="text-sm text-muted-foreground">No tour packages available yet.</p>
+          <p className="mt-1 text-xs text-muted-foreground/70">New offers from OXEN travel agencies will appear here.</p>
         </div>
       )}
     </section>
@@ -380,6 +624,9 @@ export default function Index() {
           </button>
         </motion.div>
       </section>
+
+      {/* ── Tour Packages (below globe) ───────────── */}
+      <TourPackagesSection selectedCountry={selectedCountry?.name ?? null} onClearCountry={() => { setSelectedCountry(null); setModalStep("closed"); }} />
 
       {/* ── Tour Agencies ──────────────────────────── */}
       <TourAgenciesSection />
