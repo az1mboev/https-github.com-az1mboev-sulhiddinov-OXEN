@@ -2367,9 +2367,11 @@ export async function createNewAgency(
   input: {
     ownerId: string;
     name: string;
+    legalName?: string | null;
     logoUrl?: string | null;
     country?: string;
     city?: string;
+    // Optional fields (not asked during creation, but supported for programmatic use)
     contactPhone?: string | null;
     contactEmail?: string | null;
     whatsapp?: string | null;
@@ -2384,7 +2386,7 @@ export async function createNewAgency(
     licenseIssuingOrg?: string | null;
   },
 ): Promise<{ company: ConsultingCompany | null; error: string | null }> {
-  // Build social_links from individual inputs
+  // Build social_links from individual inputs (if provided)
   const socialLinks: Record<string, string> = {};
   if (input.instagram) socialLinks.instagram = input.instagram;
   if (input.telegram) socialLinks.telegram = input.telegram;
@@ -2395,6 +2397,7 @@ export async function createNewAgency(
     .insert({
       owner_id: input.ownerId,
       name: input.name,
+      legal_name: input.legalName ?? null,
       logo_url: input.logoUrl ?? null,
       country: input.country || null,
       city: input.city || null,
