@@ -2127,45 +2127,40 @@ export interface AgencyMembership {
   member: ConsultingMember;
 }
 
-/** Fetch ALL agencies the current user belongs to (active memberships only). */
+/** Fetch ALL agencies the current user owns.
+ *  Ownership is determined by consulting_companies.owner_id (no consulting_members table).
+ *  One user can own multiple agencies — uses a list query, never .single(). */
 export async function fetchUserAgencies(
   userId: string,
 ): Promise<AgencyMembership[]> {
-  const { data: members, error: mErr } = await supabase
-    .from("consulting_members")
-    .select("*")
-    .eq("user_id", userId)
-    .neq("status", "removed")
-    .order("created_at", { ascending: true });
-  if (mErr) {
-    console.error("fetchUserAgencies members error:", mErr);
-    return [];
-  }
-  if (!members || members.length === 0) return [];
-
-  const companyIds = (members as unknown as ConsultingMember[]).map(
-    (m) => m.consulting_company_id,
-  );
   const { data: companies, error: cErr } = await supabase
     .from("consulting_companies")
     .select("*")
-    .in("id", companyIds);
+    .eq("owner_id", userId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
   if (cErr) {
-    console.error("fetchUserAgencies companies error:", cErr);
+    console.error("fetchUserAgencies error:", cErr);
     return [];
   }
+  if (!companies || companies.length === 0) return [];
 
-  const companyMap = new Map<string, ConsultingCompany>();
-  for (const c of (companies ?? []) as unknown as ConsultingCompany[]) {
-    companyMap.set(c.id, c);
-  }
-
-  const result: AgencyMembership[] = [];
-  for (const m of members as unknown as ConsultingMember[]) {
-    const company = companyMap.get(m.consulting_company_id);
-    if (company) result.push({ company, member: m });
-  }
-  return result;
+  // Synthesize owner member objects (no consulting_members table exists)
+  return (companies as unknown as ConsultingCompany[]).map((company) => ({
+    company,
+    member: {
+      id: `owner-${company.id}`,
+      consulting_company_id: company.id,
+      user_id: userId,
+      role: "owner" as MemberRole,
+      status: "active" as MemberStatus,
+      invited_by: null,
+      last_active_at: null,
+      created_at: company.created_at,
+      updated_at: company.updated_at,
+      profile: null,
+    } as ConsultingMember,
+  }));
 }
 
 /** Fetch a single agency by ID (for active agency context). */
@@ -2181,19 +2176,33 @@ export async function fetchAgencyById(
   return data as unknown as ConsultingCompany | null;
 }
 
-/** Fetch membership for a specific user+agency pair. */
+/** Fetch membership for a specific user+agency pair.
+ *  Checks ownership via consulting_companies.owner_id (no consulting_members table). */
 export async function fetchMembership(
   userId: string,
   agencyId: string,
 ): Promise<ConsultingMember | null> {
   const { data, error } = await supabase
-    .from("consulting_members")
+    .from("consulting_companies")
     .select("*")
-    .eq("user_id", userId)
-    .eq("consulting_company_id", agencyId)
+    .eq("id", agencyId)
+    .eq("owner_id", userId)
     .maybeSingle();
   if (error) console.error("fetchMembership error:", error);
-  return data as unknown as ConsultingMember | null;
+  if (!data) return null;
+  const company = data as unknown as ConsultingCompany;
+  return {
+    id: `owner-${company.id}`,
+    consulting_company_id: company.id,
+    user_id: userId,
+    role: "owner" as MemberRole,
+    status: "active" as MemberStatus,
+    invited_by: null,
+    last_active_at: null,
+    created_at: company.created_at,
+    updated_at: company.updated_at,
+    profile: null,
+  } as ConsultingMember;
 }
 
 /** Look up an agency by its public agency code (for joining). */
@@ -2291,7 +2300,9 @@ export async function fetchMyJoinRequests(
   return (data ?? []) as unknown as AgencyJoinRequest[];
 }
 
-/** Approve a join request — creates a consulting_members row + marks request approved. */
+/** Approve a join request — marks request approved.
+ *  Team member architecture (consulting_members) will be added separately.
+ *  For now, the join request approval is recorded so the owner can track it. */
 export async function approveJoinRequest(
   requestId: string,
   reviewerId: string,
@@ -2304,28 +2315,6 @@ export async function approveJoinRequest(
   if (fErr || !req) {
     return { ok: false, error: "Join request not found." };
   }
-  const r = req as unknown as AgencyJoinRequest;
-
-  // Map join-request role to consulting_members role
-  const memberRole: MemberRole =
-    r.requested_role === "admin" ? "administrator"
-    : r.requested_role === "manager" ? "manager"
-    : "consultant";
-
-  // Insert member row (upsert in case of re-join)
-  const { error: mErr } = await supabase
-    .from("consulting_members")
-    .upsert({
-      consulting_company_id: r.agency_id,
-      user_id: r.user_id,
-      role: memberRole,
-      status: "active",
-      invited_by: reviewerId,
-    }, { onConflict: "consulting_company_id,user_id" });
-  if (mErr) {
-    console.error("approveJoinRequest member insert error:", mErr);
-    return { ok: false, error: mErr.message };
-  }
 
   // Mark request approved
   const { error: uErr } = await supabase
@@ -2336,7 +2325,10 @@ export async function approveJoinRequest(
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", requestId);
-  if (uErr) console.error("approveJoinRequest update error:", uErr);
+  if (uErr) {
+    console.error("approveJoinRequest update error:", uErr);
+    return { ok: false, error: uErr.message };
+  }
 
   return { ok: true, error: null };
 }
@@ -2361,8 +2353,32 @@ export async function rejectJoinRequest(
   return { ok: true, error: null };
 }
 
-/** Create a new agency — the creator becomes the owner.
- *  Accepts all optional profile fields so the form can capture rich data upfront. */
+/** Generate a unique 6-character agency code (uppercase, no ambiguous chars like O/0, I/1). */
+async function generateUniqueAgencyCode(): Promise<string> {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  for (let attempt = 0; attempt < 20; attempt++) {
+    let code = "";
+    for (let i = 0; i < 6; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    const { data: existing } = await supabase
+      .from("consulting_companies")
+      .select("id")
+      .eq("agency_code", code)
+      .maybeSingle();
+    if (!existing) return code;
+  }
+  // Extremely unlikely fallback — 8 chars
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+/** Create a new agency — the creator becomes the owner via owner_id.
+ *  Generates a unique agency_code before insert.
+ *  No consulting_members table — ownership is via consulting_companies.owner_id. */
 export async function createNewAgency(
   input: {
     ownerId: string;
@@ -2391,7 +2407,10 @@ export async function createNewAgency(
   if (input.instagram) socialLinks.instagram = input.instagram;
   if (input.telegram) socialLinks.telegram = input.telegram;
 
-  // 1. Create the company (agency_code is auto-generated by the DB trigger)
+  // Generate a unique agency code before creating the company
+  const agencyCode = await generateUniqueAgencyCode();
+
+  // Create the company with owner_id + agency_code
   const { data: company, error: cErr } = await supabase
     .from("consulting_companies")
     .insert({
@@ -2401,6 +2420,7 @@ export async function createNewAgency(
       logo_url: input.logoUrl ?? null,
       country: input.country || null,
       city: input.city || null,
+      agency_code: agencyCode,
       contact_phone: input.contactPhone ?? null,
       contact_email: input.contactEmail ?? null,
       whatsapp: input.whatsapp ?? null,
@@ -2428,55 +2448,32 @@ export async function createNewAgency(
     return { company: null, error: cErr?.message ?? "Failed to create agency" };
   }
 
-  const companyId = (company as ConsultingCompany).id;
-
-  // 2. Create owner member row (upsert in case of partial-failure retry)
-  const { error: mErr } = await supabase
-    .from("consulting_members")
-    .upsert({
-      consulting_company_id: companyId,
-      user_id: input.ownerId,
-      role: "owner",
-      status: "active",
-      invited_by: input.ownerId,
-    }, { onConflict: "consulting_company_id,user_id" });
-  if (mErr) console.error("createNewAgency member insert error:", mErr);
-
+  // No consulting_members table — ownership is via owner_id column.
+  // The creator is the owner by virtue of owner_id = input.ownerId.
   return { company: company as ConsultingCompany, error: null };
 }
 
-/** Leave an agency — removes the user's membership. Does NOT delete the agency. */
+/** Leave an agency. Owners cannot leave — they must deactivate instead.
+ *  Does NOT delete the agency. */
 export async function leaveAgency(
   userId: string,
   agencyId: string,
 ): Promise<{ ok: boolean; error: string | null }> {
-  // Check if user is the only owner
-  const { data: member } = await supabase
-    .from("consulting_members")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("consulting_company_id", agencyId)
-    .eq("status", "active")
+  // Check if user is the owner via consulting_companies.owner_id
+  const { data: company } = await supabase
+    .from("consulting_companies")
+    .select("id, owner_id")
+    .eq("id", agencyId)
     .maybeSingle();
-  const userRole = (member as { role: MemberRole } | null)?.role;
 
-  if (userRole === "owner") {
-    // Count active owners
-    const { count } = await supabase
-      .from("consulting_members")
-      .select("*", { count: "exact", head: true })
-      .eq("consulting_company_id", agencyId)
-      .eq("role", "owner")
-      .eq("status", "active");
-    if ((count ?? 0) <= 1) {
-      return {
-        ok: false,
-        error: "You are the only owner. Transfer ownership before leaving.",
-      };
-    }
+  if (company?.owner_id === userId) {
+    return {
+      ok: false,
+      error: "You are the owner of this agency. Deactivate the agency instead of leaving.",
+    };
   }
 
-  // Set membership status to removed
+  // For non-owners, try consulting_members (if it exists in the future)
   const { error } = await supabase
     .from("consulting_members")
     .update({ status: "removed", updated_at: new Date().toISOString() })

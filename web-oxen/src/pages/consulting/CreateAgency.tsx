@@ -153,9 +153,12 @@ export default function CreateAgency() {
       if (result.company) {
         switchAgency(result.company.id);
         refresh();
+        const code = result.company.agency_code;
         toast({
           title: "Agency created!",
-          description: `${result.company.name} is ready. Your Agency Code is ${result.company.agency_code ?? "auto-generated"}.`,
+          description: code
+            ? `${result.company.name} is ready. Your Agency Code is ${code}.`
+            : `${result.company.name} is ready.`,
         });
         navigate("/consulting/dashboard", { replace: true });
       } else {

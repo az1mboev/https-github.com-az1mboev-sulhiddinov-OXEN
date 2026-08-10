@@ -198,7 +198,9 @@ function useConsultingState() {
   const effectiveMember = activeAgency?.member ?? null;
   const isTestMode = false;
 
-  const loading = !authReady || (isEnabled && approvalLoading) || (isApproved && agenciesLoading);
+  // Loading must include agenciesLoading regardless of approval status,
+  // otherwise the workspace briefly shows "no agencies" before data arrives.
+  const loading = !authReady || (isEnabled && (approvalLoading || agenciesLoading));
 
   const role = effectiveMember?.role ?? null;
   const isMember = !!effectiveMember;

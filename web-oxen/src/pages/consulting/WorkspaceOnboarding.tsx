@@ -98,6 +98,15 @@ export default function WorkspaceOnboarding() {
 
   const isLoading = loading || appLoading;
 
+  // Auto-redirect to dashboard when user has agencies and is approved.
+  // Don't redirect if not approved (would cause loop with RequireConsultingMember).
+  useEffect(() => {
+    if (isLoading) return;
+    if (agencies.length > 0 && activeAgencyId && isApproved) {
+      navigate("/consulting/dashboard", { replace: true });
+    }
+  }, [isLoading, agencies.length, activeAgencyId, isApproved, navigate]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero header */}
@@ -137,8 +146,9 @@ export default function WorkspaceOnboarding() {
 
       {/* Content */}
       <div className="mx-auto max-w-4xl px-6 py-10">
-        {/* Loading state */}
-        {isLoading && agencies.length === 0 && (
+        {/* Loading state — shown while auth, agency data, or application status loads.
+            Never show "no agencies" during loading. */}
+        {isLoading && (
           <div className="flex items-center justify-center py-20 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
@@ -193,8 +203,8 @@ export default function WorkspaceOnboarding() {
           </motion.section>
         )}
 
-        {/* My Agencies list (only if approved or already has agencies) */}
-        {agencies.length > 0 && (isApproved || !isBlocked) && (
+        {/* My Agencies list — show whenever user has agencies, regardless of approval status */}
+        {agencies.length > 0 && !isLoading && (
           <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
