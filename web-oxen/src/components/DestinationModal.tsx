@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, MapPin, Plane, Heart, Globe2, Users, Coins, Languages, Clock, Ruler } from "lucide-react";
+import { X, MapPin, Plane, Heart, Globe2, Users, Coins, Languages, Clock, Ruler, MapIcon } from "lucide-react";
 
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTravel } from "@/contexts/TravelContext";
@@ -294,6 +294,15 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
                 <Plane className="h-4 w-4" />
                 {t("modal.travelHere", "Travel Here")}
               </button>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(localizedCountry.name)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-5 py-3 text-sm font-medium text-white/50 transition hover:border-white/12 hover:bg-white/8 hover:text-white/75 active:scale-[0.98]"
+              >
+                <MapIcon className="h-4 w-4" strokeWidth={2} />
+                {t("modal.viewOnMaps", "View on Google Maps")}
+              </a>
               <button
                 onClick={() => toggleWishlist(localizedCountry.id)}
                 className={`flex items-center justify-center gap-2 rounded-xl border px-5 py-3 text-sm font-medium transition active:scale-[0.98] ${
