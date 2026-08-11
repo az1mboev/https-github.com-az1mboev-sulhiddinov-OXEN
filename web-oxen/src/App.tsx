@@ -74,18 +74,10 @@ const ConsultingAnalytics = lazy(() => import("./pages/consulting/Analytics"));
 const ConsultingActivityLog = lazy(() => import("./pages/consulting/ActivityLog"));
 const ConsultingPOS = lazy(() => import("./pages/consulting/POS"));
 const ConsultingCashier = lazy(() => import("./pages/consulting/Cashier"));
-const ConsultingReviewsComingSoon = lazy(() =>
-  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.ReviewsComingSoon })),
-);
-const ConsultingSubscriptionComingSoon = lazy(() =>
-  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.SubscriptionComingSoon })),
-);
-const ConsultingSettingsComingSoon = lazy(() =>
-  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.SettingsComingSoon })),
-);
-const ConsultingSupportComingSoon = lazy(() =>
-  import("./pages/consulting/ComingSoonPages").then((m) => ({ default: m.SupportComingSoon })),
-);
+const ConsultingReviews = lazy(() => import("./pages/consulting/Reviews"));
+const ConsultingSubscription = lazy(() => import("./pages/consulting/Subscription"));
+const ConsultingSettings = lazy(() => import("./pages/consulting/Settings"));
+const ConsultingHelpSupport = lazy(() => import("./pages/consulting/HelpSupport"));
 const Country = lazy(() => import("./pages/Country"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
@@ -280,11 +272,11 @@ const App = () => (
                                 <Route path="/consulting/cashier" element={<RequireAuth><RequireConsultingMember><ConsultingCashier /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/analytics" element={<RequireAuth><RequireConsultingMember><ConsultingAnalytics /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/activity" element={<RequireAuth><RequireConsultingMember><ConsultingActivityLog /></RequireConsultingMember></RequireAuth>} />
-                                <Route path="/consulting/reviews" element={<RequireAuth><RequireConsultingMember><ConsultingReviewsComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/reviews" element={<RequireAuth><RequireConsultingMember><ConsultingReviews /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/company-profile" element={<RequireAuth><RequireConsultingMember><ConsultingCompanyProfile /></RequireConsultingMember></RequireAuth>} />
-                                <Route path="/consulting/subscription" element={<RequireAuth><RequireConsultingMember allowExpired><ConsultingSubscriptionComingSoon /></RequireConsultingMember></RequireAuth>} />
-                                <Route path="/consulting/settings" element={<RequireAuth><RequireConsultingMember><ConsultingSettingsComingSoon /></RequireConsultingMember></RequireAuth>} />
-                                <Route path="/consulting/support" element={<RequireAuth><RequireConsultingMember allowExpired><ConsultingSupportComingSoon /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/subscription" element={<RequireAuth><RequireConsultingMember allowExpired><ConsultingSubscription /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/settings" element={<RequireAuth><RequireConsultingMember><ConsultingSettings /></RequireConsultingMember></RequireAuth>} />
+                                <Route path="/consulting/support" element={<RequireAuth><RequireConsultingMember allowExpired><ConsultingHelpSupport /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/apply" element={<RequireAuth><RequireConsultingMember allowOnboarding><ConsultingAgencyApplicationForm /></RequireConsultingMember></RequireAuth>} />
                                 <Route path="/consulting/application-status" element={<RequireAuth><RequireConsultingMember allowOnboarding><ConsultingApplicationStatus /></RequireConsultingMember></RequireAuth>} />
                                 <Route

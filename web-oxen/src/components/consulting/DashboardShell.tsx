@@ -33,22 +33,28 @@ import {
   Clock,
   AlertCircle,
   Loader2,
+  CheckCheck,
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConsulting } from "@/contexts/ConsultingContext";
 import LogoutDialog from "@/components/LogoutDialog";
 import { getPlan } from "@/lib/consulting";
+import {
+  fetchNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  type ConsultingNotification,
+} from "@/lib/crm-extras";
 
 interface NavItem {
   to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  /** Routes not built yet — clicking shows the "next phase" page (still navigable). */
-  comingNext?: boolean;
 }
 
-// Recommended order per spec. POS and Cashier are fully functional (no "Soon" label).
+// All modules are now fully functional — no SOON badges.
 const NAV_ITEMS: NavItem[] = [
   { to: "/consulting/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/consulting/clients", label: "Clients", icon: Users },
@@ -60,11 +66,11 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/consulting/employees", label: "Employees", icon: UserCog },
   { to: "/consulting/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/consulting/activity", label: "Activity Log", icon: Activity },
-  { to: "/consulting/reviews", label: "Reviews", icon: Star, comingNext: true },
+  { to: "/consulting/reviews", label: "Reviews", icon: Star },
   { to: "/consulting/company-profile", label: "Profile", icon: Building2 },
-  { to: "/consulting/subscription", label: "Subscription", icon: SubscriptionIcon, comingNext: true },
-  { to: "/consulting/settings", label: "Settings", icon: SettingsIcon, comingNext: true },
-  { to: "/consulting/support", label: "Help & Support", icon: LifeBuoy, comingNext: true },
+  { to: "/consulting/subscription", label: "Subscription", icon: SubscriptionIcon },
+  { to: "/consulting/settings", label: "Settings", icon: SettingsIcon },
+  { to: "/consulting/support", label: "Help & Support", icon: LifeBuoy },
 ];
 
 interface DashboardShellProps {
@@ -92,6 +98,53 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
   const [collapsed, setCollapsed] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  // ── Notifications ──
+  const queryClient = useQueryClient();
+  const companyId = company?.id ?? "";
+  const { data: notifications } = useQuery({
+    queryKey: ["consulting-notifications", companyId],
+    queryFn: () => fetchNotifications(companyId, 20),
+    enabled: !!companyId,
+    staleTime: 30_000,
+    retry: false,
+    refetchInterval: 60_000,
+  });
+
+  const unreadCount = notifications?.filter((n) => !n.is_read).length ?? 0;
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) => markNotificationRead(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["consulting-notifications"] }),
+  });
+
+  const markAllMutation = useMutation({
+    mutationFn: () => markAllNotificationsRead(companyId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["consulting-notifications"] }),
+  });
+
+  const getNotifIcon = (type: string) => {
+    switch (type) {
+      case "new_client": return Users;
+      case "new_application": return FileStack;
+      case "tour_inquiry": return Megaphone;
+      case "review": return Star;
+      case "support_reply": return LifeBuoy;
+      default: return Bell;
+    }
+  };
+
+  const getNotifRoute = (type: string, data?: unknown) => {
+    switch (type) {
+      case "new_client": return "/consulting/clients";
+      case "new_application": return "/consulting/applications";
+      case "tour_inquiry": return "/consulting/posts";
+      case "review": return "/consulting/reviews";
+      case "support_reply": return "/consulting/support";
+      default: return null;
+    }
+  };
 
   const companyName = company?.name ?? "Consulting Dashboard";
   const logoUrl = company?.logo_url ?? null;
@@ -309,11 +362,6 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
                 >
                   <Icon className="h-[18px] w-[18px] shrink-0" />
                   <span className={cn("truncate", collapsed && "hidden")}>{item.label}</span>
-                  {item.comingNext && !collapsed && (
-                    <span className="ml-auto rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Soon
-                    </span>
-                  )}
                 </button>
               </li>
             );
@@ -453,13 +501,100 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
             </div>
           </div>
 
-          <button
-            className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04] text-muted-foreground transition hover:text-foreground"
-            aria-label="Notifications"
-          >
-            <Bell className="h-4 w-4" />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" />
-          </button>
+          {/* Notification bell with dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setNotifOpen((s) => !s)}
+              className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04] text-muted-foreground transition hover:text-foreground"
+              aria-label="Notifications"
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+            <AnimatePresence>
+              {notifOpen && (
+                <>
+                  <div className="fixed inset-0 z-[70]" onClick={() => setNotifOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                    className="absolute right-0 top-11 z-[71] w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-white/[0.08] bg-popover/95 shadow-2xl backdrop-blur-xl"
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+                      <span className="text-xs font-bold text-foreground">Notifications</span>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={() => markAllMutation.mutate()}
+                          className="flex items-center gap-1 text-[10px] font-semibold text-primary transition hover:text-primary/80"
+                        >
+                          <CheckCheck className="h-3 w-3" /> Mark all read
+                        </button>
+                      )}
+                    </div>
+                    {/* List */}
+                    <div className="max-h-80 overflow-y-auto">
+                      {(!notifications || notifications.length === 0) ? (
+                        <div className="py-8 text-center">
+                          <Bell className="mx-auto mb-2 h-6 w-6 text-muted-foreground/30" />
+                          <p className="text-xs text-muted-foreground">No notifications yet</p>
+                        </div>
+                      ) : (
+                        notifications.map((n: ConsultingNotification) => {
+                          const NIcon = getNotifIcon(n.type);
+                          const route = getNotifRoute(n.type, n.data);
+                          return (
+                            <button
+                              key={n.id}
+                              onClick={() => {
+                                if (!n.is_read) markReadMutation.mutate(n.id);
+                                const r = getNotifRoute(n.type, n.data);
+                                if (r) {
+                                  navigate(r);
+                                  setNotifOpen(false);
+                                }
+                              }}
+                              className={cn(
+                                "flex w-full items-start gap-2.5 border-b border-white/[0.04] px-4 py-3 text-left transition last:border-0",
+                                !n.is_read ? "bg-primary/5 hover:bg-primary/8" : "hover:bg-white/[0.03]",
+                              )}
+                            >
+                              <span className={cn(
+                                "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                                !n.is_read ? "bg-primary/15 text-primary" : "bg-white/[0.04] text-muted-foreground",
+                              )}>
+                                <NIcon className="h-3.5 w-3.5" />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                {n.title && (
+                                  <p className="truncate text-xs font-semibold text-foreground">{n.title}</p>
+                                )}
+                                {n.body && (
+                                  <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{n.body}</p>
+                                )}
+                                <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+                                  {new Date(n.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                </p>
+                              </div>
+                              {!n.is_read && (
+                                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
 
           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/15">
             {user?.avatarUrl ? (
