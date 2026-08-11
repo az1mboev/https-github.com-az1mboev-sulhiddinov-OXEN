@@ -313,9 +313,9 @@ function TourPackagesSection({
   return (
     <section className="relative z-10 pt-6 pb-10">
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between px-5">
-        <div>
-          <h2 className="font-display text-lg font-bold">
+      <div className="mb-4 flex items-center justify-between px-4 sm:px-5">
+        <div className="min-w-0">
+          <h2 className="font-display text-base font-bold truncate sm:text-lg">
             {selectedCountry ? `Tours in ${selectedCountry}` : "Tour Packages"}
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -337,7 +337,7 @@ function TourPackagesSection({
 
       {/* Country filter banner */}
       {selectedCountry && (
-        <div className="mb-3 flex items-center gap-2 px-5">
+        <div className="mb-3 flex items-center gap-2 px-4 sm:px-5">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
             <MapPin className="h-3 w-3" /> {selectedCountry}
             <button onClick={onClearCountry} className="ml-1 text-primary/70 hover:text-primary">
@@ -574,25 +574,25 @@ export default function Index() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-5 pt-6"
+          className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-4 pt-4 sm:px-5 sm:pt-6"
         >
           <div className="flex items-center gap-2">
             <img
               src={OXEN_LOGO}
               alt="OXEN"
-              className="h-9 w-9 rounded-xl object-contain shadow-lg"
+              className="h-8 w-8 rounded-xl object-contain shadow-lg sm:h-9 sm:w-9"
               loading="lazy"
               onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
             />
-            <span className="font-display text-xl font-extrabold tracking-wide">OXEN</span>
+            <span className="font-display text-lg font-extrabold tracking-wide sm:text-xl">OXEN</span>
           </div>
 
           {/* Search + Filter buttons */}
-          <div className="pointer-events-auto flex items-center gap-2">
+          <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2">
             <FilterButton onClick={() => setFilterOpen(true)} />
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-2 rounded-full bg-white/[0.06] px-4 py-2 backdrop-blur-xl border border-white/10 text-sm text-white/60 transition hover:bg-white/12 hover:text-white active:scale-95"
+              className="flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-2 backdrop-blur-xl border border-white/10 text-sm text-white/60 transition hover:bg-white/12 hover:text-white active:scale-95"
               aria-label="Search destinations"
             >
               <Search className="h-4 w-4" strokeWidth={2} />
@@ -606,19 +606,19 @@ export default function Index() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.7 }}
-          className="pointer-events-none absolute bottom-[6%] left-0 right-0 z-20 px-6 text-center"
+          className="pointer-events-none absolute bottom-[6%] left-0 right-0 z-20 px-4 text-center sm:px-6"
         >
-          <h1 className="font-display text-4xl font-extrabold leading-tight text-balance sm:text-5xl">
+          <h1 className="font-display text-3xl font-extrabold leading-tight text-balance sm:text-5xl">
             {t("hero.title.line1", "See the world")}
             <br />
             <span className="text-gold-gradient">{t("hero.title.line2", "from above.")}</span>
           </h1>
-          <p className="mx-auto mt-3 max-w-xs text-sm text-muted-foreground">
+          <p className="mx-auto mt-2 max-w-xs text-xs text-muted-foreground sm:mt-3 sm:text-sm">
             {t("hero.subtitle", "Spin the globe, discover countries, and let AI plan your next great escape.")}
           </p>
           <button
             onClick={() => navigate(selectedCountry ? `/planner?country=${encodeURIComponent(selectedCountry.name)}` : "/planner")}
-            className="gold-gradient pointer-events-auto mx-auto mt-5 flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground shadow-xl transition hover:scale-105 active:scale-95"
+            className="gold-gradient pointer-events-auto mx-auto mt-4 flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-xl transition hover:scale-105 active:scale-95 sm:mt-5 sm:px-6 sm:py-3 sm:text-sm"
           >
             <Sparkles className="h-4 w-4" />
             {t("hero.cta", "Plan a trip with AI")}

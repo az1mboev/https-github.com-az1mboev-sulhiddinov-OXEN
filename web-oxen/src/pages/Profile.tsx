@@ -503,7 +503,7 @@ export default function Profile() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08, type: "spring" as const, stiffness: 300, damping: 24 }}
-            className="mt-4 flex items-center gap-2.5"
+            className="mt-4 flex items-center gap-2 sm:gap-2.5"
           >
             <motion.button
               whileTap={{ scale: 0.95 }}

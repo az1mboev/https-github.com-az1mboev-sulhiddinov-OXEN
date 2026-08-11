@@ -154,7 +154,7 @@ export default function Sidebar() {
           animate={{ x: 0 }}
           exit={{ x: -SIDEBAR_WIDTH }}
           transition={springTransition}
-          className="sidebar-glass fixed inset-y-0 left-0 z-50 flex w-[85vw] max-w-[320px] flex-col rounded-r-3xl"
+          className="sidebar-glass fixed inset-y-0 left-0 z-50 flex w-[82vw] max-w-[320px] flex-col rounded-r-3xl"
           style={{ willChange: "transform" }}
         >
           {/* Close button */}
@@ -167,7 +167,7 @@ export default function Sidebar() {
           </button>
 
           {/* Header */}
-          <div className="flex-shrink-0 px-5 pt-10 pb-6">
+          <div className="flex-shrink-0 px-4 pt-10 pb-6 sm:px-5">
             <div className="flex items-center gap-3">
               <img
                 src={OXEN_LOGO}
@@ -194,7 +194,7 @@ export default function Sidebar() {
           </div>
 
           {/* Divider */}
-          <div className="mx-5 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          <div className="mx-4 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent sm:mx-5" />
 
           {/* Menu items */}
           <nav className="flex-1 overflow-y-auto px-3 py-4 no-scrollbar">
@@ -244,7 +244,7 @@ export default function Sidebar() {
           </nav>
 
           {/* Footer */}
-          <div className="flex-shrink-0 px-5 pb-7 pt-3">
+          <div className="flex-shrink-0 px-4 pb-7 pt-3 sm:px-5">
             <p className="text-center text-[11px] text-muted-foreground/50">
               OXEN · {t("nav.tagline", "Explore the world")}
             </p>

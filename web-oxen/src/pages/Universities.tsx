@@ -1222,14 +1222,14 @@ export default function Universities() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-5 pt-6"
+          className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-4 pt-4 sm:px-5 sm:pt-6"
         >
           <div className="flex items-center gap-2">
-            <img src={OXEN_LOGO} alt="OXEN" className="h-9 w-9 rounded-xl object-contain shadow-lg" loading="lazy" onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }} />
-            <span className="font-display text-xl font-extrabold tracking-wide">OXEN</span>
+            <img src={OXEN_LOGO} alt="OXEN" className="h-8 w-8 rounded-xl object-contain shadow-lg sm:h-9 sm:w-9" loading="lazy" onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }} />
+            <span className="font-display text-lg font-extrabold tracking-wide sm:text-xl">OXEN</span>
           </div>
 
-          <div className="pointer-events-auto flex items-center gap-2">
+          <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2">
             {/* Compare button */}
             {compareList.length > 0 && (
               <button
@@ -1241,26 +1241,26 @@ export default function Universities() {
               </button>
             )}
             {/* Layer toggles */}
-            <div className="flex items-center gap-1.5 rounded-full bg-white/[0.06] px-2 py-1.5 backdrop-blur-xl border border-white/10">
+            <div className="flex items-center gap-1 rounded-full bg-white/[0.06] px-1.5 py-1.5 backdrop-blur-xl border border-white/10 sm:gap-1.5 sm:px-2">
               <button
                 onClick={() => setShowCountries((v) => !v)}
-                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition active:scale-95 ${
+                className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold transition active:scale-95 sm:gap-1.5 sm:px-2.5 sm:text-xs ${
                   showCountries ? "bg-blue-500/20 text-blue-400" : "text-white/40"
                 }`}
                 aria-label="Toggle country markers"
               >
                 <span className="h-2 w-2 rounded-full bg-blue-400" />
-                {t("uni.countries", "Countries")}
+                <span className="hidden sm:inline">{t("uni.countries", "Countries")}</span>
               </button>
               <button
                 onClick={() => setShowUniversities((v) => !v)}
-                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition active:scale-95 ${
+                className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold transition active:scale-95 sm:gap-1.5 sm:px-2.5 sm:text-xs ${
                   showUniversities ? "bg-amber-500/20 text-amber-400" : "text-white/40"
                 }`}
                 aria-label="Toggle university markers"
               >
                 <span className="h-2 w-2 rounded-full bg-amber-400" />
-                {t("uni.universities", "Universities")}
+                <span className="hidden sm:inline">{t("uni.universities", "Universities")}</span>
               </button>
             </div>
             {/* Filter button */}
@@ -1279,7 +1279,7 @@ export default function Universities() {
             {/* Search button */}
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-2 rounded-full bg-white/[0.06] px-4 py-2 backdrop-blur-xl border border-white/10 text-sm text-white/60 transition hover:bg-white/12 hover:text-white active:scale-95"
+              className="flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-2 backdrop-blur-xl border border-white/10 text-sm text-white/60 transition hover:bg-white/12 hover:text-white active:scale-95 sm:px-4"
               aria-label="Search universities"
             >
               <Search className="h-4 w-4" strokeWidth={2} />
@@ -1293,14 +1293,14 @@ export default function Universities() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.7 }}
-          className="pointer-events-none absolute bottom-[6%] left-0 right-0 z-20 px-6 text-center"
+          className="pointer-events-none absolute bottom-[6%] left-0 right-0 z-20 px-4 text-center sm:px-6"
         >
-          <h1 className="font-display text-4xl font-extrabold leading-tight text-balance sm:text-5xl">
+          <h1 className="font-display text-3xl font-extrabold leading-tight text-balance sm:text-5xl">
             {t("uni.heroTitle1", "Explore universities")}
             <br />
             <span className="text-gold-gradient">{t("uni.heroTitle2", "around the world.")}</span>
           </h1>
-          <p className="mx-auto mt-3 max-w-xs text-sm text-muted-foreground">
+          <p className="mx-auto mt-2 max-w-xs text-xs text-muted-foreground sm:mt-3 sm:text-sm">
             {t("uni.heroSubtitle", "Spin the globe, discover universities, and let AI find your perfect match.")}
           </p>
         </motion.div>
@@ -1324,7 +1324,7 @@ export default function Universities() {
       </section>
 
       {/* ── Sort selector ─────────────────────────── */}
-      <section className="relative z-10 px-5 pt-6 pb-2">
+      <section className="relative z-10 px-4 pt-6 pb-2 sm:px-5">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           {[
             { key: "highest-ranking", label: t("uni.sortHighestRanking", "Highest Ranking") },
@@ -1354,14 +1354,14 @@ export default function Universities() {
       {/* ── Themed Recommendation Feeds (lazy rendered via IntersectionObserver) ── */}
       {themedFeeds.map((section, sectionIdx) => (
         <LazySection key={sectionIdx} className="relative z-10 pt-4 pb-3" minHeight={280}>
-          <div className="mb-3 flex items-center justify-between px-5">
-            <h2 className="flex items-center gap-2 font-display text-lg font-bold">
+          <div className="mb-3 flex items-center justify-between px-4 sm:px-5">
+            <h2 className="flex items-center gap-2 font-display text-base font-bold sm:text-lg">
               <span className="text-xl">{section.icon}</span>
               {section.title}
             </h2>
           </div>
           <div className="-mx-0 overflow-x-auto no-scrollbar">
-            <div className="flex gap-4 px-5">
+            <div className="flex gap-3 px-4 sm:gap-4 sm:px-5">
               {section.items.map((uni, i) => (
                 <UniversityDiscoverCard key={uni.id} uni={uni} index={i} />
               ))}
@@ -1372,12 +1372,12 @@ export default function Universities() {
 
       {/* ── Campus Videos (lazy rendered) ──────────── */}
       <LazySection className="relative z-10 pt-4 pb-6" minHeight={240}>
-        <div className="mb-4 px-5">
-          <h2 className="font-display text-lg font-bold">{t("uni.campusVideos", "Campus Videos")}</h2>
+        <div className="mb-4 px-4 sm:px-5">
+          <h2 className="font-display text-base font-bold sm:text-lg">{t("uni.campusVideos", "Campus Videos")}</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{t("uni.campusVideosDesc", "Tour campuses from around the world")}</p>
         </div>
         <div className="-mx-0 overflow-x-auto no-scrollbar">
-          <div className="flex gap-4 px-5">
+          <div className="flex gap-3 px-4 sm:gap-4 sm:px-5">
             {allVideos.slice(0, 10).map((video, i) => (
               <CampusVideoCard key={`${video.id}-${i}`} video={video} index={i} />
             ))}
@@ -1386,12 +1386,12 @@ export default function Universities() {
       </LazySection>
 
       {/* ── University Posts (lazy rendered, paginated) ── */}
-      <LazySection className="relative z-10 pt-4 pb-6 px-5" minHeight={400}>
+      <LazySection className="relative z-10 pt-4 pb-6 px-4 sm:px-5" minHeight={400}>
         <div className="mb-4">
-          <h2 className="font-display text-lg font-bold">{t("uni.universityPosts", "University Posts")}</h2>
+          <h2 className="font-display text-base font-bold sm:text-lg">{t("uni.universityPosts", "University Posts")}</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{t("uni.postsDesc", "Student experiences and campus life")}</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
           {allPosts.slice(0, postsLimit).map((post, i) => (
             <UniversityPostCard key={post.id} post={post} index={i} />
           ))}
@@ -1414,15 +1414,15 @@ export default function Universities() {
       {/* ── My Universities (Wishlist, lazy rendered) ── */}
       {wishlist.length > 0 && (
         <LazySection className="relative z-10 pt-4 pb-10" minHeight={280}>
-          <div className="mb-4 px-5">
-            <h2 className="flex items-center gap-2 font-display text-lg font-bold">
+          <div className="mb-4 px-4 sm:px-5">
+            <h2 className="flex items-center gap-2 font-display text-base font-bold sm:text-lg">
               <Heart className="h-5 w-5 text-rose-400" />
               {t("uni.myUniversities", "My Universities")}
             </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">{t("uni.myUniversitiesDesc", "Your saved universities")}</p>
           </div>
           <div className="-mx-0 overflow-x-auto no-scrollbar">
-            <div className="flex gap-4 px-5">
+            <div className="flex gap-3 px-4 sm:gap-4 sm:px-5">
               {wishlist.map((id) => getUniversity(id)).filter(Boolean).map((uni, i) => (
                 <UniversityDiscoverCard key={uni!.id} uni={uni!} index={i} />
               ))}

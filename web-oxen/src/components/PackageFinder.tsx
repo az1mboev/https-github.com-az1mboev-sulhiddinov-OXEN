@@ -65,7 +65,7 @@ function CountryPicker({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -20, scale: 0.96 }}
         transition={{ type: "spring" as const, stiffness: 300, damping: 28 }}
-        className="mx-auto mt-20 w-full max-w-md px-5"
+        className="mx-auto mt-16 w-full max-w-md px-4 sm:mt-20 sm:px-5"
         onClick={(e) => e.stopPropagation()}
       >
         <p className="mb-2 text-center text-sm font-semibold text-white/60">{title}</p>

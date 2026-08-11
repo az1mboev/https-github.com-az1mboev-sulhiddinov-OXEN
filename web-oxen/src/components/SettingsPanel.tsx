@@ -250,14 +250,14 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[360px] flex-col shadow-2xl"
+            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[360px] flex-col shadow-2xl sm:max-w-[380px]"
             style={{ willChange: "transform, opacity" }}
           >
             {/* Glass bg */}
             <div className="absolute inset-0 rounded-l-[28px] bg-[hsl(225,42%,7%)]/[0.96] backdrop-blur-[40px] saturate-[1.8] border-l border-white/[0.06]" />
 
             {/* Header */}
-            <div className="relative z-10 flex items-center justify-between px-5 pt-5 pb-3">
+            <div className="relative z-10 flex items-center justify-between px-4 pt-5 pb-3 sm:px-5">
               <div>
                 <h2 className="font-display text-lg font-bold">{t("settings.title", "Profile Settings")}</h2>
                 <p className="text-xs text-muted-foreground">{t("settings.subtitle", "Customize your OXEN experience")}</p>

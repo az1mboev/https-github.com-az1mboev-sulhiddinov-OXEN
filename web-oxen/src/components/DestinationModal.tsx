@@ -98,10 +98,10 @@ export default function DestinationModal({ country, open, onClose, onShowOptions
   // Desktop/tablet: right-side floating panel with fixed width.
   const panelStyle: React.CSSProperties = isMobile
     ? {
-        top: "calc(env(safe-area-inset-top, 0px) + 76px)",
-        left: "calc(env(safe-area-inset-left, 0px) + 5vw)",
-        right: "calc(env(safe-area-inset-right, 0px) + 5vw)",
-        maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 168px)",
+        top: "calc(env(safe-area-inset-top, 0px) + 64px)",
+        left: "calc(env(safe-area-inset-left, 0px) + 3vw)",
+        right: "calc(env(safe-area-inset-right, 0px) + 3vw)",
+        maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 140px)",
       }
     : {
         top: "calc(env(safe-area-inset-top, 0px) + 80px)",

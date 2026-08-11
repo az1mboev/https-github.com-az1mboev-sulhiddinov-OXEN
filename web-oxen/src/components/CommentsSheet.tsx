@@ -361,7 +361,7 @@ export default function CommentsSheet({ postId, isOpen, onClose }: CommentsSheet
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring" as const, stiffness: 340, damping: 32, mass: 0.9 }}
-            className="comments-sheet fixed bottom-0 left-1/2 z-[56] flex max-h-[80vh] w-full max-w-[440px] -translate-x-1/2 flex-col overflow-hidden rounded-t-[28px] border border-white/[0.08] bg-gradient-to-b from-[#13151e]/97 via-[#101218]/97 to-[#0c0e14]/97 shadow-2xl shadow-black/60 backdrop-blur-2xl"
+            className="comments-sheet fixed bottom-0 left-1/2 z-[56] flex max-h-[85vh] w-[calc(100vw-8px)] max-w-[440px] -translate-x-1/2 flex-col overflow-hidden rounded-t-[28px] border border-white/[0.08] bg-gradient-to-b from-[#13151e]/97 via-[#101218]/97 to-[#0c0e14]/97 shadow-2xl shadow-black/60 backdrop-blur-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Grab handle */}

@@ -335,7 +335,7 @@ export default function SocialMessages() {
 
   // ── Conversation list view ──
   return (
-    <div className="relative mx-auto max-w-2xl px-4 pt-2 pb-32">
+    <div className="relative mx-auto max-w-2xl px-3 pt-2 pb-28 sm:px-4">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -12 }}

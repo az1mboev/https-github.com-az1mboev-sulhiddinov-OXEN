@@ -209,14 +209,14 @@ export default function Auth() {
       {/* Back link */}
       <Link
         to="/"
-        className="absolute left-6 top-6 z-30 flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
+        className="absolute left-4 top-4 z-30 flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white sm:left-6 sm:top-6"
       >
         <ArrowLeft className="h-4 w-4" />
         <span className="hidden sm:inline">{t("auth.backToGlobe", "Back to Globe")}</span>
       </Link>
 
       {/* Left Panel: Form */}
-      <div className="relative z-10 flex w-full items-center justify-center px-6 py-12 md:w-1/2 md:px-12 lg:px-20">
+      <div className="relative z-10 flex w-full items-center justify-center px-4 py-12 sm:px-6 md:w-1/2 md:px-12 lg:px-20">
         <motion.div
           key={mode}
           initial={{ opacity: 0, y: 16 }}
@@ -257,7 +257,7 @@ export default function Auth() {
           </div>
 
           {/* Form card */}
-          <div className="auth-card rounded-2xl p-6 lg:p-8">
+          <div className="auth-card rounded-2xl p-4 sm:p-6 lg:p-8">
             {/* OAuth error banner */}
             {oauthError && (
               <motion.div

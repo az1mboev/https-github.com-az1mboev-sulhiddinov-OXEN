@@ -108,7 +108,7 @@ export default function Layout() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 28 }}
-            className="fixed left-1/2 top-16 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-2 backdrop-blur-xl"
+            className="fixed left-3 right-3 top-16 z-50 flex items-center justify-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-2 backdrop-blur-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:px-4"
           >
             <WifiOff className="h-3.5 w-3.5 text-amber-400" strokeWidth={2.5} />
             <span className="text-xs font-semibold text-amber-300">{t("offline.mode", "Offline Mode")}</span>
@@ -128,8 +128,8 @@ export default function Layout() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.15, duration: 0.35, ease: "easeOut" }}
           onClick={open}
-          className="fixed left-4 z-30 flex h-10 w-10 items-center justify-center rounded-xl bg-card/50 backdrop-blur-xl border border-white/10 text-muted-foreground shadow-lg transition-all hover:bg-card/70 hover:text-foreground hover:border-white/20 active:scale-95"
-          style={{ top: "calc(env(safe-area-inset-top, 0px) + 16px)" }}
+          className="fixed left-3 z-30 flex h-9 w-9 items-center justify-center rounded-xl bg-card/50 backdrop-blur-xl border border-white/10 text-muted-foreground shadow-lg transition-all hover:bg-card/70 hover:text-foreground hover:border-white/20 active:scale-95 sm:left-4 sm:h-10 sm:w-10"
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 14px)" }}
           aria-label="Open navigation menu"
         >
           <Menu className="h-5 w-5" strokeWidth={2} />
@@ -156,20 +156,20 @@ export default function Layout() {
       <Sidebar />
 
       {/* Main content */}
-      <main className="relative z-10 pb-28">
+      <main className="relative z-10 pb-28 overflow-x-hidden">
         <Outlet />
       </main>
 
       {/* Floating iOS-style bottom tab bar */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4"
+        className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-2 sm:px-4"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
       >
         <motion.div
           initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring" as const, stiffness: 260, damping: 26, mass: 1, delay: 0.1 }}
-          className="glass-strong flex w-full max-w-md items-center justify-around rounded-[22px] px-2 py-2 shadow-2xl"
+          className="glass-strong flex w-full max-w-md items-center justify-around rounded-[22px] px-1.5 py-2 shadow-2xl sm:px-2"
           style={{ willChange: "transform" }}
         >
           {TABS.map((tab) => {

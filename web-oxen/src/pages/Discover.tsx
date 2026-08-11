@@ -157,7 +157,7 @@ function PostDetailViewer({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Media side */}
-          <div className="relative flex h-[45vh] items-center justify-center bg-black md:h-full md:flex-1">
+          <div className="relative flex h-[40vh] items-center justify-center bg-black sm:h-[45vh] md:h-full md:flex-1">
             {post.media_type === "video" ? (
               <VideoPlayer
                 src={post.media_url}

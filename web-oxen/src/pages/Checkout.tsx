@@ -487,7 +487,7 @@ export default function Checkout() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pt-10 pb-16">
+    <div className="mx-auto max-w-2xl px-4 pt-10 pb-16 sm:px-5">
       {/* Back to plans */}
       <button
         onClick={() => navigate("/explore")}

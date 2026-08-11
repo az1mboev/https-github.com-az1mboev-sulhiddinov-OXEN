@@ -75,9 +75,9 @@ export default function ReportModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 40 }}
             transition={{ type: "spring" as const, stiffness: 300, damping: 28, mass: 0.8 }}
-            className="fixed left-1/2 top-1/2 z-[61] w-full max-w-md -translate-x-1/2 -translate-y-1/2"
+            className="fixed left-1/2 top-1/2 z-[61] w-[calc(100vw-24px)] max-w-md -translate-x-1/2 -translate-y-1/2"
           >
-            <div className="glass-strong rounded-3xl border border-white/10 p-6 shadow-2xl">
+            <div className="glass-strong max-h-[90vh] overflow-y-auto rounded-3xl border border-white/10 p-5 shadow-2xl sm:p-6">
               {/* Header */}
               <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center gap-3">

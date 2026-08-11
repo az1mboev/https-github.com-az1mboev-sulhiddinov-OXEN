@@ -403,7 +403,7 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
   );
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen crm-main-content">
       {/* Desktop sidebar */}
       <aside
         className={cn(
@@ -454,7 +454,7 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-white/[0.06] bg-card/40 px-4 py-3 backdrop-blur-xl lg:px-6">
+        <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-white/[0.06] bg-card/40 px-3 py-3 backdrop-blur-xl sm:px-4 lg:px-6">
           <button
             onClick={() => setMobileOpen(true)}
             className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04] text-muted-foreground transition hover:text-foreground lg:hidden"
@@ -463,7 +463,7 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
             <Menu className="h-5 w-5" />
           </button>
 
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             {showBack && (
               <button
                 onClick={() => navigate(-1)}
@@ -474,7 +474,7 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
               </button>
             )}
             {/* Company logo + name */}
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/15">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/15 sm:h-9 sm:w-9">
               {logoUrl ? (
                 <img src={logoUrl} alt="" className="h-full w-full object-cover" />
               ) : (
@@ -596,7 +596,7 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
             </AnimatePresence>
           </div>
 
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/15">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/15 sm:h-9 sm:w-9">
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -608,11 +608,11 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
         </header>
 
         {/* Page content */}
-        <main className="flex-1 px-4 py-5 pb-28 lg:px-6 lg:pb-10">
+        <main className="flex-1 px-3 py-4 pb-28 sm:px-4 lg:px-6 lg:pb-10">
           <div className="mx-auto max-w-6xl">
-            <div className="mb-5 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="font-display text-xl font-extrabold text-foreground lg:text-2xl">
+            <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+              <div className="min-w-0">
+                <h2 className="font-display text-lg font-extrabold text-foreground sm:text-xl lg:text-2xl">
                   {title}
                 </h2>
               </div>

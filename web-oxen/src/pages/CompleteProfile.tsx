@@ -140,7 +140,7 @@ export default function CompleteProfile() {
   if (!user || user.isGuest) return null;
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-[#0a0f1e] px-6 py-12">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-[#0a0f1e] px-4 py-12 sm:px-6">
       {/* Background */}
       <div className="absolute inset-0 bg-[#0a0f1e]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(37,99,235,0.15),transparent_60%)]" />
@@ -149,7 +149,7 @@ export default function CompleteProfile() {
       {/* Back link */}
       <Link
         to="/"
-        className="absolute left-6 top-6 z-30 flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
+        className="absolute left-4 top-4 z-30 flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white sm:left-6 sm:top-6"
       >
         <ArrowLeft className="h-4 w-4" />
         <span className="hidden sm:inline">Back to Globe</span>
