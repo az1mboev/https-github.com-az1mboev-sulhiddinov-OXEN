@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import {
   getSocialProfile, followUser, unfollowUser, isFollowing,
-  getOrCreateConversation, getFollowers, getFollowing, getInitials,
+  getOrCreateConversation, getFollowers, getFollowing, getFollowCounts, getInitials,
   type SocialProfile,
 } from "@/lib/social";
 import { cn } from "@/lib/utils";
@@ -30,11 +30,8 @@ export default function UserProfile() {
   const [following, setFollowing] = useState<boolean>(false);
   const [followLoading, setFollowLoading] = useState<boolean>(false);
   const [msgLoading, setMsgLoading] = useState<boolean>(false);
-  const [followers, setFollowers] = useState<SocialProfile[]>([]);
-  const [followingList, setFollowingList] = useState<SocialProfile[]>([]);
-  const [showFollowers, setShowFollowers] = useState<boolean>(false);
-  const [showFollowing, setShowFollowing] = useState<boolean>(false);
-  const [postsCount] = useState<number>(0); // Posts count from future integration
+  const [followCounts, setFollowCounts] = useState<{ followers: number; following: number }>({ followers: 0, following: 0 });
+  const [postsCount] = useState<number>(0);
 
   const isOwnProfile = currentUser?.id === userId;
 
@@ -54,14 +51,9 @@ export default function UserProfile() {
         if (active) setFollowing(isFollowed);
       }
 
-      // Load followers and following lists
-      const [fols, fwg] = await Promise.all([
-        getFollowers(userId),
-        getFollowing(userId),
-      ]);
-      if (!active) return;
-      setFollowers(fols);
-      setFollowingList(fwg);
+      // Load real follower/following counts from follows table
+      const counts = await getFollowCounts(userId);
+      if (active) setFollowCounts(counts);
     })();
     return () => { active = false; };
   }, [userId, currentUser?.id, isOwnProfile, currentUser]);
@@ -76,9 +68,7 @@ export default function UserProfile() {
           toast({ title: "Failed to unfollow", description: error, variant: "destructive" });
         } else {
           setFollowing(false);
-          setProfile((prev) =>
-            prev ? { ...prev, followers_count: Math.max((prev.followers_count ?? 0) - 1, 0) } : prev,
-          );
+          setFollowCounts((prev) => ({ ...prev, followers: Math.max(prev.followers - 1, 0) }));
         }
       } else {
         const { error } = await followUser(userId);
@@ -86,9 +76,7 @@ export default function UserProfile() {
           toast({ title: "Failed to follow", description: error, variant: "destructive" });
         } else {
           setFollowing(true);
-          setProfile((prev) =>
-            prev ? { ...prev, followers_count: (prev.followers_count ?? 0) + 1 } : prev,
-          );
+          setFollowCounts((prev) => ({ ...prev, followers: prev.followers + 1 }));
         }
       }
     } finally {
@@ -189,18 +177,18 @@ export default function UserProfile() {
         {/* Stats row */}
         <div className="mt-5 flex items-center justify-center gap-6">
           <button
-            onClick={() => setShowFollowers(true)}
+            onClick={() => navigate(`/user/${userId}/followers`)}
             className="flex flex-col items-center transition active:scale-95"
           >
-            <span className="font-display text-lg font-extrabold tabular-nums">{profile.followers_count ?? 0}</span>
+            <span className="font-display text-lg font-extrabold tabular-nums">{followCounts.followers}</span>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Followers</span>
           </button>
           <div className="h-8 w-px bg-white/[0.08]" />
           <button
-            onClick={() => setShowFollowing(true)}
+            onClick={() => navigate(`/user/${userId}/following`)}
             className="flex flex-col items-center transition active:scale-95"
           >
-            <span className="font-display text-lg font-extrabold tabular-nums">{profile.following_count ?? 0}</span>
+            <span className="font-display text-lg font-extrabold tabular-nums">{followCounts.following}</span>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Following</span>
           </button>
           <div className="h-8 w-px bg-white/[0.08]" />

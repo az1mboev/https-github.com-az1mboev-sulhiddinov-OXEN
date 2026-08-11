@@ -14,9 +14,6 @@ export interface DemoUser {
   city: string;
   dateOfBirth: string;
   gender: "male" | "female" | "other" | "prefer-not-say";
-  followers: number;
-  following: number;
-  postsCount: number;
   isVerified: boolean;
   joinedDate: string;
 }
@@ -36,9 +33,6 @@ export const DEMO_USERS: DemoUser[] = [
     city: "San Francisco",
     dateOfBirth: "1995-06-15",
     gender: "prefer-not-say",
-    followers: 1243,
-    following: 342,
-    postsCount: 87,
     isVerified: true,
     joinedDate: "2024-03-12",
   },
@@ -54,9 +48,6 @@ export const DEMO_USERS: DemoUser[] = [
     city: "Stockholm",
     dateOfBirth: "1992-09-22",
     gender: "female",
-    followers: 28400,
-    following: 512,
-    postsCount: 234,
     isVerified: true,
     joinedDate: "2023-01-08",
   },
@@ -72,9 +63,6 @@ export const DEMO_USERS: DemoUser[] = [
     city: "New York",
     dateOfBirth: "1989-03-10",
     gender: "male",
-    followers: 15600,
-    following: 890,
-    postsCount: 156,
     isVerified: false,
     joinedDate: "2023-06-20",
   },
@@ -90,9 +78,6 @@ export const DEMO_USERS: DemoUser[] = [
     city: "Milan",
     dateOfBirth: "1994-11-30",
     gender: "female",
-    followers: 9800,
-    following: 421,
-    postsCount: 112,
     isVerified: true,
     joinedDate: "2023-09-15",
   },
@@ -108,9 +93,6 @@ export const DEMO_USERS: DemoUser[] = [
     city: "Osaka",
     dateOfBirth: "1991-07-04",
     gender: "male",
-    followers: 7200,
-    following: 305,
-    postsCount: 98,
     isVerified: false,
     joinedDate: "2024-01-10",
   },
@@ -126,9 +108,6 @@ export const DEMO_USERS: DemoUser[] = [
     city: "Lucerne",
     dateOfBirth: "1993-12-18",
     gender: "female",
-    followers: 6100,
-    following: 234,
-    postsCount: 78,
     isVerified: false,
     joinedDate: "2023-11-05",
   },
@@ -144,9 +123,6 @@ export const DEMO_USERS: DemoUser[] = [
     city: "Nairobi",
     dateOfBirth: "1988-05-25",
     gender: "male",
-    followers: 12400,
-    following: 180,
-    postsCount: 203,
     isVerified: true,
     joinedDate: "2023-04-18",
   },
@@ -162,9 +138,6 @@ export const DEMO_USERS: DemoUser[] = [
     city: "Barcelona",
     dateOfBirth: "1996-02-14",
     gender: "female",
-    followers: 18900,
-    following: 567,
-    postsCount: 145,
     isVerified: true,
     joinedDate: "2023-08-01",
   },

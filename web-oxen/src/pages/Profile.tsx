@@ -10,7 +10,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTravel } from "@/contexts/TravelContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useChat } from "@/contexts/ChatContext";
+import { useSocial } from "@/contexts/SocialContext";
+import { getFollowCounts } from "@/lib/social";
 import { useToast } from "@/hooks/use-toast";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import SettingsPanel from "@/components/SettingsPanel";
@@ -363,7 +364,7 @@ export default function Profile() {
     visited, wishlist, favorites, stories, posts, profilePhoto, setProfilePhoto, extendedProfile,
   } = useTravel();
   const { t } = useLanguage();
-  const { totalUnread } = useChat();
+  const { totalUnread } = useSocial();
 
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"posts" | "saved" | "map" | "stories">("posts");
@@ -372,6 +373,18 @@ export default function Profile() {
   const [storyViewerOpen, setStoryViewerOpen] = useState<boolean>(false);
   const [storyViewerIndex, setStoryViewerIndex] = useState<number>(0);
   const [reportOpen, setReportOpen] = useState<boolean>(false);
+  const [followCounts, setFollowCounts] = useState<{ followers: number; following: number }>({ followers: 0, following: 0 });
+
+  // Load real follower/following counts from Supabase follows table
+  useEffect(() => {
+    if (!user?.id || user.isGuest) return;
+    let active = true;
+    void (async () => {
+      const counts = await getFollowCounts(user.id);
+      if (active) setFollowCounts(counts);
+    })();
+    return () => { active = false; };
+  }, [user?.id, user?.isGuest]);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -529,18 +542,26 @@ export default function Profile() {
           {/* Stats row */}
           <div className="mt-5 flex items-center gap-10">
             {[
-              { value: posts.length, label: t("profile.posts", "Posts") },
-              { value: 1243, label: t("profile.followers", "Followers") },
-              { value: 342, label: t("profile.following", "Following") },
+              { value: posts.length, label: t("profile.posts", "Posts"), clickable: false, path: "" },
+              { value: followCounts.followers, label: t("profile.followers", "Followers"), clickable: true, path: `/user/${user?.id}/followers` },
+              { value: followCounts.following, label: t("profile.following", "Following"), clickable: true, path: `/user/${user?.id}/following` },
             ].map((stat) => (
-              <div key={stat.label} className="flex flex-col items-center gap-0.5">
+              <button
+                key={stat.label}
+                disabled={!stat.clickable}
+                onClick={() => stat.clickable && navigate(stat.path)}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 transition",
+                  stat.clickable && "hover:opacity-80 active:scale-95",
+                )}
+              >
                 <span className="font-display text-xl font-extrabold tabular-nums">
                   {formatStat(stat.value)}
                 </span>
                 <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                   {stat.label}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </motion.div>

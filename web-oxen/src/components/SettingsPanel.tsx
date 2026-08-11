@@ -14,7 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage, type Language } from "@/contexts/LanguageContext";
 import { useTheme, type Theme } from "@/contexts/ThemeContext";
-import { useChat } from "@/contexts/ChatContext";
+import { useSocial } from "@/contexts/SocialContext";
 import { useOffline } from "@/contexts/OfflineContext";
 import { usePreferences, CURRENCIES } from "@/contexts/PreferencesContext";
 import { useToast } from "@/hooks/use-toast";
@@ -161,7 +161,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { language, setLanguage, t } = useLanguage();
   const { theme, setTheme } = useTheme();
   type Theme = "dark" | "light";
-  const { totalUnread } = useChat();
+  const { totalUnread } = useSocial();
   const { isOffline, forceOffline, setForceOffline, pendingSync, isOnline, sync, lastSyncedAt } = useOffline();
   const { currency, currencyMeta, distanceUnit, setDistanceUnit, timezone } = usePreferences();
 

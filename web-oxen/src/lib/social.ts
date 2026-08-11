@@ -361,6 +361,28 @@ export async function checkFollowStatus(userIds: string[]): Promise<Map<string, 
 }
 
 /**
+ * Get real follower and following counts directly from the follows table.
+ * These are always accurate — no reliance on trigger-maintained profile columns.
+ */
+export async function getFollowCounts(userId: string): Promise<{ followers: number; following: number }> {
+  const [followersRes, followingRes] = await Promise.all([
+    supabase
+      .from("follows")
+      .select("id", { count: "exact", head: true })
+      .eq("following_id", userId),
+    supabase
+      .from("follows")
+      .select("id", { count: "exact", head: true })
+      .eq("follower_id", userId),
+  ]);
+
+  return {
+    followers: followersRes.count ?? 0,
+    following: followingRes.count ?? 0,
+  };
+}
+
+/**
  * Get the list of users that a user is following.
  */
 export async function getFollowing(userId: string): Promise<SocialProfile[]> {

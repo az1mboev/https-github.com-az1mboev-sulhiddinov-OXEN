@@ -11,7 +11,6 @@ import RequireAuth from "./components/RequireAuth";
 import RequireConsultingMember from "./components/RequireConsultingMember";
 import RequireOwnerAdmin from "./components/RequireOwnerAdmin";
 import { AuthProvider } from "./contexts/AuthContext";
-import { ChatProvider } from "./contexts/ChatContext";
 import { SocialProvider } from "./contexts/SocialContext";
 import { CommentsProvider } from "./contexts/CommentsContext";
 import { ConsultingProvider } from "./contexts/ConsultingContext";
@@ -83,7 +82,6 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
 const Explore = lazy(() => import("./pages/Explore"));
 const Index = lazy(() => import("./pages/Index"));
-const Messages = lazy(() => import("./pages/Messages"));
 const SocialMessages = lazy(() => import("./pages/SocialMessages"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const FollowList = lazy(() => import("./pages/FollowList"));
@@ -162,8 +160,7 @@ const App = () => (
         <AuthProvider>
           <TravelProvider>
             <UniversityProvider>
-              <ChatProvider>
-                <SocialProvider>
+              <SocialProvider>
                 <ReportProvider>
                   <CommentsProvider>
                     <OfflineProvider>
@@ -342,7 +339,6 @@ const App = () => (
                 </CommentsProvider>
               </ReportProvider>
                 </SocialProvider>
-            </ChatProvider>
             </UniversityProvider>
           </TravelProvider>
         </AuthProvider>
