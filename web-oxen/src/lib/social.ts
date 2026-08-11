@@ -436,7 +436,13 @@ export async function getFollowers(userId: string): Promise<SocialProfile[]> {
 
 /**
  * Find or create a 1:1 conversation between the current user and another user.
+ * Uses the `get_or_create_direct_conversation` Postgres RPC so that all
+ * conversation + member inserts happen server-side under SECURITY DEFINER,
+ * avoiding client-side RLS violations on the `conversations` table.
  * Never creates duplicate conversations for the same pair.
+ *
+ * `otherUserId` must be the other user's `auth.users.id` (which is the same
+ * value as `profiles.id` — the two are identical in this schema).
  */
 export async function getOrCreateConversation(otherUserId: string): Promise<{ conversationId: string | null; error?: string }> {
   const { data: userData } = await supabase.auth.getUser();
@@ -445,61 +451,31 @@ export async function getOrCreateConversation(otherUserId: string): Promise<{ co
   const currentUserId = userData.user.id;
   if (currentUserId === otherUserId) return { conversationId: null, error: "You cannot message yourself." };
 
-  // 1. Check if a conversation already exists between these two users
-  const { data: existingMembers, error: searchError } = await supabase
-    .from("conversation_members")
-    .select("conversation_id, user_id")
-    .in("user_id", [currentUserId, otherUserId]);
+  // Single RPC call — the Postgres function handles:
+  //   1. Checking for an existing 1:1 conversation between these two users
+  //   2. Creating a new conversation + adding both members if none exists
+  //   3. Returning the conversation UUID (existing or newly created)
+  const { data, error } = await supabase.rpc("get_or_create_direct_conversation", {
+    other_user_id: otherUserId,
+  });
 
-  if (searchError) {
-    console.error("[getOrCreateConversation] Search error:", searchError);
-    return { conversationId: null, error: searchError.message };
+  if (error) {
+    console.error("[getOrCreateConversation] RPC error:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return { conversationId: null, error: error.message };
   }
 
-  // Group by conversation_id and find one that has exactly these two members
-  const convMap = new Map<string, Set<string>>();
-  for (const m of existingMembers ?? []) {
-    if (!convMap.has(m.conversation_id)) {
-      convMap.set(m.conversation_id, new Set());
-    }
-    convMap.get(m.conversation_id)!.add(m.user_id);
-  }
+  // The RPC returns a single UUID value (the conversation id).
+  // supabase.rpc unwraps scalar returns, so `data` is the UUID string.
+  const conversationId = typeof data === "string" ? data : (data as { conversation_id?: string })?.conversation_id ?? null;
 
-  for (const [convId, members] of convMap) {
-    if (members.size === 2 && members.has(currentUserId) && members.has(otherUserId)) {
-      return { conversationId: convId };
-    }
-  }
-
-  // 2. No existing conversation — create a new one
-  const { data: conv, error: convError } = await supabase
-    .from("conversations")
-    .insert({})
-    .select("id")
-    .single();
-
-  if (convError || !conv) {
-    console.error("[getOrCreateConversation] Create conversation error:", convError);
-    return { conversationId: null, error: convError?.message ?? "Failed to create conversation." };
-  }
-
-  const conversationId = conv.id;
-
-  // 3. Add both members
-  const { error: membersError } = await supabase
-    .from("conversation_members")
-    .insert([
-      { conversation_id: conversationId, user_id: currentUserId },
-      { conversation_id: conversationId, user_id: otherUserId },
-    ]);
-
-  if (membersError) {
-    console.error("[getOrCreateConversation] Add members error:", membersError);
-    // The conversation was created but members failed — retry adding current user at least
-    await supabase
-      .from("conversation_members")
-      .insert({ conversation_id: conversationId, user_id: currentUserId });
-    return { conversationId: null, error: membersError.message };
+  if (!conversationId) {
+    console.error("[getOrCreateConversation] RPC returned no conversation id:", data);
+    return { conversationId: null, error: "Failed to create conversation." };
   }
 
   return { conversationId };
