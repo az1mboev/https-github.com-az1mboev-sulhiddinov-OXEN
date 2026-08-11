@@ -474,6 +474,76 @@ export async function searchPublishedTourPosts(
   return (data ?? []) as unknown as TourPost[];
 }
 
+// ── Package Finder: search by destination + budget ────────────
+
+export interface PackageFinderResult {
+  /** Packages within budget, sorted by closest price first. */
+  withinBudget: TourPost[];
+  /** Packages for the same destination but above budget (closest first). */
+  alternatives: TourPost[];
+}
+
+/**
+ * Search published tour packages by destination country and budget.
+ *
+ * - Fetches all published posts for the given destination (case-insensitive).
+ * - Splits into `withinBudget` (price <= budget) and `alternatives` (price > budget).
+ * - Within-budget results are sorted by closest price to the user's budget.
+ * - Alternatives are limited to 3, sorted by closest price above budget.
+ * - Currency mismatch: packages in a different currency than the user's
+ *   are NOT excluded — the caller can display the original price. The budget
+ *   comparison only applies when currencies match.
+ */
+export async function findTourPackages(
+  destinationCountry: string,
+  budget: number,
+  userCurrency: string,
+): Promise<PackageFinderResult> {
+  const { data, error } = await supabase
+    .from("consulting_posts")
+    .select(`
+      *,
+      company:consulting_companies!consulting_posts_consulting_company_id_fkey(
+        id, name, logo_url, city, country, verification_status,
+        is_published, whatsapp, telegram, contact_phone, contact_email,
+        website, social_links
+      )
+    `)
+    .eq("status", "published")
+    .ilike("destination_country", destinationCountry)
+    .not("price", "is", null)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("findTourPackages error:", error);
+    return { withinBudget: [], alternatives: [] };
+  }
+
+  const all = (data ?? []) as unknown as TourPost[];
+
+  const sameCurrency = all.filter((p) => p.currency === userCurrency);
+  const within = sameCurrency
+    .filter((p) => (p.price ?? 0) <= budget && (p.price ?? 0) > 0)
+    .sort((a, b) => Math.abs((a.price ?? 0) - budget) - Math.abs((b.price ?? 0) - budget));
+
+  const altSameDest = sameCurrency
+    .filter((p) => (p.price ?? 0) > budget)
+    .sort((a, b) => (a.price ?? 0) - (b.price ?? 0))
+    .slice(0, 3);
+
+  // If no same-currency results at all, include other-currency packages as
+  // informational results (can't compare budget across currencies).
+  if (within.length === 0 && altSameDest.length === 0) {
+    const otherCcy = all.filter((p) => p.currency !== userCurrency);
+    return {
+      withinBudget: [],
+      alternatives: otherCcy.sort((a, b) => (a.price ?? 0) - (b.price ?? 0)).slice(0, 5),
+    };
+  }
+
+  return { withinBudget: within, alternatives: altSameDest };
+}
+
 // ── Re-exported helpers for UI ─────────────────────────────────
 
 export { parseStringArray, parseItinerary };

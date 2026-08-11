@@ -13,6 +13,7 @@ import { useTravel } from "@/contexts/TravelContext";
 import { COUNTRIES, type Country } from "@/data/countries";
 import { fetchPublishedAgencies, fetchAgencyServiceCount, type ConsultingCompany } from "@/lib/consulting";
 import { fetchPublishedTourPosts, formatPrice, calculateDiscount, calculateDuration, type TourPost } from "@/lib/tour-posts";
+import PackageFinder from "@/components/PackageFinder";
 
 const OXEN_LOGO = "/logo.png";
 
@@ -625,7 +626,10 @@ export default function Index() {
         </motion.div>
       </section>
 
-      {/* ── Tour Packages (below globe) ───────────── */}
+      {/* ── Package Finder (directly under globe) ──── */}
+      <PackageFinder />
+
+      {/* ── Tour Packages (below finder) ──────────── */}
       <TourPackagesSection selectedCountry={selectedCountry?.name ?? null} onClearCountry={() => { setSelectedCountry(null); setModalStep("closed"); }} />
 
       {/* ── Tour Agencies ──────────────────────────── */}
