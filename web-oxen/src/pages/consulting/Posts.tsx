@@ -410,6 +410,7 @@ interface EditorFormState {
   included_items: string[];
   not_included_items: string[];
   itinerary: TourItineraryDay[];
+  price_type: "per_person" | "total";
   status: PostStatus;
 }
 
@@ -447,6 +448,7 @@ function formFromPost(post: TourPost): EditorFormState {
     included_items: parseStringArray(post.included_items),
     not_included_items: parseStringArray(post.not_included_items),
     itinerary: parseItinerary(post.itinerary),
+    price_type: post.price_type ?? "per_person",
     status: post.status ?? "draft",
   };
 }
@@ -464,6 +466,7 @@ const EMPTY_FORM: EditorFormState = {
   airport_transfer_included: false, guide_included: false,
   travel_insurance_included: false, meals_included: false,
   included_items: [], not_included_items: [], itinerary: [],
+  price_type: "per_person",
   status: "draft",
 };
 
@@ -556,6 +559,7 @@ function TourPostEditor({
     included_items: form.included_items,
     not_included_items: form.not_included_items,
     itinerary: form.itinerary,
+    price_type: form.price_type,
     status,
   });
 
@@ -663,13 +667,21 @@ function TourPostEditor({
           </div>
 
           {/* Price */}
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Price" required type="number" value={form.price} onChange={(v) => set("price", v)} placeholder="699" />
             <SelectField<string>
               label="Currency"
               value={form.currency}
               onChange={(v) => set("currency", v)}
               options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SelectField<string>
+              label="Price Type"
+              value={form.price_type}
+              onChange={(v) => set("price_type", v as "per_person" | "total")}
+              options={[{ value: "per_person", label: "Per Person" }, { value: "total", label: "Total Package" }]}
             />
             <Field label="Old Price (optional)" type="number" value={form.old_price} onChange={(v) => set("old_price", v)} placeholder="799" />
           </div>

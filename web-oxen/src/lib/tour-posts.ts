@@ -72,6 +72,7 @@ export interface TourPost {
   not_included_items: Json; // string[]
   itinerary: Json; // TourItineraryDay[]
   contact_override: Json;
+  price_type: "per_person" | "total";
   /** Joined company data (public queries only) */
   company?: {
     id: string;
@@ -124,6 +125,7 @@ export interface TourPostInput {
   not_included_items?: string[];
   itinerary?: TourItineraryDay[];
   contact_override?: Record<string, string>;
+  price_type?: "per_person" | "total";
   status?: PostStatus;
 }
 
@@ -240,6 +242,7 @@ export async function upsertTourPost(
     not_included_items: input.not_included_items ?? [],
     itinerary: input.itinerary ?? [],
     contact_override: input.contact_override ?? {},
+    price_type: input.price_type ?? "per_person",
     status: input.status ?? "draft",
     post_type: "tour_package",
     created_by: createdBy,
@@ -334,6 +337,7 @@ export async function duplicateTourPost(
     not_included_items: parseStringArray(source.not_included_items),
     itinerary: parseItinerary(source.itinerary),
     contact_override: source.contact_override as Record<string, string>,
+    price_type: source.price_type ?? "per_person",
     status: "draft",
   });
   if (error) {
@@ -405,6 +409,69 @@ export async function incrementTourPostViews(postId: string): Promise<void> {
   } catch {
     // Silent — views are best-effort
   }
+}
+
+// ── AI Planner: Search eligible published packages ────────────
+// Fetches a candidate set of published tour posts (with company join)
+// for the AI recommendation engine to rank. Does NOT send all data to
+// the LLM — this is the pre-filter step.
+
+export interface PackageSearchParams {
+  destination?: string;       // country name or city
+  minPrice?: number;
+  maxPrice?: number;
+  currency?: string;
+  departureAfter?: string;   // ISO date
+  departureBefore?: string;  // ISO date
+  limit?: number;
+}
+
+export async function searchPublishedTourPosts(
+  params: PackageSearchParams = {},
+): Promise<TourPost[]> {
+  let query = supabase
+    .from("consulting_posts")
+    .select(`
+      *,
+      company:consulting_companies!consulting_posts_consulting_company_id_fkey(
+        id, name, logo_url, city, country, verification_status,
+        is_published, whatsapp, telegram, contact_phone, contact_email,
+        website, social_links
+      )
+    `)
+    .eq("status", "published")
+    .order("created_at", { ascending: false });
+
+  if (params.destination) {
+    query = query.or(
+      `destination_country.ilike.%${params.destination}%,destination_city.ilike.%${params.destination}%`,
+    );
+  }
+  if (params.currency) {
+    query = query.eq("currency", params.currency);
+  }
+  if (typeof params.minPrice === "number") {
+    query = query.gte("price", params.minPrice);
+  }
+  if (typeof params.maxPrice === "number") {
+    query = query.lte("price", params.maxPrice);
+  }
+  if (params.departureAfter) {
+    query = query.gte("departure_date", params.departureAfter);
+  }
+  if (params.departureBefore) {
+    query = query.lte("departure_date", params.departureBefore);
+  }
+  if (params.limit) {
+    query = query.limit(params.limit);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("searchPublishedTourPosts error:", error);
+    return [];
+  }
+  return (data ?? []) as unknown as TourPost[];
 }
 
 // ── Re-exported helpers for UI ─────────────────────────────────

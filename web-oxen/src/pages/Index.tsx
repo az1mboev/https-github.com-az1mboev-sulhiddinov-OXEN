@@ -616,7 +616,7 @@ export default function Index() {
             {t("hero.subtitle", "Spin the globe, discover countries, and let AI plan your next great escape.")}
           </p>
           <button
-            onClick={() => navigate("/planner")}
+            onClick={() => navigate(selectedCountry ? `/planner?country=${encodeURIComponent(selectedCountry.name)}` : "/planner")}
             className="gold-gradient pointer-events-auto mx-auto mt-5 flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground shadow-xl transition hover:scale-105 active:scale-95"
           >
             <Sparkles className="h-4 w-4" />
