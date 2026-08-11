@@ -23,6 +23,7 @@ import { SupportProvider } from "./contexts/SupportContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { TravelProvider } from "./contexts/TravelContext";
 import { UniversityProvider } from "./contexts/UniversityContext";
+import { OnboardingProvider } from "./contexts/OnboardingContext";
 
 /* ------------------------------------------------------------------ */
 /*  Code-splitting: each route becomes its own lazy bundle so the      */
@@ -171,6 +172,7 @@ const App = () => (
                             <TooltipProvider>
                           <Toaster />
                           <Sonner />
+                          <OnboardingProvider>
                           <BrowserRouter
                             future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
                           >
@@ -333,6 +335,7 @@ const App = () => (
                             </ConsultingProvider>
                             <OnboardingTutorial />
                         </BrowserRouter>
+                          </OnboardingProvider>
                           </TooltipProvider>
                         </SidebarProvider>
                       </SupportProvider>

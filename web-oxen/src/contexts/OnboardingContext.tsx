@@ -66,6 +66,21 @@ function useOnboardingState() {
   };
 }
 
-const [OnboardingProvider, useOnboarding] = createContextHook(useOnboardingState);
+const [OnboardingProvider, useOnboardingContext] = createContextHook(useOnboardingState);
+
+/**
+ * Safe wrapper: throws a clear development error if used outside
+ * <OnboardingProvider> instead of crashing with an undefined destructuring error.
+ */
+function useOnboarding() {
+  const ctx = useOnboardingContext();
+  if (!ctx) {
+    throw new Error(
+      "useOnboarding() must be used inside <OnboardingProvider>. " +
+        "Wrap the component tree (including OnboardingTutorial and Settings) with OnboardingProvider."
+    );
+  }
+  return ctx;
+}
 
 export { OnboardingProvider, useOnboarding };
