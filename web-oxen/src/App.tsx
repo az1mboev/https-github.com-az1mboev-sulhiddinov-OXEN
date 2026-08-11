@@ -86,6 +86,7 @@ const SocialMessages = lazy(() => import("./pages/SocialMessages"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const FollowList = lazy(() => import("./pages/FollowList"));
 const UserSearch = lazy(() => import("./pages/UserSearch"));
+const OnboardingTutorial = lazy(() => import("./components/OnboardingTutorial"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Planner = lazy(() => import("./pages/Planner"));
 const Discover = lazy(() => import("./pages/Discover"));
@@ -330,6 +331,7 @@ const App = () => (
                             </Routes>
                           </Suspense>
                             </ConsultingProvider>
+                            <OnboardingTutorial />
                         </BrowserRouter>
                           </TooltipProvider>
                         </SidebarProvider>

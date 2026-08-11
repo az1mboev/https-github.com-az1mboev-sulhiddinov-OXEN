@@ -7,6 +7,7 @@ import {
   Clock, Trash2, Download, FileUp, HelpCircle, MessageCircle,
   AlertTriangle, Info, ChevronRight, Check, Languages, LogOut,
   Shield, MessageSquare, Wifi, WifiOff, RefreshCw, Crown,
+  GraduationCap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage, type Language } from "@/contexts/LanguageContext";
 import { useTheme, type Theme } from "@/contexts/ThemeContext";
 import { useSocial } from "@/contexts/SocialContext";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useOffline } from "@/contexts/OfflineContext";
 import { usePreferences, CURRENCIES } from "@/contexts/PreferencesContext";
 import { useToast } from "@/hooks/use-toast";
@@ -162,6 +164,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { theme, setTheme } = useTheme();
   type Theme = "dark" | "light";
   const { totalUnread } = useSocial();
+  const { replayTutorial } = useOnboarding();
   const { isOffline, forceOffline, setForceOffline, pendingSync, isOnline, sync, lastSyncedAt } = useOffline();
   const { currency, currencyMeta, distanceUnit, setDistanceUnit, timezone } = usePreferences();
 
@@ -402,6 +405,17 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <SettingsRow icon={AlertTriangle} label={t("settings.reportProblem", "Report Problem")} onClick={() => { onClose(); navigate("/support"); }} />
                 <SettingsRow icon={MessageCircle} label={t("settings.sendFeedback", "Send Feedback")} onClick={() => { onClose(); navigate("/support"); }} />
                 <SettingsRow icon={Info} label={t("settings.about", "About OXEN")} onClick={() => { onClose(); navigate("/settings/about"); }} />
+              </div>
+
+              {/* ── TUTORIAL ── */}
+              <SectionHeader>{t("tutorial.replayTutorial", "Show OXEN Tutorial Again")}</SectionHeader>
+              <div className="mx-2 rounded-2xl bg-white/[0.03] border border-white/[0.04] overflow-hidden divide-y divide-white/[0.04]">
+                <SettingsRow
+                  icon={GraduationCap}
+                  label={t("tutorial.replayTutorial", "Show OXEN Tutorial Again")}
+                  value={t("tutorial.replayDesc", "Watch the introduction tutorial")}
+                  onClick={() => { onClose(); replayTutorial(); }}
+                />
               </div>
 
               {/* ── LOG OUT — hidden for guest users ── */}
