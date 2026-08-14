@@ -544,6 +544,24 @@ export async function findTourPackages(
   return { withinBudget: within, alternatives: altSameDest };
 }
 
+// ── Public: Fetch published posts by company ─────────────────
+
+export async function fetchPublishedTourPostsByCompany(
+  companyId: string,
+): Promise<TourPost[]> {
+  const { data, error } = await supabase
+    .from("consulting_posts")
+    .select("*")
+    .eq("consulting_company_id", companyId)
+    .eq("status", "published")
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("fetchPublishedTourPostsByCompany error:", error);
+    return [];
+  }
+  return (data ?? []) as unknown as TourPost[];
+}
+
 // ── Re-exported helpers for UI ─────────────────────────────────
 
 export { parseStringArray, parseItinerary };

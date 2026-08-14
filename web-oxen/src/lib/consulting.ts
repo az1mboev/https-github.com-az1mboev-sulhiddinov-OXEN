@@ -505,7 +505,11 @@ export async function updateCompanyProfile(
   return { company: data as unknown as ConsultingCompany, error: null };
 }
 
-/** Public fetch of a published consulting company by id. RLS allows public read only when verified/published. */
+/** Public fetch of a consulting company by id.
+ *  Returns the agency if it exists and is active (not soft-deleted).
+ *  Does NOT gate on is_published or verification_status — an approved
+ *  agency with published tour packages must be visible to users.
+ *  Only hides genuinely deactivated or non-existent agencies. */
 export async function fetchPublicConsultingCompany(
   companyId: string,
 ): Promise<ConsultingCompany | null> {
@@ -513,16 +517,13 @@ export async function fetchPublicConsultingCompany(
     .from("consulting_companies")
     .select("*")
     .eq("id", companyId)
+    .eq("is_active", true)
     .maybeSingle();
   if (error) {
     console.error("fetchPublicConsultingCompany error:", error);
     return null;
   }
-  const company = data as unknown as ConsultingCompany | null;
-  // Only return if published (or verified, which implies publicly readable per RLS).
-  if (!company) return null;
-  if (!company.is_published && company.verification_status !== "verified") return null;
-  return company;
+  return data as unknown as ConsultingCompany | null;
 }
 
 // ── Agency discovery (public) ────────────────────────────────

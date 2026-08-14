@@ -3,27 +3,22 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2, MapPin, Phone, Mail, Globe, Clock, Languages, Plane,
-  Award, FileText, CheckCircle2, ArrowLeft, Share2, Loader2,
+  Award, CheckCircle2, ArrowLeft, Share2, Loader2,
   Package as PackageIcon, MessageCircle, Send, Instagram, Facebook,
   Youtube, MapPinned, Star, ImageIcon, ShieldCheck, Calendar,
+  ExternalLink, ArrowRight,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { fetchPublicConsultingCompany, type ConsultingCompany } from "@/lib/consulting";
-import { fetchServicesByConsulting, type Service } from "@/lib/services";
+import {
+  fetchPublishedTourPostsByCompany,
+  formatPrice, calculateDiscount, calculateDuration,
+  type TourPost,
+} from "@/lib/tour-posts";
 import { useSEO } from "@/hooks/use-seo";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
-type Tab = "overview" | "services" | "photos" | "locations" | "contact";
-
-const TABS: { id: Tab; label: string; icon: typeof Star }[] = [
-  { id: "overview", label: "About", icon: FileText },
-  { id: "services", label: "Services", icon: PackageIcon },
-  { id: "photos", label: "Photos", icon: ImageIcon },
-  { id: "locations", label: "Locations", icon: MapPinned },
-  { id: "contact", label: "Contact", icon: MessageCircle },
-];
 
 const springIn = {
   type: "spring" as const,
@@ -34,7 +29,6 @@ const springIn = {
 export default function PublicCompanyProfile() {
   const { companyId = "" } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("overview");
 
   const { data: company, isLoading } = useQuery({
     queryKey: ["public-consulting-company", companyId],
@@ -44,10 +38,10 @@ export default function PublicCompanyProfile() {
     staleTime: 60_000,
   });
 
-  const { data: services } = useQuery({
-    queryKey: ["agency-services", companyId],
-    queryFn: () => fetchServicesByConsulting(companyId),
-    enabled: !!companyId && !!company,
+  const { data: tourPosts } = useQuery({
+    queryKey: ["agency-tour-posts", companyId],
+    queryFn: () => fetchPublishedTourPostsByCompany(companyId),
+    enabled: !!companyId,
     staleTime: 60_000,
   });
 
@@ -83,7 +77,7 @@ export default function PublicCompanyProfile() {
         </span>
         <h1 className="font-display text-xl font-extrabold">Agency not available</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          This agency profile is either unpublished or doesn't exist.
+          This agency profile doesn't exist or has been deactivated.
         </p>
         <button
           onClick={() => navigate("/")}
@@ -98,7 +92,8 @@ export default function PublicCompanyProfile() {
   const socialLinks = company.social_links ?? {};
   const photos = company.agency_photos ?? [];
   const branches = company.branches ?? [];
-  const activeServices = services ?? [];
+  const posts = tourPosts ?? [];
+  const isVerified = company.verification_status === "verified";
 
   // Contact buttons — only show if data exists
   const contactButtons: { icon: typeof Phone; label: string; href: string; color: string }[] = [];
@@ -106,8 +101,10 @@ export default function PublicCompanyProfile() {
   if (company.whatsapp) contactButtons.push({ icon: MessageCircle, label: "WhatsApp", href: `https://wa.me/${company.whatsapp.replace(/\D/g, "")}`, color: "bg-green-500/15 text-green-400" });
   if (company.telegram) contactButtons.push({ icon: Send, label: "Telegram", href: company.telegram.startsWith("@") ? `https://t.me/${company.telegram.slice(1)}` : company.telegram, color: "bg-sky-500/15 text-sky-400" });
   if (socialLinks.instagram) contactButtons.push({ icon: Instagram, label: "Instagram", href: socialLinks.instagram, color: "bg-fuchsia-500/15 text-fuchsia-400" });
-  if (company.website) contactButtons.push({ icon: Globe, label: "Website", href: company.website, color: "bg-blue-500/15 text-blue-400" });
-  if (company.map_link) contactButtons.push({ icon: MapPin, label: "Location", href: company.map_link, color: "bg-amber-500/15 text-amber-400" });
+  if (socialLinks.facebook) contactButtons.push({ icon: Facebook, label: "Facebook", href: socialLinks.facebook, color: "bg-blue-500/15 text-blue-400" });
+  if (socialLinks.youtube) contactButtons.push({ icon: Youtube, label: "YouTube", href: socialLinks.youtube, color: "bg-red-500/15 text-red-400" });
+  if (company.website) contactButtons.push({ icon: Globe, label: "Website", href: company.website, color: "bg-indigo-500/15 text-indigo-400" });
+  if (company.map_link) contactButtons.push({ icon: MapPin, label: "Map", href: company.map_link, color: "bg-amber-500/15 text-amber-400" });
 
   return (
     <div className="mx-auto max-w-4xl px-4 pb-20 pt-4 sm:px-6">
@@ -119,13 +116,14 @@ export default function PublicCompanyProfile() {
         <ArrowLeft className="h-4 w-4" /> Back
       </button>
 
-      {/* Cover + logo header */}
+      {/* Agency Header */}
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={springIn}
         className="glass overflow-hidden rounded-3xl"
       >
+        {/* Cover */}
         <div className="relative h-40 w-full bg-gradient-to-br from-primary/25 via-primary/5 to-transparent sm:h-56">
           {company.cover_image_url ? (
             <img src={company.cover_image_url} alt="" className="h-full w-full object-cover" />
@@ -135,6 +133,8 @@ export default function PublicCompanyProfile() {
             </div>
           )}
         </div>
+
+        {/* Logo + name + badges */}
         <div className="relative px-5 pb-5">
           <div className="-mt-10 flex flex-wrap items-end justify-between gap-3">
             <div className="flex items-end gap-4">
@@ -148,20 +148,29 @@ export default function PublicCompanyProfile() {
                 )}
               </div>
               <div className="mb-1">
-                <h1 className="font-display text-xl font-extrabold text-foreground sm:text-2xl">{company.name}</h1>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {[company.city, company.country].filter(Boolean).join(", ") || "Location not set"}
-                  </span>
-                  {company.verification_status === "verified" && (
+                <div className="flex items-center gap-2">
+                  <h1 className="font-display text-xl font-extrabold text-foreground sm:text-2xl">{company.name}</h1>
+                  {isVerified && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
-                      <ShieldCheck className="h-3 w-3" /> Verified Agency
+                      <ShieldCheck className="h-3 w-3" /> Verified
                     </span>
                   )}
-                  {activeServices.length > 0 && (
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  {(company.city || company.country) && (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {[company.city, company.country].filter(Boolean).join(", ")}
+                    </span>
+                  )}
+                  {company.founded_year && (
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5" /> Est. {company.founded_year}
+                    </span>
+                  )}
+                  {posts.length > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                      <PackageIcon className="h-3 w-3" /> {activeServices.length} {activeServices.length === 1 ? "service" : "services"}
+                      <PackageIcon className="h-3 w-3" /> {posts.length} {posts.length === 1 ? "package" : "packages"}
                     </span>
                   )}
                 </div>
@@ -178,11 +187,7 @@ export default function PublicCompanyProfile() {
             </button>
           </div>
 
-          {company.description && (
-            <p className="mt-4 text-sm text-muted-foreground">{company.description}</p>
-          )}
-
-          {/* Contact buttons */}
+          {/* Contact action buttons */}
           {contactButtons.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
               {contactButtons.map((btn) => {
@@ -204,249 +209,263 @@ export default function PublicCompanyProfile() {
         </div>
       </motion.div>
 
-      {/* Tabs */}
-      <div className="sticky top-0 z-20 mt-5 -mx-4 bg-background/80 px-4 py-2 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:px-2">
-        <div className="flex gap-1 overflow-x-auto no-scrollbar">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.id;
-            const count = t.id === "services" ? activeServices.length : t.id === "photos" ? photos.length : undefined;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition",
-                  active ? "bg-primary text-primary-foreground" : "bg-white/[0.04] text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" /> {t.label}
-                {count !== undefined && count > 0 && (
-                  <span className="ml-0.5 rounded-full bg-white/15 px-1.5 text-[10px] font-bold">{count}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Tab content */}
-      <div className="mt-5">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={tab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.22 }}
-          >
-            {tab === "overview" && <OverviewTab company={company} />}
-            {tab === "services" && <ServicesTab services={activeServices} />}
-            {tab === "photos" && <PhotosTab photos={photos} />}
-            {tab === "locations" && <LocationsTab company={company} branches={branches} />}
-            {tab === "contact" && <ContactTab company={company} socialLinks={socialLinks} />}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-}
-
-function OverviewTab({ company }: { company: ConsultingCompany }) {
-  const specialties = company.specialties ?? [];
-  const rows: { icon: typeof Globe; label: string; value: string }[] = [
-    { icon: Calendar, label: "Founded", value: company.founded_year ? String(company.founded_year) : "—" },
-    { icon: Award, label: "Years of experience", value: String(company.years_experience ?? 0) },
-    { icon: Clock, label: "Working hours", value: company.working_hours || "—" },
-    {
-      icon: Languages,
-      label: "Languages",
-      value: company.supported_languages?.length ? company.supported_languages.join(", ") : "—",
-    },
-    {
-      icon: Plane,
-      label: "Destinations",
-      value: company.destination_countries?.length ? company.destination_countries.join(", ") : "—",
-    },
-  ];
-  return (
-    <div className="space-y-4">
-      <div className="glass rounded-3xl p-5 sm:p-6">
-        <h2 className="mb-4 font-display text-base font-bold text-foreground">About</h2>
-        {company.description && <p className="mb-4 text-sm text-muted-foreground">{company.description}</p>}
-        <dl className="grid gap-3 sm:grid-cols-2">
-          {rows.map((r) => {
-            const Icon = r.icon;
-            return (
-              <div key={r.label} className="rounded-2xl bg-white/[0.03] p-3">
-                <dt className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <Icon className="h-3.5 w-3.5" /> {r.label}
-                </dt>
-                <dd className="mt-1 break-words text-sm text-foreground">{r.value}</dd>
+      {/* About Agency */}
+      {(company.description || company.specialties?.length || company.working_hours || company.supported_languages?.length || company.destination_countries?.length) && (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springIn, delay: 0.05 }}
+          className="glass mt-5 rounded-3xl p-5 sm:p-6"
+        >
+          <h2 className="mb-4 font-display text-base font-bold text-foreground">About Agency</h2>
+          {company.description && <p className="mb-4 text-sm leading-relaxed text-muted-foreground">{company.description}</p>}
+          <dl className="grid gap-3 sm:grid-cols-2">
+            {company.founded_year && (
+              <InfoRow icon={Calendar} label="Founded" value={String(company.founded_year)} />
+            )}
+            {company.working_hours && (
+              <InfoRow icon={Clock} label="Working hours" value={company.working_hours} />
+            )}
+            {company.supported_languages?.length ? (
+              <InfoRow icon={Languages} label="Languages" value={company.supported_languages.join(", ")} />
+            ) : null}
+            {company.destination_countries?.length ? (
+              <InfoRow icon={Plane} label="Destinations" value={company.destination_countries.join(", ")} />
+            ) : null}
+          </dl>
+          {company.specialties?.length ? (
+            <div className="mt-4">
+              <span className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Specialties</span>
+              <div className="flex flex-wrap gap-2">
+                {company.specialties.map((s) => (
+                  <span key={s} className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">{s}</span>
+                ))}
               </div>
-            );
-          })}
-        </dl>
-      </div>
-      {specialties.length > 0 && (
-        <div className="glass rounded-3xl p-5 sm:p-6">
-          <h2 className="mb-3 font-display text-base font-bold text-foreground">Specialties</h2>
-          <div className="flex flex-wrap gap-2">
-            {specialties.map((s) => (
-              <span key={s} className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">{s}</span>
+            </div>
+          ) : null}
+        </motion.section>
+      )}
+
+      {/* Agency Photos */}
+      {photos.length > 0 && (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springIn, delay: 0.1 }}
+          className="mt-5"
+        >
+          <h2 className="mb-3 font-display text-base font-bold text-foreground">Agency Photos</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {photos.map((url, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.04, ...springIn }}
+                className="aspect-square overflow-hidden rounded-2xl bg-white/[0.03]"
+              >
+                <img src={url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.section>
+      )}
+
+      {/* Branches */}
+      {branches.length > 0 && (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springIn, delay: 0.15 }}
+          className="mt-5"
+        >
+          <h2 className="mb-3 font-display text-base font-bold text-foreground">Branches</h2>
+          <div className="space-y-3">
+            {branches.map((branch, i) => (
+              <div key={i} className="glass rounded-2xl p-4">
+                <h3 className="font-display text-sm font-bold text-foreground">{branch.name || `Branch ${i + 1}`}</h3>
+                {branch.address && (
+                  <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {branch.address}
+                  </p>
+                )}
+                <div className="mt-2 flex flex-wrap gap-3">
+                  {branch.phone && (
+                    <a href={`tel:${branch.phone}`} className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                      <Phone className="h-3.5 w-3.5" /> {branch.phone}
+                    </a>
+                  )}
+                  {branch.working_hours && (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" /> {branch.working_hours}
+                    </span>
+                  )}
+                  {branch.map_link && (
+                    <a href={branch.map_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                      <MapPin className="h-3.5 w-3.5" /> View on map
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+      )}
+
+      {/* Tour Packages */}
+      {posts.length > 0 && (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springIn, delay: 0.2 }}
+          className="mt-5"
+        >
+          <h2 className="mb-3 font-display text-base font-bold text-foreground">Tour Packages</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {posts.map((post, i) => (
+              <TourPackageCard key={post.id} post={post} index={i} />
+            ))}
+          </div>
+        </motion.section>
+      )}
+
+      {/* Contact Information */}
+      {(company.contact_phone || company.additional_phone || company.whatsapp || company.telegram || company.contact_email || company.website || company.address) && (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springIn, delay: 0.25 }}
+          className="glass mt-5 rounded-3xl p-5 sm:p-6"
+        >
+          <h2 className="mb-4 font-display text-base font-bold text-foreground">Contact Information</h2>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            {company.contact_phone && (
+              <ContactRow icon={Phone} label="Main phone" value={company.contact_phone} href={`tel:${company.contact_phone}`} />
+            )}
+            {company.additional_phone && (
+              <ContactRow icon={Phone} label="Additional phone" value={company.additional_phone} href={`tel:${company.additional_phone}`} />
+            )}
+            {company.whatsapp && (
+              <ContactRow icon={MessageCircle} label="WhatsApp" value={company.whatsapp} href={`https://wa.me/${company.whatsapp.replace(/\D/g, "")}`} />
+            )}
+            {company.telegram && (
+              <ContactRow icon={Send} label="Telegram" value={company.telegram} href={company.telegram.startsWith("@") ? `https://t.me/${company.telegram.slice(1)}` : company.telegram} />
+            )}
+            {company.contact_email && (
+              <ContactRow icon={Mail} label="Email" value={company.contact_email} href={`mailto:${company.contact_email}`} />
+            )}
+            {company.website && (
+              <ContactRow icon={Globe} label="Website" value={company.website} href={company.website} />
+            )}
+            {socialLinks.instagram && (
+              <ContactRow icon={Instagram} label="Instagram" value={socialLinks.instagram} href={socialLinks.instagram} />
+            )}
+            {socialLinks.facebook && (
+              <ContactRow icon={Facebook} label="Facebook" value={socialLinks.facebook} href={socialLinks.facebook} />
+            )}
+            {socialLinks.youtube && (
+              <ContactRow icon={Youtube} label="YouTube" value={socialLinks.youtube} href={socialLinks.youtube} />
+            )}
+            {(company.address || company.city || company.country) && (
+              <ContactRow icon={MapPin} label="Address" value={[company.address, company.city, company.country].filter(Boolean).join(", ")} />
+            )}
+          </dl>
+        </motion.section>
       )}
     </div>
   );
 }
 
-function ServicesTab({ services }: { services: Service[] }) {
+/* ── Tour Package Card ─────────────────────────────────────── */
+function TourPackageCard({ post, index }: { post: TourPost; index: number }) {
   const navigate = useNavigate();
-  if (services.length === 0) {
-    return <EmptyTab icon={PackageIcon} title="No services yet" description="This agency hasn't published any services or tour packages." />;
-  }
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {services.map((s, i) => (
-        <motion.div
-          key={s.id}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.05, ...springIn }}
-          className="glass group cursor-pointer overflow-hidden rounded-2xl"
-          onClick={() => navigate(`/services/${s.id}`)}
-        >
-          <div className="relative h-36 w-full overflow-hidden bg-white/[0.03]">
-            {s.cover_image ? (
-              <img src={s.cover_image} alt={s.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground/30">
-                <PackageIcon className="h-8 w-8" />
-              </div>
-            )}
-          </div>
-          <div className="p-4">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">{s.category}</span>
-            <h3 className="mt-1 font-display text-sm font-bold text-foreground">{s.title}</h3>
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{s.description}</p>
-            <div className="mt-3 flex items-center justify-between">
-              <span className="font-display text-sm font-extrabold text-foreground">
-                {s.price > 0 ? `${s.currency} ${s.price.toLocaleString()}` : "Contact for price"}
-              </span>
-              {s.duration && <span className="text-[11px] text-muted-foreground">{s.duration}</span>}
-            </div>
-            {s.rating > 0 && (
-              <div className="mt-2 flex items-center gap-1 text-[11px] text-amber-400">
-                <Star className="h-3 w-3 fill-amber-400" /> {s.rating.toFixed(1)} ({s.review_count} reviews)
-              </div>
-            )}
-          </div>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
+  const discount = post.price && post.old_price ? calculateDiscount(post.price, post.old_price) : null;
+  const duration = calculateDuration(post.departure_date, post.return_date);
 
-function PhotosTab({ photos }: { photos: string[] }) {
-  if (photos.length === 0) {
-    return <EmptyTab icon={ImageIcon} title="No photos yet" description="This agency hasn't uploaded any photos." />;
-  }
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {photos.map((url, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: i * 0.04, ...springIn }}
-          className="aspect-square overflow-hidden rounded-2xl bg-white/[0.03]"
-        >
-          <img src={url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-function LocationsTab({ company, branches }: { company: ConsultingCompany; branches: Array<{ name: string; address: string; phone: string; working_hours: string; map_link: string }> }) {
-  const mainLocation = {
-    name: "Main Office",
-    address: [company.address, company.city, company.country].filter(Boolean).join(", ") || null,
-    phone: company.contact_phone,
-    working_hours: company.working_hours,
-    map_link: company.map_link,
-  };
-  const allLocations = [mainLocation, ...branches].filter((l) => l.address || l.phone);
-  if (allLocations.length === 0) {
-    return <EmptyTab icon={MapPinned} title="No locations" description="This agency hasn't added location information." />;
-  }
-  return (
-    <div className="space-y-3">
-      {allLocations.map((loc, i) => (
-        <div key={i} className="glass rounded-2xl p-4">
-          <h3 className="font-display text-sm font-bold text-foreground">{loc.name || `Branch ${i + 1}`}</h3>
-          {loc.address && <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {loc.address}</p>}
-          <div className="mt-2 flex flex-wrap gap-3">
-            {loc.phone && <a href={`tel:${loc.phone}`} className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><Phone className="h-3.5 w-3.5" /> {loc.phone}</a>}
-            {loc.working_hours && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3.5 w-3.5" /> {loc.working_hours}</span>}
-            {loc.map_link && <a href={loc.map_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><MapPin className="h-3.5 w-3.5" /> View on map</a>}
+    <motion.article
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, ...springIn }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => navigate(`/tour/${post.id}`)}
+      className="glass group cursor-pointer overflow-hidden rounded-2xl"
+    >
+      <div className="relative h-36 w-full overflow-hidden bg-white/[0.03]">
+        {post.cover_image ? (
+          <img src={post.cover_image} alt={post.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-muted-foreground/30">
+            <ImageIcon className="h-8 w-8" />
           </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ContactTab({ company, socialLinks }: { company: ConsultingCompany; socialLinks: Record<string, string> }) {
-  const rows: { icon: typeof Globe; label: string; value: string | null; href?: string }[] = [
-    { icon: Phone, label: "Main phone", value: company.contact_phone, href: company.contact_phone ? `tel:${company.contact_phone}` : undefined },
-    { icon: Phone, label: "Additional phone", value: company.additional_phone, href: company.additional_phone ? `tel:${company.additional_phone}` : undefined },
-    { icon: MessageCircle, label: "WhatsApp", value: company.whatsapp, href: company.whatsapp ? `https://wa.me/${company.whatsapp.replace(/\D/g, "")}` : undefined },
-    { icon: Send, label: "Telegram", value: company.telegram, href: company.telegram ? (company.telegram.startsWith("@") ? `https://t.me/${company.telegram.slice(1)}` : company.telegram) : undefined },
-    { icon: Mail, label: "Email", value: company.contact_email, href: company.contact_email ? `mailto:${company.contact_email}` : undefined },
-    { icon: Globe, label: "Website", value: company.website, href: company.website ?? undefined },
-    { icon: Instagram, label: "Instagram", value: socialLinks.instagram ?? null, href: socialLinks.instagram ?? undefined },
-    { icon: Facebook, label: "Facebook", value: socialLinks.facebook ?? null, href: socialLinks.facebook ?? undefined },
-    { icon: Youtube, label: "YouTube", value: socialLinks.youtube ?? null, href: socialLinks.youtube ?? undefined },
-    { icon: MapPin, label: "Address", value: [company.address, company.city, company.country].filter(Boolean).join(", ") || null },
-  ];
-  return (
-    <div className="glass rounded-3xl p-5 sm:p-6">
-      <h2 className="mb-4 font-display text-base font-bold text-foreground">Contact information</h2>
-      <dl className="grid gap-3 sm:grid-cols-2">
-        {rows.filter((r) => r.value).map((r) => {
-          const Icon = r.icon;
-          return (
-            <div key={r.label} className="rounded-2xl bg-white/[0.03] p-3">
-              <dt className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                <Icon className="h-3.5 w-3.5" /> {r.label}
-              </dt>
-              <dd className="mt-1 break-words text-sm text-foreground">
-                {r.href ? (
-                  <a href={r.href} target="_blank" rel="noreferrer" className="text-primary underline">{r.value}</a>
-                ) : (
-                  r.value
+        )}
+        {discount && (
+          <span className="absolute right-2 top-2 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-bold text-white">
+            -{discount}%
+          </span>
+        )}
+      </div>
+      <div className="p-4">
+        <h3 className="font-display text-sm font-bold text-foreground line-clamp-1">{post.title}</h3>
+        {(post.destination_country || post.destination_city) && (
+          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+            <MapPin className="h-3 w-3" />
+            {[post.destination_city, post.destination_country].filter(Boolean).join(", ")}
+          </p>
+        )}
+        {post.short_description && (
+          <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">{post.short_description}</p>
+        )}
+        <div className="mt-3 flex items-center justify-between">
+          <div>
+            {post.price ? (
+              <div className="flex items-center gap-1.5">
+                {post.old_price && (
+                  <span className="text-xs text-muted-foreground line-through">{formatPrice(post.old_price, post.currency)}</span>
                 )}
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
-    </div>
+                <span className="font-display text-sm font-extrabold text-foreground">{formatPrice(post.price, post.currency)}</span>
+              </div>
+            ) : (
+              <span className="text-xs text-muted-foreground">Contact for price</span>
+            )}
+            {duration && (
+              <span className="block text-[11px] text-muted-foreground">{duration}</span>
+            )}
+          </div>
+          <span className="flex items-center gap-1 text-xs font-bold text-primary">
+            View <ArrowRight className="h-3.5 w-3.5" />
+          </span>
+        </div>
+      </div>
+    </motion.article>
   );
 }
 
-function EmptyTab({ icon: Icon, title, description }: { icon: typeof Star; title: string; description: string }) {
+/* ── Small helper components ───────────────────────────────── */
+function InfoRow({ icon: Icon, label, value }: { icon: typeof Globe; label: string; value: string }) {
   return (
-    <div className="glass flex flex-col items-center gap-3 rounded-3xl p-12 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.06] text-muted-foreground">
-        <Icon className="h-6 w-6" />
-      </span>
-      <h3 className="font-display text-base font-bold text-foreground">{title}</h3>
-      <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
+    <div className="rounded-2xl bg-white/[0.03] p-3">
+      <dt className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" /> {label}
+      </dt>
+      <dd className="mt-1 break-words text-sm text-foreground">{value}</dd>
     </div>
   );
 }
 
+function ContactRow({ icon: Icon, label, value, href }: { icon: typeof Globe; label: string; value: string; href?: string }) {
+  return (
+    <div className="rounded-2xl bg-white/[0.03] p-3">
+      <dt className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" /> {label}
+      </dt>
+      <dd className="mt-1 break-words text-sm text-foreground">
+        {href ? (
+          <a href={href} target="_blank" rel="noreferrer" className="text-primary underline">{value}</a>
+        ) : (
+          value
+        )}
+      </dd>
+    </div>
+  );
+}
