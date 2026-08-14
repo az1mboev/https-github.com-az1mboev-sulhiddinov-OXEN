@@ -28,6 +28,9 @@ import {
 import { COUNTRIES } from "@/data/countries";
 import { cn } from "@/lib/utils";
 
+const SORTED_COUNTRIES = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name));
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 const CURRENCIES = ["USD", "EUR", "GBP", "AED", "RUB", "UZS", "JPY"] as const;
 type Tab = "all" | "published" | "draft" | "archived";
 
@@ -482,6 +485,8 @@ function TourPostEditor({
   const navigate = useNavigate();
   const [form, setForm] = useState<EditorFormState>(initial ? formFromPost(initial) : EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [savingMode, setSavingMode] = useState<PostStatus | null>(null);
+  const [showDiscard, setShowDiscard] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const coverRef = useRef<HTMLInputElement>(null);
@@ -492,37 +497,66 @@ function TourPostEditor({
   };
 
   const handleCoverUpload = async (file: File) => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast({ title: "Unsupported file format", description: "Please upload JPG, PNG, or WEBP images.", variant: "destructive" });
+      return;
+    }
     setUploadingCover(true);
     try {
-      const url = await uploadConsultingAsset(file, `posts/${companyId}/cover-${Date.now()}`);
-      if (url) set("cover_image", url);
+      const url = await uploadConsultingAsset(file, `tour-packages/${companyId}/${Date.now()}-${file.name}`);
+      if (url) {
+        set("cover_image", url);
+      } else {
+        toast({ title: "Image upload failed. Please try again.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Image upload failed. Please try again.", variant: "destructive" });
     } finally {
       setUploadingCover(false);
     }
   };
 
   const handleGalleryUpload = async (files: FileList) => {
+    const validFiles = Array.from(files).filter((f) => ALLOWED_IMAGE_TYPES.includes(f.type));
+    if (validFiles.length === 0) {
+      toast({ title: "Unsupported file format", description: "Please upload JPG, PNG, or WEBP images.", variant: "destructive" });
+      return;
+    }
     setUploadingGallery(true);
     try {
       const urls: string[] = [];
-      for (const file of Array.from(files)) {
-        const url = await uploadConsultingAsset(file, `posts/${companyId}/gallery-${Date.now()}-${file.name}`);
+      for (const file of validFiles) {
+        const url = await uploadConsultingAsset(file, `tour-packages/${companyId}/gallery-${Date.now()}-${file.name}`);
         if (url) urls.push(url);
       }
-      set("gallery", [...form.gallery, ...urls]);
+      if (urls.length === 0) {
+        toast({ title: "Image upload failed. Please try again.", variant: "destructive" });
+      } else {
+        setForm((prev) => ({ ...prev, gallery: [...prev.gallery, ...urls] }));
+      }
+    } catch {
+      toast({ title: "Image upload failed. Please try again.", variant: "destructive" });
     } finally {
       setUploadingGallery(false);
     }
   };
 
-  const validate = (): string | null => {
+  const hasFormData = (): boolean => {
+    return !!(form.title || form.destination_country || form.destination_city ||
+      form.cover_image || form.short_description || form.price ||
+      form.departure_date || form.return_date || form.gallery.length > 0);
+  };
+
+  const validate = (forPublish: boolean): string | null => {
     if (!form.title.trim()) return "Tour title is required";
-    if (!form.destination_country) return "Destination country is required";
-    if (!form.cover_image) return "Cover image is required";
-    if (!form.short_description.trim()) return "Short description is required";
-    if (!form.price || parseFloat(form.price) <= 0) return "Valid price is required";
-    if (!form.departure_date) return "Departure date is required";
-    if (!form.return_date) return "Return date is required";
+    if (forPublish) {
+      if (!form.destination_country) return "Destination country is required";
+      if (!form.cover_image) return "Cover image is required";
+      if (!form.short_description.trim()) return "Short description is required";
+      if (!form.price || parseFloat(form.price) <= 0) return "Valid price is required";
+      if (!form.departure_date) return "Departure date is required";
+      if (!form.return_date) return "Return date is required";
+    }
     return null;
   };
 
@@ -564,22 +598,29 @@ function TourPostEditor({
   });
 
   const handleSave = async (status: PostStatus) => {
-    const err = validate();
+    const forPublish = status === "published";
+    const err = validate(forPublish);
     if (err) { toast({ title: err, variant: "destructive" }); return; }
-    if (saving) return; // prevent double-click
+    if (saving) return;
     setSaving(true);
+    setSavingMode(status);
     try {
       const { post, error } = await upsertTourPost(
         companyId, createdBy, buildInput(status), initial?.id,
       );
       if (error || !post) {
+        console.error("upsertTourPost error:", error);
         toast({ title: "Failed to save", description: error ?? "Unknown error", variant: "destructive" });
       } else {
-        toast({ title: status === "published" ? "Package published!" : "Saved as draft" });
+        toast({ title: status === "published" ? "Tour package published successfully." : "Draft saved successfully." });
         onSaved();
       }
+    } catch (err) {
+      console.error("handleSave error:", err);
+      toast({ title: "Failed to save", description: "Please try again.", variant: "destructive" });
     } finally {
       setSaving(false);
+      setSavingMode(null);
     }
   };
 
@@ -629,7 +670,7 @@ function TourPostEditor({
                 </div>
               )}
             </button>
-            <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCoverUpload(f); e.target.value = ""; }} />
+            <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCoverUpload(f); e.target.value = ""; }} />
           </div>
 
           {/* Gallery */}
@@ -648,7 +689,7 @@ function TourPostEditor({
                 {uploadingGallery ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
               </button>
             </div>
-            <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { if (e.target.files && e.target.files.length > 0) handleGalleryUpload(e.target.files); e.target.value = ""; }} />
+            <input ref={galleryRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => { if (e.target.files && e.target.files.length > 0) handleGalleryUpload(e.target.files); e.target.value = ""; }} />
           </div>
 
           {/* Title + Video */}
@@ -661,7 +702,7 @@ function TourPostEditor({
               label="Destination Country" required
               value={form.destination_country}
               onChange={(v) => set("destination_country", v)}
-              options={[{ value: "", label: "Select country…" }, ...COUNTRIES.map((c) => ({ value: c.name, label: c.name }))]}
+              options={[{ value: "", label: "Select country…" }, ...SORTED_COUNTRIES.map((c) => ({ value: c.name, label: c.name }))]}
             />
             <Field label="Destination City" value={form.destination_city} onChange={(v) => set("destination_city", v)} placeholder="e.g. Dubai" />
           </div>
@@ -755,7 +796,11 @@ function TourPostEditor({
 
         {/* Sticky footer */}
         <div className="flex shrink-0 gap-3 border-t border-white/[0.06] bg-background/80 px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-md">
-          <button onClick={onClose} className="glass flex-1 rounded-2xl py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground">
+          <button
+            onClick={() => { if (hasFormData()) setShowDiscard(true); else onClose(); }}
+            disabled={saving}
+            className="glass flex-1 rounded-2xl py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+          >
             Cancel
           </button>
           <button
@@ -763,19 +808,30 @@ function TourPostEditor({
             disabled={saving}
             className="glass flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-foreground transition active:scale-95 disabled:opacity-50"
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save Draft
+            {savingMode === "draft" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {savingMode === "draft" ? "Saving..." : "Save Draft"}
           </button>
           <button
             onClick={() => handleSave("published")}
             disabled={saving}
             className="gold-gradient flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-primary-foreground transition active:scale-95 disabled:opacity-50"
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            Publish
+            {savingMode === "published" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            {savingMode === "published" ? "Publishing..." : "Publish"}
           </button>
         </div>
       </motion.div>
+
+      {/* Discard confirmation */}
+      <ConfirmDialog
+        open={showDiscard}
+        title="Discard unsaved changes?"
+        message="You have unsaved data in the form. Discarding will close the editor without saving."
+        confirmLabel="Discard"
+        destructive
+        onConfirm={() => { setShowDiscard(false); onClose(); }}
+        onCancel={() => setShowDiscard(false)}
+      />
     </>
   );
 }

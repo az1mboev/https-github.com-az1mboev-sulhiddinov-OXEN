@@ -91,7 +91,7 @@ export function SelectField<T extends string>({
         )}
       >
         {options.map((o) => (
-          <option key={o.value} value={o.value}>
+          <option key={o.value} value={o.value} className="bg-[#0f172a] text-white">
             {o.label}
           </option>
         ))}
