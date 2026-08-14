@@ -1846,6 +1846,32 @@ pre, code, .whitespace-pre {
   }
 }
 
+/* --- Native select option visibility (Windows/Chrome dark-theme fix) --- */
+/* On Windows + Chrome, <option> elements render on the OS default white
+   background but inherit the page's light text color, making them invisible.
+   Force a readable light-on-dark palette for all <option> elements globally. */
+select option {
+  color: #ffffff;
+  background-color: #0f172a;
+}
+select option:checked,
+select option:hover,
+select option:focus {
+  color: #ffffff;
+  background-color: #1e3a5f;
+}
+/* Some browsers render the active/selected option differently */
+select option:checked,
+select option:checked:hover {
+  color: #ffffff;
+  background-color: #2563eb;
+}
+/* Ensure the closed select itself keeps the dark theme styling */
+select {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
 /* --- Prevent iOS Safari bounce/zoom on input focus --- */
 @supports (-webkit-touch-callout: none) {
   input, textarea, select {
