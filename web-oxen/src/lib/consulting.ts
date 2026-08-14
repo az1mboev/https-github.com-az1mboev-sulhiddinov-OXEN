@@ -1840,13 +1840,19 @@ export async function uploadConsultingAssetDetailed(
 ): Promise<{ url: string | null; error: string | null }> {
   const { data, error } = await supabase.storage
     .from("consulting")
-    .upload(path, file, { upsert: true });
+    .upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type,
+    });
   if (error) {
     console.error("Tour package upload error:", error);
     return { url: null, error: error.message };
   }
-  const { data: pub } = supabase.storage.from("consulting").getPublicUrl(data.path);
-  return { url: pub.publicUrl, error: null };
+  const { data: publicUrlData } = supabase.storage
+    .from("consulting")
+    .getPublicUrl(data.path);
+  return { url: publicUrlData.publicUrl, error: null };
 }
 
 /* ============================================================

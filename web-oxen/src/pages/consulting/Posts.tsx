@@ -508,10 +508,11 @@ function TourPostEditor({
     }
     setUploadingCover(true);
     try {
-      const { url, error } = await uploadConsultingAssetDetailed(
-        file,
-        `tour-packages/${companyId}/${Date.now()}-${file.name}`,
-      );
+      const extension =
+        file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const safeFileName = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const storagePath = `tour-packages/${companyId}/${safeFileName}`;
+      const { url, error } = await uploadConsultingAssetDetailed(file, storagePath);
       if (url) {
         set("cover_image", url);
       } else {
@@ -548,10 +549,11 @@ function TourPostEditor({
       const urls: string[] = [];
       const errors: string[] = [];
       for (const file of validFiles) {
-        const { url, error } = await uploadConsultingAssetDetailed(
-          file,
-          `tour-packages/${companyId}/gallery-${Date.now()}-${file.name}`,
-        );
+        const extension =
+          file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+        const safeFileName = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+        const storagePath = `tour-packages/${companyId}/${safeFileName}`;
+        const { url, error } = await uploadConsultingAssetDetailed(file, storagePath);
         if (url) {
           urls.push(url);
         } else {
