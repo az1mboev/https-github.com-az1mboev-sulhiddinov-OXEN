@@ -29,6 +29,10 @@ import {
   Plus,
   Clock,
   Shield,
+  Copy,
+  ExternalLink,
+  KeyRound,
+  Check,
 } from "lucide-react";
 
 import { OwnerShell } from "@/components/consulting/OwnerShell";
@@ -57,6 +61,7 @@ import {
   type ExtensionDuration,
 } from "@/lib/owner-admin";
 import { CONSULTING_PLANS, getPlan, type SubscriptionPlan } from "@/lib/consulting";
+import { useOwnerAgency } from "@/contexts/OwnerAgencyContext";
 import { cn } from "@/lib/utils";
 
 const springIn = { type: "spring" as const, stiffness: 260, damping: 26 };
@@ -117,6 +122,8 @@ export default function OwnerAccountDetails() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { enterAgencyCRM } = useOwnerAgency();
+  const [copiedCode, setCopiedCode] = useState(false);
   useSEO({ title: "Consulting Details | OXEN Owner", description: "Consulting account details." });
 
   const [showExtend, setShowExtend] = useState(false);
@@ -178,6 +185,24 @@ export default function OwnerAccountDetails() {
     }
   }, [company, user, toast, queryClient, companyId]);
 
+  const handleCopyCode = useCallback(async () => {
+    if (!company?.agency_code) return;
+    try {
+      await navigator.clipboard.writeText(company.agency_code);
+      setCopiedCode(true);
+      toast({ title: "Agency Code copied", description: company.agency_code });
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch {
+      toast({ title: "Could not copy", variant: "destructive" });
+    }
+  }, [company, toast]);
+
+  const handleOpenCRM = useCallback(() => {
+    if (!company) return;
+    enterAgencyCRM(company.id);
+    navigate("/consulting/dashboard");
+  }, [company, enterAgencyCRM, navigate]);
+
   if (companyQ.isLoading) {
     return (
       <OwnerShell title="Consulting Details" subtitle="Loading…">
@@ -235,14 +260,44 @@ export default function OwnerAccountDetails() {
             </p>
           </div>
         </div>
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider",
-            DISPLAY_STATUS_STYLE[status],
-          )}
-        >
-          {DISPLAY_STATUS_LABEL[status]}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleOpenCRM}
+            className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground transition hover:bg-primary/90"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> Open Agency CRM
+          </button>
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider",
+              DISPLAY_STATUS_STYLE[status],
+            )}
+          >
+            {DISPLAY_STATUS_LABEL[status]}
+          </span>
+        </div>
+      </div>
+
+      {/* Agency Code section */}
+      <div className="mb-5 flex items-center justify-between rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-300">
+            <KeyRound className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Agency Code</p>
+            <p className="font-mono text-lg font-bold text-foreground">{company.agency_code ?? "—"}</p>
+          </div>
+        </div>
+        {company.agency_code && (
+          <button
+            onClick={handleCopyCode}
+            className="flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-3 py-2 text-xs font-bold text-foreground transition hover:bg-white/[0.12]"
+          >
+            {copiedCode ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+            {copiedCode ? "Copied" : "Copy Code"}
+          </button>
+        )}
       </div>
 
       {/* Company information */}

@@ -16,6 +16,10 @@ import {
   Sparkles,
   Mail,
   Phone,
+  Copy,
+  ExternalLink,
+  Package as PackageIcon,
+  Check,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -24,6 +28,8 @@ import { EmptyState } from "@/components/consulting/EmptyState";
 import { useSEO } from "@/hooks/use-seo";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOwnerAgency } from "@/contexts/OwnerAgencyContext";
+import { fetchAgencyPackageCount } from "@/lib/owner-agency";
 import {
   fetchAllPremiumAccounts,
   findUserByEmail,
@@ -84,6 +90,8 @@ export default function OwnerAccounts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { enterAgencyCRM } = useOwnerAgency();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   useSEO({ title: "Premium Accounts | OXEN Owner", description: "Manage Premium Consulting accounts." });
 
   const [search, setSearch] = useState("");
@@ -109,6 +117,22 @@ export default function OwnerAccounts() {
     queryClient.invalidateQueries({ queryKey: ["owner-premium-accounts"] });
     queryClient.invalidateQueries({ queryKey: ["owner-dashboard-stats"] });
   }, [queryClient]);
+
+  const handleCopyCode = useCallback(async (code: string, agencyId: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedId(agencyId);
+      toast({ title: "Agency Code copied", description: code });
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast({ title: "Could not copy", variant: "destructive" });
+    }
+  }, [toast]);
+
+  const handleOpenCRM = useCallback((agencyId: string) => {
+    enterAgencyCRM(agencyId);
+    navigate("/consulting/dashboard");
+  }, [enterAgencyCRM, navigate]);
 
   return (
     <OwnerShell
@@ -176,11 +200,16 @@ export default function OwnerAccounts() {
                       <p className="truncate text-[11px] text-muted-foreground">
                         {plan?.name ?? "No plan"} · {acct.contact_phone ?? "No phone"}
                       </p>
+                      {acct.agency_code && (
+                        <p className="mt-0.5 inline-flex items-center gap-1 font-mono text-[10px] font-bold text-amber-300/80">
+                          <Copy className="h-2.5 w-2.5" /> {acct.agency_code}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Subscription info */}
-                  <div className="flex items-center gap-3">
+                  {/* Subscription info + actions */}
+                  <div className="flex flex-col items-end gap-2">
                     <div className="text-right">
                       <p className="text-xs font-semibold text-foreground">
                         Expires: {formatDate(acct.subscription_end_date)}
@@ -199,20 +228,38 @@ export default function OwnerAccounts() {
                         />
                       </div>
                     </div>
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider",
-                        DISPLAY_STATUS_STYLE[status],
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider",
+                          DISPLAY_STATUS_STYLE[status],
+                        )}
+                      >
+                        {DISPLAY_STATUS_LABEL[status]}
+                      </span>
+                      <button
+                        onClick={() => navigate(`/owner-admin/accounts/${acct.id}`)}
+                        className="shrink-0 rounded-lg bg-amber-500/15 px-2.5 py-2 text-xs font-bold text-amber-300 transition hover:bg-amber-500/25"
+                      >
+                        <Eye className="inline h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => handleOpenCRM(acct.id)}
+                        className="shrink-0 rounded-lg bg-primary/15 px-2.5 py-2 text-xs font-bold text-primary transition hover:bg-primary/25"
+                        title="Open Agency CRM"
+                      >
+                        <ExternalLink className="inline h-3 w-3" />
+                      </button>
+                      {acct.agency_code && (
+                        <button
+                          onClick={() => handleCopyCode(acct.agency_code!, acct.id)}
+                          className="shrink-0 rounded-lg bg-white/[0.06] px-2.5 py-2 text-xs font-bold text-foreground transition hover:bg-white/[0.12]"
+                          title="Copy Agency Code"
+                        >
+                          {copiedId === acct.id ? <Check className="inline h-3 w-3 text-emerald-400" /> : <Copy className="inline h-3 w-3" />}
+                        </button>
                       )}
-                    >
-                      {DISPLAY_STATUS_LABEL[status]}
-                    </span>
-                    <button
-                      onClick={() => navigate(`/owner-admin/accounts/${acct.id}`)}
-                      className="shrink-0 rounded-lg bg-amber-500/15 px-3 py-2 text-xs font-bold text-amber-300 transition hover:bg-amber-500/25"
-                    >
-                      <Eye className="mr-1 inline h-3 w-3" /> Details
-                    </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>

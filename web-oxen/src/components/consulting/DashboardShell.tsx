@@ -34,11 +34,14 @@ import {
   AlertCircle,
   Loader2,
   CheckCheck,
+  Crown,
+  LogOut as ExitIcon,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConsulting } from "@/contexts/ConsultingContext";
+import { useOwnerAgency } from "@/contexts/OwnerAgencyContext";
 import LogoutDialog from "@/components/LogoutDialog";
 import { getPlan } from "@/lib/consulting";
 import {
@@ -87,6 +90,7 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
   const navigate = useNavigate();
   const { user } = useAuth();
   const { company, member, subscriptionPlan, subscriptionEndDate, subscriptionAccess, agencies, activeAgencyId, switchAgency, isSwitching } = useConsulting();
+  const { isOwnerMode, ownerAgency, exitAgencyCRM } = useOwnerAgency();
   const [switcherSearch, setSwitcherSearch] = useState("");
 
   const filteredAgencies = useMemo(() => {
@@ -610,6 +614,30 @@ export function DashboardShell({ title, subtitle, actions, showBack = false, chi
         {/* Page content */}
         <main className="flex-1 px-3 py-4 pb-28 sm:px-4 lg:px-6 lg:pb-10">
           <div className="mx-auto max-w-6xl">
+            {/* OWNER MODE banner */}
+            {isOwnerMode && ownerAgency && (
+              <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300">
+                    <Crown className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-amber-200">OWNER MODE — Managing {ownerAgency.name}</p>
+                    <p className="text-[10px] text-amber-200/60">You are managing this agency as OXEN Owner. All actions are logged.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const agencyId = ownerAgency.id;
+                    exitAgencyCRM();
+                    navigate(`/owner-admin/accounts/${agencyId}`);
+                  }}
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-amber-500/20 px-3 py-2 text-xs font-bold text-amber-200 transition hover:bg-amber-500/30"
+                >
+                  <ExitIcon className="h-3.5 w-3.5" /> Exit Agency
+                </button>
+              </div>
+            )}
             <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
               <div className="min-w-0">
                 <h2 className="font-display text-lg font-extrabold text-foreground sm:text-xl lg:text-2xl">

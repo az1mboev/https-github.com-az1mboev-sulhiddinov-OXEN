@@ -18,6 +18,7 @@ import {
   type AgencyMembership,
 } from "@/lib/consulting";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOwnerAgency } from "@/contexts/OwnerAgencyContext";
 import { checkApprovedApplication } from "@/lib/agency-applications";
 
 /* ============================================================
@@ -135,6 +136,7 @@ function deriveAccessStatus(company: ConsultingCompany | null): SubscriptionAcce
 
 function useConsultingState() {
   const { user, ready: authReady } = useAuth();
+  const { ownerAgencyId, ownerAgency, isOwnerMode } = useOwnerAgency();
   const queryClient = useQueryClient();
 
   const isEnabled = !!user && !user.isGuest && authReady;
@@ -159,10 +161,7 @@ function useConsultingState() {
     retry: false,
   });
 
-  const isApproved = isApprovedData === true;
-
   const agencyList = agencies ?? [];
-  const hasNoAgencies = isEnabled && !agenciesLoading && agencyList.length === 0;
 
   // Determine the active agency ID
   const storedActiveId = useMemo(
@@ -193,14 +192,40 @@ function useConsultingState() {
     return agencyList.find((a) => a.company.id === activeAgencyId) ?? null;
   }, [agencyList, activeAgencyId]);
 
-  // ── Real data only — no fallback synthesis ──
-  const effectiveCompany = activeAgency?.company ?? null;
-  const effectiveMember = activeAgency?.member ?? null;
+  // ── Owner Agency CRM Mode ──
+  // When the platform owner enters an agency CRM via the Owner Panel,
+  // override the effective company/member with the selected agency.
+  // The owner remains logged in as themselves; RLS via is_owner()
+  // allows reading/writing any agency's data.
+  const effectiveCompany = isOwnerMode ? (ownerAgency ?? null) : (activeAgency?.company ?? null);
+  const effectiveMember = useMemo(() => {
+    if (isOwnerMode && ownerAgency) {
+      // Synthesize an owner-level member for the selected agency
+      return {
+        id: `owner-mode-${ownerAgency.id}`,
+        consulting_company_id: ownerAgency.id,
+        user_id: user?.id ?? "",
+        role: "owner" as MemberRole,
+        status: "active" as MemberStatus,
+        invited_by: null,
+        last_active_at: null,
+        created_at: ownerAgency.created_at,
+        updated_at: ownerAgency.updated_at,
+        profile: null,
+      } as ConsultingMember;
+    }
+    return activeAgency?.member ?? null;
+  }, [isOwnerMode, ownerAgency, user, activeAgency]);
   const isTestMode = false;
 
   // Loading must include agenciesLoading regardless of approval status,
   // otherwise the workspace briefly shows "no agencies" before data arrives.
-  const loading = !authReady || (isEnabled && (approvalLoading || agenciesLoading));
+  // When in owner mode, skip the normal agency loading/approval flow.
+  // The owner agency is loaded by OwnerAgencyContext.
+  const loading = !authReady || (isEnabled && !isOwnerMode && (approvalLoading || agenciesLoading));
+  // In owner mode, treat as approved with agencies.
+  const isApproved = isOwnerMode || isApprovedData === true;
+  const hasNoAgencies = !isOwnerMode && isEnabled && !agenciesLoading && agencyList.length === 0;
 
   const role = effectiveMember?.role ?? null;
   const isMember = !!effectiveMember;

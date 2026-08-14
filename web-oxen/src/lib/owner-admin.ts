@@ -394,6 +394,8 @@ export interface PremiumAccount {
   is_published: boolean;
   is_verified: boolean;
   verification_status: string;
+  /** Human-friendly unique agency code (e.g. OX-TRV-7K29Q) */
+  agency_code: string | null;
   created_at: string;
   updated_at: string;
   /** Joined: owner profile */

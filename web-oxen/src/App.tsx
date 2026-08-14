@@ -24,6 +24,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { TravelProvider } from "./contexts/TravelContext";
 import { UniversityProvider } from "./contexts/UniversityContext";
 import { OnboardingProvider } from "./contexts/OnboardingContext";
+import { OwnerAgencyProvider } from "./contexts/OwnerAgencyContext";
 
 /* ------------------------------------------------------------------ */
 /*  Code-splitting: each route becomes its own lazy bundle so the      */
@@ -173,6 +174,7 @@ const App = () => (
                           <Toaster />
                           <Sonner />
                           <OnboardingProvider>
+                          <OwnerAgencyProvider>
                           <BrowserRouter
                             future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
                           >
@@ -335,6 +337,7 @@ const App = () => (
                             </ConsultingProvider>
                             <OnboardingTutorial />
                         </BrowserRouter>
+                          </OwnerAgencyProvider>
                           </OnboardingProvider>
                           </TooltipProvider>
                         </SidebarProvider>

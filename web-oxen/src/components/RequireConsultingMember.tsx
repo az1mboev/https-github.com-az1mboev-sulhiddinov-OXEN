@@ -4,6 +4,8 @@ import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useConsulting } from "@/contexts/ConsultingContext";
+import { useOwnerAgency } from "@/contexts/OwnerAgencyContext";
+import { isOwnerEmail } from "@/components/SettingsPanel";
 
 /**
  * RequireConsultingMember — wraps protected consulting routes.
@@ -36,6 +38,7 @@ interface Props {
 function Inner({ children, allowOnboarding = false, allowNoAgency = false }: Props) {
   const { user, ready: authReady } = useAuth();
   const { loading, isApproved, hasNoAgencies } = useConsulting();
+  const { isOwnerMode } = useOwnerAgency();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -46,6 +49,10 @@ function Inner({ children, allowOnboarding = false, allowNoAgency = false }: Pro
       return;
     }
     if (loading) return;
+
+    // Owner mode bypasses all CRM access checks — the owner is managing
+    // an agency via the Owner Panel and has is_owner() RLS authorization.
+    if (isOwnerMode) return;
 
     // Onboarding routes (workspace, apply, application-status) are always accessible
     if (allowOnboarding) return;
@@ -62,7 +69,7 @@ function Inner({ children, allowOnboarding = false, allowNoAgency = false }: Pro
       navigate("/consulting/workspace", { replace: true });
       return;
     }
-  }, [authReady, user, loading, isApproved, hasNoAgencies, allowOnboarding, allowNoAgency, navigate, location.pathname]);
+  }, [authReady, user, loading, isApproved, hasNoAgencies, allowOnboarding, allowNoAgency, isOwnerMode, navigate, location.pathname]);
 
   if (!authReady || loading) {
     return (
@@ -74,6 +81,11 @@ function Inner({ children, allowOnboarding = false, allowNoAgency = false }: Pro
 
   if (!user || user.isGuest) {
     return null;
+  }
+
+  // Owner mode bypasses all checks
+  if (isOwnerMode) {
+    return <>{children}</>;
   }
 
   // Onboarding routes are accessible even without approval
