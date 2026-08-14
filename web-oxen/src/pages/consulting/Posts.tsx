@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Megaphone, Plus, Search, Copy, Trash2, Eye, EyeOff, Edit3,
   X, Loader2, Upload, ImageIcon, Calendar, MapPin, Clock,
@@ -17,7 +18,7 @@ import { useConsulting } from "@/contexts/ConsultingContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSEO } from "@/hooks/use-seo";
 import { toast } from "@/hooks/use-toast";
-import { uploadConsultingAsset } from "@/lib/consulting";
+import { uploadConsultingAssetDetailed } from "@/lib/consulting";
 import {
   fetchAgencyPosts, upsertTourPost, deleteTourPost,
   setPostStatus, duplicateTourPost,
@@ -501,16 +502,32 @@ function TourPostEditor({
       toast({ title: "Unsupported file format", description: "Please upload JPG, PNG, or WEBP images.", variant: "destructive" });
       return;
     }
+    if (!companyId) {
+      toast({ title: "Cannot upload image", description: "No agency selected. Please reload the page.", variant: "destructive" });
+      return;
+    }
     setUploadingCover(true);
     try {
-      const url = await uploadConsultingAsset(file, `tour-packages/${companyId}/${Date.now()}-${file.name}`);
+      const { url, error } = await uploadConsultingAssetDetailed(
+        file,
+        `tour-packages/${companyId}/${Date.now()}-${file.name}`,
+      );
       if (url) {
         set("cover_image", url);
       } else {
-        toast({ title: "Image upload failed. Please try again.", variant: "destructive" });
+        toast({
+          title: "Image upload failed",
+          description: error ?? "Please try again.",
+          variant: "destructive",
+        });
       }
-    } catch {
-      toast({ title: "Image upload failed. Please try again.", variant: "destructive" });
+    } catch (err) {
+      console.error("Cover upload exception:", err);
+      toast({
+        title: "Image upload failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setUploadingCover(false);
     }
@@ -522,20 +539,48 @@ function TourPostEditor({
       toast({ title: "Unsupported file format", description: "Please upload JPG, PNG, or WEBP images.", variant: "destructive" });
       return;
     }
+    if (!companyId) {
+      toast({ title: "Cannot upload image", description: "No agency selected. Please reload the page.", variant: "destructive" });
+      return;
+    }
     setUploadingGallery(true);
     try {
       const urls: string[] = [];
+      const errors: string[] = [];
       for (const file of validFiles) {
-        const url = await uploadConsultingAsset(file, `tour-packages/${companyId}/gallery-${Date.now()}-${file.name}`);
-        if (url) urls.push(url);
+        const { url, error } = await uploadConsultingAssetDetailed(
+          file,
+          `tour-packages/${companyId}/gallery-${Date.now()}-${file.name}`,
+        );
+        if (url) {
+          urls.push(url);
+        } else {
+          errors.push(error ?? "Unknown error");
+        }
       }
-      if (urls.length === 0) {
-        toast({ title: "Image upload failed. Please try again.", variant: "destructive" });
-      } else {
+      if (urls.length > 0) {
         setForm((prev) => ({ ...prev, gallery: [...prev.gallery, ...urls] }));
+        if (errors.length > 0) {
+          toast({
+            title: `${urls.length} image(s) uploaded, ${errors.length} failed`,
+            description: errors[0],
+            variant: "default",
+          });
+        }
+      } else {
+        toast({
+          title: "Image upload failed",
+          description: errors[0] ?? "Please try again.",
+          variant: "destructive",
+        });
       }
-    } catch {
-      toast({ title: "Image upload failed. Please try again.", variant: "destructive" });
+    } catch (err) {
+      console.error("Gallery upload exception:", err);
+      toast({
+        title: "Image upload failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setUploadingGallery(false);
     }
@@ -627,17 +672,17 @@ function TourPostEditor({
   const duration = calculateDuration(form.departure_date, form.return_date);
   const discount = form.price && form.old_price ? calculateDiscount(parseFloat(form.price), parseFloat(form.old_price)) : null;
 
-  return (
+  return createPortal(
     <>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm"
       />
       <motion.div
         initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="fixed right-0 top-0 z-[81] flex h-screen w-full max-w-2xl flex-col bg-background"
+        className="fixed right-0 top-0 z-[1010] flex h-screen w-full max-w-2xl flex-col bg-background"
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-6 py-4">
@@ -832,7 +877,8 @@ function TourPostEditor({
         onConfirm={() => { setShowDiscard(false); onClose(); }}
         onCancel={() => setShowDiscard(false)}
       />
-    </>
+    </>,
+    document.body,
   );
 }
 

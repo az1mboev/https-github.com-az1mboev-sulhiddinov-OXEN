@@ -43,14 +43,14 @@ export function ConfirmDialog({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => !loading && onCancel()}
-            className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[1050] bg-black/50 backdrop-blur-sm"
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", stiffness: 320, damping: 26 }}
-            className="fixed left-1/2 top-1/2 z-[91] w-[calc(100%-2.5rem)] max-w-sm -translate-x-1/2 -translate-y-1/2"
+            className="fixed left-1/2 top-1/2 z-[1051] w-[calc(100%-2.5rem)] max-w-sm -translate-x-1/2 -translate-y-1/2"
           >
             <div className="glass-strong rounded-3xl p-6 shadow-2xl">
               <div className="flex items-start gap-3">

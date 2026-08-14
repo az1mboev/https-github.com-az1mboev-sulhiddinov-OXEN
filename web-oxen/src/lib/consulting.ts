@@ -1825,15 +1825,28 @@ export async function uploadConsultingAsset(
   file: File,
   path: string,
 ): Promise<string | null> {
+  const { url } = await uploadConsultingAssetDetailed(file, path);
+  return url;
+}
+
+/**
+ * Upload to the `consulting` storage bucket and return both the public URL
+ * and a human-readable error message (if any).
+ * Use this when you need to surface the real Supabase error to the user.
+ */
+export async function uploadConsultingAssetDetailed(
+  file: File,
+  path: string,
+): Promise<{ url: string | null; error: string | null }> {
   const { data, error } = await supabase.storage
     .from("consulting")
     .upload(path, file, { upsert: true });
   if (error) {
-    console.error("uploadConsultingAsset error:", error);
-    return null;
+    console.error("Tour package upload error:", error);
+    return { url: null, error: error.message };
   }
   const { data: pub } = supabase.storage.from("consulting").getPublicUrl(data.path);
-  return pub.publicUrl;
+  return { url: pub.publicUrl, error: null };
 }
 
 /* ============================================================
