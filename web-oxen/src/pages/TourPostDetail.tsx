@@ -6,7 +6,7 @@ import {
   ArrowLeft, MapPin, Calendar, Clock, Users, Check, X,
   Building2, ShieldCheck, Plane, Hotel, Utensils, Bus,
   FileCheck, UserCheck, Shield, ImageIcon, Play, ArrowRight,
-  MessageCircle, ExternalLink, Loader2,
+  MessageCircle, ExternalLink, Loader2, Phone, Send, Instagram,
 } from "lucide-react";
 
 import { useSEO } from "@/hooks/use-seo";
@@ -79,7 +79,7 @@ export default function TourPostDetail() {
 
   const allImages = [post.cover_image, ...gallery].filter(Boolean) as string[];
 
-  // Contact links from agency profile
+  // Contact links from agency profile (single source of truth)
   const whatsapp = post.contact_override && typeof post.contact_override === "object"
     ? (post.contact_override as Record<string, string>).whatsapp ?? company?.whatsapp
     : company?.whatsapp;
@@ -88,6 +88,15 @@ export default function TourPostDetail() {
     : company?.telegram;
   const phone = company?.contact_phone;
   const website = company?.website;
+  // Instagram from social_links JSON — normalize @username / bare username to full URL
+  const rawInstagram = company?.social_links?.instagram;
+  const instagramHref = (() => {
+    if (!rawInstagram?.trim()) return null;
+    const v = rawInstagram.trim();
+    if (/^https?:\/\//i.test(v)) return v;
+    if (v.startsWith("@")) return `https://instagram.com/${v.slice(1)}`;
+    return `https://instagram.com/${v}`;
+  })();
 
   const inclusionToggles: { key: keyof TourPost; label: string; icon: typeof Plane }[] = [
     { key: "flight_included", label: "Flight", icon: Plane },
@@ -418,6 +427,11 @@ export default function TourPostDetail() {
                     >
                       View Agency <ExternalLink className="h-3.5 w-3.5" />
                     </button>
+                    {phone && (
+                      <a href={`tel:${phone}`} className="flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-4 py-2 text-xs font-bold text-foreground transition hover:bg-white/12">
+                        <Phone className="h-3.5 w-3.5" /> Call
+                      </a>
+                    )}
                     {whatsapp && (
                       <a href={`https://wa.me/${whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-xl bg-emerald-500/15 px-4 py-2 text-xs font-bold text-emerald-400 transition hover:bg-emerald-500/25">
                         <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
@@ -425,12 +439,12 @@ export default function TourPostDetail() {
                     )}
                     {telegram && (
                       <a href={telegram.startsWith("http") ? telegram : `https://t.me/${telegram.replace("@", "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-xl bg-sky-500/15 px-4 py-2 text-xs font-bold text-sky-400 transition hover:bg-sky-500/25">
-                        <MessageCircle className="h-3.5 w-3.5" /> Telegram
+                        <Send className="h-3.5 w-3.5" /> Telegram
                       </a>
                     )}
-                    {phone && (
-                      <a href={`tel:${phone}`} className="flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-4 py-2 text-xs font-bold text-foreground transition hover:bg-white/12">
-                        <MessageCircle className="h-3.5 w-3.5" /> Call
+                    {instagramHref && (
+                      <a href={instagramHref} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-xl bg-fuchsia-500/15 px-4 py-2 text-xs font-bold text-fuchsia-400 transition hover:bg-fuchsia-500/25">
+                        <Instagram className="h-3.5 w-3.5" /> Instagram
                       </a>
                     )}
                     {website && (

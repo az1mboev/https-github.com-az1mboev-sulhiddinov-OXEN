@@ -95,12 +95,23 @@ export default function PublicCompanyProfile() {
   const posts = tourPosts ?? [];
   const isVerified = company.verification_status === "verified";
 
+  // Normalize Instagram: handles full URL, @username, or bare username
+  const normalizeInstagram = (value: string | null | undefined): string | null => {
+    if (!value?.trim()) return null;
+    const v = value.trim();
+    if (/^https?:\/\//i.test(v)) return v;
+    if (v.startsWith("@")) return `https://instagram.com/${v.slice(1)}`;
+    return `https://instagram.com/${v}`;
+  };
+
   // Contact buttons — only show if data exists
   const contactButtons: { icon: typeof Phone; label: string; href: string; color: string }[] = [];
   if (company.contact_phone) contactButtons.push({ icon: Phone, label: "Call", href: `tel:${company.contact_phone}`, color: "bg-emerald-500/15 text-emerald-400" });
+  if (company.additional_phone) contactButtons.push({ icon: Phone, label: "Alt Phone", href: `tel:${company.additional_phone}`, color: "bg-emerald-500/15 text-emerald-400" });
   if (company.whatsapp) contactButtons.push({ icon: MessageCircle, label: "WhatsApp", href: `https://wa.me/${company.whatsapp.replace(/\D/g, "")}`, color: "bg-green-500/15 text-green-400" });
   if (company.telegram) contactButtons.push({ icon: Send, label: "Telegram", href: company.telegram.startsWith("@") ? `https://t.me/${company.telegram.slice(1)}` : company.telegram, color: "bg-sky-500/15 text-sky-400" });
-  if (socialLinks.instagram) contactButtons.push({ icon: Instagram, label: "Instagram", href: socialLinks.instagram, color: "bg-fuchsia-500/15 text-fuchsia-400" });
+  const igHref = normalizeInstagram(socialLinks.instagram);
+  if (igHref) contactButtons.push({ icon: Instagram, label: "Instagram", href: igHref, color: "bg-fuchsia-500/15 text-fuchsia-400" });
   if (socialLinks.facebook) contactButtons.push({ icon: Facebook, label: "Facebook", href: socialLinks.facebook, color: "bg-blue-500/15 text-blue-400" });
   if (socialLinks.youtube) contactButtons.push({ icon: Youtube, label: "YouTube", href: socialLinks.youtube, color: "bg-red-500/15 text-red-400" });
   if (company.website) contactButtons.push({ icon: Globe, label: "Website", href: company.website, color: "bg-indigo-500/15 text-indigo-400" });
@@ -358,7 +369,7 @@ export default function PublicCompanyProfile() {
               <ContactRow icon={Globe} label="Website" value={company.website} href={company.website} />
             )}
             {socialLinks.instagram && (
-              <ContactRow icon={Instagram} label="Instagram" value={socialLinks.instagram} href={socialLinks.instagram} />
+              <ContactRow icon={Instagram} label="Instagram" value={socialLinks.instagram} href={normalizeInstagram(socialLinks.instagram) ?? undefined} />
             )}
             {socialLinks.facebook && (
               <ContactRow icon={Facebook} label="Facebook" value={socialLinks.facebook} href={socialLinks.facebook} />
