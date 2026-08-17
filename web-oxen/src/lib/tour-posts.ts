@@ -189,12 +189,18 @@ export async function fetchAgencyPosts(companyId: string): Promise<TourPost[]> {
 
 // ── CRM: Fetch single post ─────────────────────────────────────
 
-export async function fetchPostById(postId: string): Promise<TourPost | null> {
-  const { data, error } = await supabase
+/** CRM: Fetch single post — scoped to the given company UUID.
+ *  The companyId filter ensures posts from other agencies are never
+ *  returned, even if the post ID is known. */
+export async function fetchPostById(postId: string, companyId?: string): Promise<TourPost | null> {
+  let query = supabase
     .from("consulting_posts")
     .select("*")
-    .eq("id", postId)
-    .maybeSingle();
+    .eq("id", postId);
+  if (companyId) {
+    query = query.eq("consulting_company_id", companyId);
+  }
+  const { data, error } = await query.maybeSingle();
   if (error) console.error("fetchPostById error:", error);
   return data as unknown as TourPost | null;
 }
@@ -276,22 +282,30 @@ export async function upsertTourPost(
 
 // ── CRM: Delete ────────────────────────────────────────────────
 
-export async function deleteTourPost(postId: string): Promise<boolean> {
+/** CRM: Delete — verifies the post belongs to the given company UUID.
+ *  The .eq("consulting_company_id", companyId) filter ensures a post
+ *  from another agency can never be deleted, even if the post ID is known. */
+export async function deleteTourPost(postId: string, companyId: string): Promise<boolean> {
   const { error } = await supabase
     .from("consulting_posts")
     .delete()
-    .eq("id", postId);
+    .eq("id", postId)
+    .eq("consulting_company_id", companyId);
   if (error) console.error("deleteTourPost error:", error);
   return !error;
 }
 
 // ── CRM: Set status (publish/unpublish/archive) ────────────────
 
-export async function setPostStatus(postId: string, status: PostStatus): Promise<boolean> {
+/** CRM: Set status — verifies the post belongs to the given company UUID.
+ *  The .eq("consulting_company_id", companyId) filter ensures a post
+ *  from another agency can never be modified, even if the post ID is known. */
+export async function setPostStatus(postId: string, status: PostStatus, companyId: string): Promise<boolean> {
   const { error } = await supabase
     .from("consulting_posts")
     .update({ status, updated_at: new Date().toISOString() })
-    .eq("id", postId);
+    .eq("id", postId)
+    .eq("consulting_company_id", companyId);
   if (error) console.error("setPostStatus error:", error);
   return !error;
 }
@@ -303,6 +317,12 @@ export async function duplicateTourPost(
   companyId: string,
   createdBy: string,
 ): Promise<TourPost | null> {
+  // Verify the source post belongs to the same company — prevents
+  // duplicating a post from another agency into this one.
+  if (source.consulting_company_id !== companyId) {
+    console.error("duplicateTourPost: source post does not belong to this company");
+    return null;
+  }
   const { post, error } = await upsertTourPost(companyId, createdBy, {
     title: `${source.title} (Copy)`,
     destination_country: source.destination_country ?? "",

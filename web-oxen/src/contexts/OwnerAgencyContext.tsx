@@ -86,8 +86,21 @@ function useOwnerAgencyState() {
   const enterAgencyCRM = useCallback(
     (agencyId: string) => {
       setOwnerAgencyId(agencyId);
-      // Invalidate ALL consulting/CRM queries so they refetch with the new context
-      queryClient.removeQueries({ queryKey: ["consulting"] });
+      // Remove ALL agency-scoped queries so stale data from the previous
+      // agency does not leak into the new owner context. React Query partial
+      // key matching requires exact first-element match — ["consulting"] does
+      // NOT match ["consulting-posts", ...]. Use a predicate to clear all
+      // consulting- prefixed queries plus tour-post and agency-tour-posts.
+      queryClient.removeQueries({
+        predicate: (query) => {
+          const first = query.queryKey[0];
+          return typeof first === "string" && (
+            first.startsWith("consulting-") ||
+            first === "agency-tour-posts" ||
+            first === "tour-post"
+          );
+        },
+      });
       queryClient.invalidateQueries({ queryKey: ["owner-agency-context"] });
     },
     [queryClient],
@@ -96,7 +109,16 @@ function useOwnerAgencyState() {
   const exitAgencyCRM = useCallback(() => {
     setOwnerAgencyId(null);
     // Clear all CRM queries so no stale data remains
-    queryClient.removeQueries({ queryKey: ["consulting"] });
+    queryClient.removeQueries({
+      predicate: (query) => {
+        const first = query.queryKey[0];
+        return typeof first === "string" && (
+          first.startsWith("consulting-") ||
+          first === "agency-tour-posts" ||
+          first === "tour-post"
+        );
+      },
+    });
     queryClient.invalidateQueries({ queryKey: ["owner-agency-context"] });
   }, [queryClient]);
 

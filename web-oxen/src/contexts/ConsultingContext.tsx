@@ -312,12 +312,22 @@ function useConsultingState() {
     (agencyId: string) => {
       if (!user) return;
       writeActiveAgencyId(user.id, agencyId);
-      // Invalidate ALL consulting/CRM queries so data refetches for the new agency.
-      // Every CRM query key starts with "consulting" — this broad invalidation
-      // ensures clients, applications, packages, members, analytics, activity, etc.
-      // all reload with the new activeAgencyId context.
+      // Remove ALL agency-scoped queries so stale data from the previous
+      // agency does not leak into the new context. React Query partial key
+      // matching requires exact first-element match — ["consulting"] does
+      // NOT match ["consulting-posts", ...]. Use a predicate to clear
+      // everything with a consulting- prefix plus tour-post and agency- posts.
       setIsSwitching(true);
-      queryClient.removeQueries({ queryKey: ["consulting"] });
+      queryClient.removeQueries({
+        predicate: (query) => {
+          const first = query.queryKey[0];
+          return typeof first === "string" && (
+            first.startsWith("consulting-") ||
+            first === "agency-tour-posts" ||
+            first === "tour-post"
+          );
+        },
+      });
       queryClient.invalidateQueries({ queryKey: ["consulting-agencies"] });
       // Clear switching state after a brief delay to allow refetches to start
       setTimeout(() => setIsSwitching(false), 600);

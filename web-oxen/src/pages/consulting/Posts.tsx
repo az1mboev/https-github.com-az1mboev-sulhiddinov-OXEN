@@ -43,7 +43,7 @@ const TAB_FILTERS: Record<Tab, PostStatus | null> = {
    Posts page — CRM tour package management
    ────────────────────────────────────────────────────────────── */
 export default function Posts() {
-  const { company, activeAgencyId } = useConsulting();
+  const { company } = useConsulting();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -57,7 +57,11 @@ export default function Posts() {
 
   useSEO({ title: "Tour Posts | OXEN CRM", description: "Manage tour packages." });
 
-  const companyId = activeAgencyId ?? company?.id ?? "";
+  // Use effectiveCompany.id — this correctly resolves to the selected agency
+  // in both normal mode (activeAgency.company) and owner mode (ownerAgency).
+  // NEVER use activeAgencyId directly — in owner mode it points to the owner's
+  // personal agency, not the agency they're managing.
+  const companyId = company?.id ?? "";
 
   const { data: posts = [], isLoading } = useQuery({
     queryKey: ["consulting-posts", companyId],
@@ -85,19 +89,19 @@ export default function Posts() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["consulting-posts"] });
 
   const publishMutation = useMutation({
-    mutationFn: (post: TourPost) => setPostStatus(post.id, "published"),
+    mutationFn: (post: TourPost) => setPostStatus(post.id, "published", companyId),
     onSuccess: () => { toast({ title: "Package published" }); invalidate(); },
     onError: () => toast({ title: "Failed to publish", variant: "destructive" }),
   });
 
   const unpublishMutation = useMutation({
-    mutationFn: (post: TourPost) => setPostStatus(post.id, "draft"),
+    mutationFn: (post: TourPost) => setPostStatus(post.id, "draft", companyId),
     onSuccess: () => { toast({ title: "Moved to draft" }); invalidate(); },
     onError: () => toast({ title: "Failed to unpublish", variant: "destructive" }),
   });
 
   const archiveMutation = useMutation({
-    mutationFn: (post: TourPost) => setPostStatus(post.id, "archived"),
+    mutationFn: (post: TourPost) => setPostStatus(post.id, "archived", companyId),
     onSuccess: () => { toast({ title: "Package archived" }); invalidate(); },
     onError: () => toast({ title: "Failed to archive", variant: "destructive" }),
   });
@@ -112,7 +116,7 @@ export default function Posts() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const ok = await deleteTourPost(deleteTarget.id);
+      const ok = await deleteTourPost(deleteTarget.id, companyId);
       if (ok) {
         toast({ title: "Package deleted" });
         invalidate();
