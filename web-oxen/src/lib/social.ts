@@ -25,9 +25,11 @@ export interface SocialProfile {
   onboarding_completed?: boolean;
 }
 
-/** Columns that exist on public.profiles — used in all select queries. */
+/** Columns that exist on public.profiles — used in all select queries.
+ *  Includes full_name (added by migration 0007/0008) so the display name
+ *  fallback chain works correctly. */
 const SOCIAL_PROFILE_COLUMNS =
-  "id, username, name, avatar_url, email, created_at, updated_at";
+  "id, username, name, full_name, avatar_url, email, created_at, updated_at";
 
 export interface FollowRecord {
   id: string;
@@ -177,6 +179,49 @@ export async function ensureUsername(userId: string, name: string | null, email:
   }
 
   return unique;
+}
+
+/**
+ * Resolve the best display name for a profile.
+ * Priority: username → full_name → name → email local-part → "User".
+ * This ensures we never show "User" when a username or email is available.
+ */
+export function resolveDisplayName(profile: SocialProfile | null | undefined): string {
+  if (!profile) return "User";
+  if (profile.username && profile.username.trim()) return profile.username.trim();
+  if (profile.full_name && profile.full_name.trim()) return profile.full_name.trim();
+  if (profile.name && profile.name.trim()) return profile.name.trim();
+  if (profile.email && profile.email.trim()) {
+    const localPart = profile.email.split("@")[0];
+    if (localPart && localPart.trim()) return localPart.trim();
+  }
+  return "User";
+}
+
+/**
+ * Batch-fetch multiple social profiles by user IDs.
+ * Uses a single query instead of N+1 individual fetches.
+ * Returns a Map of userId → SocialProfile.
+ */
+export async function batchGetSocialProfiles(userIds: string[]): Promise<Map<string, SocialProfile>> {
+  const result = new Map<string, SocialProfile>();
+  if (userIds.length === 0) return result;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(SOCIAL_PROFILE_COLUMNS)
+    .in("id", userIds);
+
+  if (error) {
+    console.error("[batchGetSocialProfiles] Error:", error);
+    return result;
+  }
+
+  for (const row of data ?? []) {
+    result.set(row.id, row as SocialProfile);
+  }
+
+  return result;
 }
 
 /**
@@ -483,6 +528,7 @@ export async function getOrCreateConversation(otherUserId: string): Promise<{ co
 
 /**
  * Get all conversations for the current user with last message + other user info.
+ * Uses batch queries to avoid N+1 performance issues.
  */
 export async function getConversations(): Promise<Conversation[]> {
   const { data: userData } = await supabase.auth.getUser();
@@ -501,57 +547,89 @@ export async function getConversations(): Promise<Conversation[]> {
   }
 
   const conversationIds = memberships.map((m) => m.conversation_id);
+
+  // 2. Get ALL conversation members for these conversations in a single query
+  const { data: allMembers, error: membersError } = await supabase
+    .from("conversation_members")
+    .select("conversation_id, user_id")
+    .in("conversation_id", conversationIds);
+
+  if (membersError || !allMembers) {
+    console.error("[getConversations] members query error:", membersError);
+    return [];
+  }
+
+  // 3. Find the OTHER user in each conversation
+  const otherUserIds = new Set<string>();
+  const convIdToOtherUserId = new Map<string, string>();
+
+  for (const member of allMembers) {
+    if (member.user_id !== currentUserId) {
+      otherUserIds.add(member.user_id);
+      convIdToOtherUserId.set(member.conversation_id, member.user_id);
+    }
+  }
+
+  // 4. Batch-fetch all OTHER user profiles in a single query
+  const profileMap = await batchGetSocialProfiles([...otherUserIds]);
+
+  // 5. Batch-fetch all conversation metadata
+  const { data: convs } = await supabase
+    .from("conversations")
+    .select("id, created_at, updated_at")
+    .in("id", conversationIds);
+
+  const convMap = new Map<string, { id: string; created_at: string; updated_at: string }>();
+  for (const c of convs ?? []) {
+    convMap.set(c.id, c);
+  }
+
+  // 6. Batch-fetch recent messages and pick the latest per conversation
+  const { data: recentMessages } = await supabase
+    .from("messages")
+    .select("id, conversation_id, sender_id, content, message_type, media_url, is_read, created_at, updated_at")
+    .in("conversation_id", conversationIds)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  const lastMsgMap = new Map<string, ChatMessage>();
+  for (const msg of recentMessages ?? []) {
+    const existing = lastMsgMap.get(msg.conversation_id);
+    if (!existing || new Date(msg.created_at) > new Date(existing.created_at)) {
+      lastMsgMap.set(msg.conversation_id, msg as ChatMessage);
+    }
+  }
+
+  // 7. Batch-fetch unread counts per conversation
+  const { data: unreadRows } = await supabase
+    .from("messages")
+    .select("conversation_id")
+    .in("conversation_id", conversationIds)
+    .neq("sender_id", currentUserId)
+    .eq("is_read", false);
+
+  const unreadMap = new Map<string, number>();
+  for (const row of unreadRows ?? []) {
+    unreadMap.set(row.conversation_id, (unreadMap.get(row.conversation_id) ?? 0) + 1);
+  }
+
+  // 8. Assemble conversation list
   const conversations: Conversation[] = [];
 
-  // 2. For each conversation, get the other member + last message
   for (const convId of conversationIds) {
-    // Get other member
-    const { data: otherMembers } = await supabase
-      .from("conversation_members")
-      .select("user_id")
-      .eq("conversation_id", convId)
-      .neq("user_id", currentUserId);
-
-    const otherUserId = otherMembers?.[0]?.user_id;
-    let otherUser: SocialProfile | null = null;
-
-    if (otherUserId) {
-      otherUser = await getSocialProfile(otherUserId);
-    }
-
-    // Get conversation metadata
-    const { data: conv } = await supabase
-      .from("conversations")
-      .select("id, created_at, updated_at")
-      .eq("id", convId)
-      .maybeSingle();
-
+    const conv = convMap.get(convId);
     if (!conv) continue;
 
-    // Get last message
-    const { data: lastMsg } = await supabase
-      .from("messages")
-      .select("id, conversation_id, sender_id, content, message_type, media_url, is_read, created_at, updated_at")
-      .eq("conversation_id", convId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // Get unread count (messages not from me and not read)
-    const { count: unreadCount } = await supabase
-      .from("messages")
-      .select("id", { count: "exact", head: true })
-      .eq("conversation_id", convId)
-      .neq("sender_id", currentUserId)
-      .eq("is_read", false);
+    const otherUserId = convIdToOtherUserId.get(convId);
+    const otherUser = otherUserId ? (profileMap.get(otherUserId) ?? null) : null;
 
     conversations.push({
       id: conv.id,
       created_at: conv.created_at,
       updated_at: conv.updated_at,
       other_user: otherUser,
-      last_message: (lastMsg as ChatMessage) ?? null,
-      unread_count: unreadCount ?? 0,
+      last_message: lastMsgMap.get(convId) ?? null,
+      unread_count: unreadMap.get(convId) ?? 0,
     });
   }
 
@@ -797,6 +875,27 @@ export function subscribeToFollows(
 }
 
 // ── Formatting helpers ─────────────────────────────────────
+
+/**
+ * Helper: find the other user in a conversation by fetching conversation members.
+ * Used as a fallback when the conversation isn't in the loaded list.
+ */
+export async function getSocialProfileForConversation(convId: string, currentUserId: string): Promise<SocialProfile | null> {
+  // Fetch conversation members to find the OTHER participant
+  const { data: members, error } = await supabase
+    .from("conversation_members")
+    .select("user_id")
+    .eq("conversation_id", convId)
+    .neq("user_id", currentUserId);
+
+  if (error || !members || members.length === 0) {
+    console.error("[getSocialProfileForConversation] Error or no other member:", error);
+    return null;
+  }
+
+  const otherUserId = members[0].user_id;
+  return getSocialProfile(otherUserId);
+}
 
 /** Format message time for chat list (e.g. "3:45 PM", "Yesterday", "Jul 28"). */
 export function formatMessageTime(timestamp: string): string {

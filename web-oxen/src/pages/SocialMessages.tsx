@@ -12,7 +12,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import {
   getMessages, sendMessage, markConversationRead, subscribeToMessages,
-  getSocialProfile, formatMessageTime, formatChatTime, formatDateDivider,
+  getSocialProfile, getSocialProfileForConversation, resolveDisplayName,
+  formatMessageTime, formatChatTime, formatDateDivider,
   getInitials, type ChatMessage, type SocialProfile,
 } from "@/lib/social";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ export default function SocialMessages() {
   const [showEmoji, setShowEmoji] = useState<boolean>(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [otherUser, setOtherUser] = useState<SocialProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState<boolean>(false);
   const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
   const [sending, setSending] = useState<boolean>(false);
 
@@ -63,17 +65,21 @@ export default function SocialMessages() {
 
     let active = true;
     setMessagesLoading(true);
+    setProfileLoading(true);
 
     void (async () => {
       // Find the conversation in our list to get the other user
       const conv = conversations.find((c) => c.id === activeConvId);
       if (conv?.other_user) {
         if (active) setOtherUser(conv.other_user);
+        if (active) setProfileLoading(false);
       } else {
-        // Fallback: try to find the other user via conversation members
-        // by fetching the conversation metadata
+        // Fallback: fetch the other participant's profile directly
         const profile = await getSocialProfileForConversation(activeConvId, currentUser?.id ?? "");
-        if (active && profile) setOtherUser(profile);
+        if (active) {
+          setOtherUser(profile);
+          setProfileLoading(false);
+        }
       }
 
       // Load messages
@@ -158,7 +164,7 @@ export default function SocialMessages() {
 
   // ── Chat view (full screen) ──
   if (activeConvId) {
-    const displayName = otherUser?.name ?? "User";
+    const displayName = resolveDisplayName(otherUser);
     let lastDateDivider = "";
 
     return createPortal(
@@ -180,7 +186,9 @@ export default function SocialMessages() {
             className="flex items-center gap-3 flex-1 min-w-0 text-left"
           >
             <div className="relative shrink-0">
-              {otherUser?.avatar_url ? (
+              {profileLoading ? (
+                <div className="h-10 w-10 rounded-full bg-white/[0.06] animate-pulse" />
+              ) : otherUser?.avatar_url ? (
                 <img
                   src={otherUser.avatar_url}
                   alt={displayName}
@@ -193,8 +201,12 @@ export default function SocialMessages() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate">{displayName}</p>
-              {otherUser?.username && (
+              {profileLoading ? (
+                <div className="h-4 w-24 rounded bg-white/[0.06] animate-pulse" />
+              ) : (
+                <p className="text-sm font-bold truncate">{displayName}</p>
+              )}
+              {!profileLoading && otherUser?.username && (
                 <p className="text-xs text-muted-foreground truncate">@{otherUser.username}</p>
               )}
             </div>
@@ -209,7 +221,7 @@ export default function SocialMessages() {
             </div>
           )}
 
-          {!messagesLoading && messages.length === 0 && (
+          {!messagesLoading && messages.length === 0 && !profileLoading && (
             <div className="flex h-full flex-col items-center justify-center text-center px-6">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04]">
                 <Send className="h-7 w-7 text-white/20" />
@@ -402,7 +414,8 @@ export default function SocialMessages() {
           {filteredConversations.map((conv, i) => {
             const lastMsg = conv.last_message;
             const unread = conv.unread_count;
-            const displayName = conv.other_user?.name ?? "User";
+            const displayName = resolveDisplayName(conv.other_user);
+            const isProfileLoading = !conv.other_user;
 
             return (
               <motion.button
@@ -415,7 +428,9 @@ export default function SocialMessages() {
                 className="glass flex w-full items-center gap-3 rounded-2xl p-3.5 text-left transition-all hover:border-white/[0.12]"
               >
                 <div className="relative shrink-0">
-                  {conv.other_user?.avatar_url ? (
+                  {isProfileLoading ? (
+                    <div className="h-12 w-12 rounded-full bg-white/[0.06] animate-pulse" />
+                  ) : conv.other_user?.avatar_url ? (
                     <img
                       src={conv.other_user.avatar_url}
                       alt={displayName}
@@ -429,7 +444,11 @@ export default function SocialMessages() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold truncate">{displayName}</p>
+                    {isProfileLoading ? (
+                      <div className="h-4 w-20 rounded bg-white/[0.06] animate-pulse" />
+                    ) : (
+                      <p className="text-sm font-bold truncate">{displayName}</p>
+                    )}
                     {lastMsg && (
                       <span className="text-[10px] text-muted-foreground shrink-0">
                         {formatMessageTime(lastMsg.created_at)}
@@ -443,7 +462,7 @@ export default function SocialMessages() {
                         : lastMsg.message_type === "video"
                           ? "🎥 Video"
                           : lastMsg.content || "Message deleted"
-                      : conv.other_user?.username
+                      : !isProfileLoading && conv.other_user?.username
                         ? `@${conv.other_user.username}`
                         : "Tap to start chatting"}
                   </p>
@@ -462,14 +481,4 @@ export default function SocialMessages() {
   );
 }
 
-/**
- * Helper: find the other user in a conversation by fetching conversation members.
- * Used as a fallback when the conversation isn't in the loaded list.
- */
-async function getSocialProfileForConversation(convId: string, currentUserId: string): Promise<SocialProfile | null> {
-  // This is handled by the conversation data in SocialContext.
-  // As a fallback, we return null and let the chat header show a generic name.
-  void convId;
-  void currentUserId;
-  return null;
-}
+
