@@ -2,7 +2,7 @@
   "$schema": "https://rork.com/schema/rork.json",
   "apps": [
     {
-      "name": "ORVO",
+      "name": "OXEN",
       "path": "web-oxen",
       "framework": "web",
       "settings": {
